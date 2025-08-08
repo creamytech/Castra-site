@@ -1,0 +1,1 @@
+import WaitlistDialog from "@/components/WaitlistDialog"; export default function MobileStickyCTA() { return ( <div className="fixed bottom-4 left-4 right-4 z-50 md:hidden"> <WaitlistDialog triggerClassName="w-full" /> </div> ); }

@@ -1,0 +1,1 @@
+export default function GlowCard({ children, className = "" }: { children: React.ReactNode; className?: string }) { return <div className={`bg-white/70 dark:bg-white/[0.05] backdrop-blur border border-gold/20 shadow-glow ${className}`}>{children}</div>; }

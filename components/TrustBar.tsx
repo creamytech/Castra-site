@@ -1,0 +1,1 @@
+export default function TrustBar({ items }: { items: string[] }) { return <div className="flex flex-wrap justify-center gap-4 text-xs text-slate"> {items.map((item) => ( <span key={item} className="flex items-center gap-1"> <span className="inline-block h-1 w-1 rounded-full bg-[#D4AF37]" /> {item} </span> ))} </div>; }
