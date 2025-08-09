@@ -70,14 +70,18 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' }
       },
       async authorize(credentials) {
+        console.log('Credentials authorize called:', { email: credentials?.email })
         // Allow demo login with any email/password when no OAuth providers are configured
         if (credentials?.email) {
-          return {
-            id: 'demo-user',
+          const user = {
+            id: `demo-${Date.now()}`,
             email: credentials.email,
             name: 'Demo User',
           }
+          console.log('Demo user created:', user)
+          return user
         }
+        console.log('No email provided for demo login')
         return null
       }
     }
@@ -136,19 +140,20 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user, account, profile, email }: any) {
       console.log('SignIn Callback:', { 
         provider: account?.provider,
+        type: account?.type,
         userId: user?.id,
         userEmail: user?.email,
         email
       })
       
-      // For OAuth providers, allow sign-in and handle account linking
+      // For OAuth providers, allow sign-in
       if (account?.provider) {
-        // Always allow OAuth sign-ins - let the adapter handle account linking
         return true
       }
       
-      // For credentials provider (demo), allow sign-in
+      // For credentials provider (demo), always allow
       if (account?.type === 'credentials') {
+        console.log('Credentials sign-in allowed')
         return true
       }
       
@@ -157,6 +162,7 @@ export const authOptions: NextAuthOptions = {
         return true
       }
       
+      // Default: allow all sign-ins
       return true
     },
   },
