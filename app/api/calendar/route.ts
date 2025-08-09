@@ -28,6 +28,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // More flexible date validation
+    let validatedStartISO = startISO;
+    let validatedEndISO = endISO;
+
+    // Try to parse and validate start date
     if (!startISO || typeof startISO !== 'string') {
       return NextResponse.json(
         { error: 'Start time (startISO) is required and must be a valid ISO string' },
@@ -35,9 +40,52 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    try {
+      const startDate = new Date(startISO);
+      if (isNaN(startDate.getTime())) {
+        return NextResponse.json(
+          { error: 'Start time must be a valid date format (ISO 8601)' },
+          { status: 400 }
+        )
+      }
+      validatedStartISO = startDate.toISOString();
+    } catch (error) {
+      return NextResponse.json(
+        { error: 'Start time must be a valid date format (ISO 8601)' },
+        { status: 400 }
+      )
+    }
+
+    // Try to parse and validate end date
     if (!endISO || typeof endISO !== 'string') {
       return NextResponse.json(
         { error: 'End time (endISO) is required and must be a valid ISO string' },
+        { status: 400 }
+      )
+    }
+
+    try {
+      const endDate = new Date(endISO);
+      if (isNaN(endDate.getTime())) {
+        return NextResponse.json(
+          { error: 'End time must be a valid date format (ISO 8601)' },
+          { status: 400 }
+        )
+      }
+      validatedEndISO = endDate.toISOString();
+    } catch (error) {
+      return NextResponse.json(
+        { error: 'End time must be a valid date format (ISO 8601)' },
+        { status: 400 }
+      )
+    }
+
+    // Validate that start is before end
+    const startDate = new Date(validatedStartISO);
+    const endDate = new Date(validatedEndISO);
+    if (startDate >= endDate) {
+      return NextResponse.json(
+        { error: 'Start time must be before end time' },
         { status: 400 }
       )
     }
@@ -58,16 +106,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Pass session tokens for JWT strategy
-    const sessionTokens = {
-      accessToken: (session as any).accessToken,
-      refreshToken: (session as any).refreshToken,
-    }
-
     const event = await createCalendarEvent(
       session.user.id,
-      { summary, startISO, endISO, attendees, timeZone },
-      sessionTokens
+      { summary, startISO: validatedStartISO, endISO: validatedEndISO, attendees, timeZone }
     )
 
     return NextResponse.json({ 

@@ -134,7 +134,7 @@ export default function HomePage() {
                 Try Demo
               </Link>
               <Link
-                href="/app/dashboard"
+                href="/dashboard"
                 className="px-8 py-4 border-2 border-purple-600 text-purple-600 dark:text-purple-400 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors text-lg font-semibold"
               >
                 Get Started
@@ -144,7 +144,7 @@ export default function HomePage() {
         </Section>
 
         {/* Features Section */}
-        <Section className="py-20 bg-gray-50 dark:bg-gray-800">
+        <Section id="features" className="py-20 bg-gray-50 dark:bg-gray-800">
           <div className="max-w-6xl mx-auto">
             <h2 className="text-4xl font-bold text-center mb-12">
               Everything you need to close more deals
@@ -165,7 +165,7 @@ export default function HomePage() {
         </Section>
 
         {/* Pricing Section */}
-        <Section className="py-20">
+        <Section id="pricing" className="py-20">
           <div className="max-w-6xl mx-auto">
             <h2 className="text-4xl font-bold text-center mb-12">
               Simple, transparent pricing
@@ -211,7 +211,7 @@ export default function HomePage() {
         </Section>
 
         {/* FAQ Section */}
-        <Section className="py-20 bg-gray-50 dark:bg-gray-800">
+        <Section id="faq" className="py-20 bg-gray-50 dark:bg-gray-800">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-4xl font-bold text-center mb-12">
               Frequently Asked Questions

@@ -228,7 +228,7 @@ export default function InboxPage() {
   if (status === "loading") {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-gray-800 dark:text-white">Loading...</div>
+        <div className="text-foreground">Loading...</div>
       </div>
     );
   }
@@ -236,7 +236,7 @@ export default function InboxPage() {
   if (!session) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-gray-800 dark:text-white">You need to sign in.</div>
+        <div className="text-foreground">You need to sign in.</div>
       </div>
     );
   }
@@ -249,7 +249,7 @@ export default function InboxPage() {
           <div className="lg:col-span-1">
             <div className="card h-full">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="h2">Inbox</h2>
+                <h2 className="h2 text-foreground">Inbox</h2>
                 <motion.button 
                   onClick={() => fetchEmails()} 
                   className="btn-secondary text-sm"
@@ -266,19 +266,19 @@ export default function InboxPage() {
                   placeholder="Search emails..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder-gray-600 dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="input w-full"
                 />
               </div>
 
               {/* Email List */}
               <div className="space-y-2 max-h-96 lg:max-h-none overflow-y-auto">
                 {loadingEmails ? (
-                  <div className="text-center text-gray-600 dark:text-gray-400 py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+                  <div className="text-center text-muted-foreground py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                     <p className="mt-2">Loading emails...</p>
                   </div>
                 ) : filteredEmails.length === 0 ? (
-                  <div className="text-center text-gray-600 dark:text-gray-400 py-8">
+                  <div className="text-center text-muted-foreground py-8">
                     <p>{searchTerm ? "No emails found" : "No emails"}</p>
                   </div>
                 ) : (
@@ -289,8 +289,8 @@ export default function InboxPage() {
                         onClick={() => handleEmailSelect(email)}
                         className={`w-full text-left p-3 rounded-lg transition-colors ${
                           selectedEmail?.id === email.id
-                            ? "bg-purple-600 text-white"
-                            : "bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-800 dark:text-white"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted hover:bg-accent hover:text-accent-foreground text-foreground"
                         }`}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -323,15 +323,15 @@ export default function InboxPage() {
               {selectedEmail && emailDetail ? (
                 <div className="h-full flex flex-col">
                   {/* Email Header */}
-                  <div className="border-b border-gray-200 dark:border-gray-700 p-4">
+                  <div className="border-b border-border p-4">
                     <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-lg font-semibold">{emailDetail.subject}</h3>
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                      <h3 className="text-lg font-semibold text-foreground">{emailDetail.subject}</h3>
+                      <span className="text-sm text-muted-foreground">
                         {formatRelativeDate(emailDetail.dateISO)}
                       </span>
                     </div>
-                    <p className="text-gray-600 dark:text-gray-400">From: {emailDetail.from}</p>
-                    <p className="text-gray-600 dark:text-gray-400">To: {emailDetail.to}</p>
+                    <p className="text-muted-foreground">From: {emailDetail.from}</p>
+                    <p className="text-muted-foreground">To: {emailDetail.to}</p>
                   </div>
 
                   {/* Email Content */}
@@ -340,10 +340,10 @@ export default function InboxPage() {
                       {emailDetail.html ? (
                         <div 
                           dangerouslySetInnerHTML={{ __html: emailDetail.html }}
-                          className="text-gray-800 dark:text-gray-200"
+                          className="text-foreground"
                         />
                       ) : (
-                        <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+                        <p className="text-foreground whitespace-pre-wrap">
                           {emailDetail.text || emailDetail.snippet}
                         </p>
                       )}
@@ -351,29 +351,29 @@ export default function InboxPage() {
                   </div>
 
                   {/* Summary Section */}
-                  <div className="border-t border-gray-200 dark:border-gray-700 p-4">
-                    <h4 className="font-semibold mb-2">AI Summary</h4>
+                  <div className="border-t border-border p-4">
+                    <h4 className="font-semibold mb-2 text-foreground">AI Summary</h4>
                     {loading ? (
                       <div className="animate-pulse">
-                        <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-3/4 mb-2"></div>
-                        <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-1/2"></div>
+                        <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
+                        <div className="h-4 bg-muted rounded w-1/2"></div>
                       </div>
                     ) : summary ? (
-                      <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
-                        <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{summary}</p>
+                      <div className="bg-muted p-3 rounded-lg">
+                        <p className="text-sm text-foreground whitespace-pre-wrap">{summary}</p>
                       </div>
                     ) : (
-                      <p className="text-gray-600 dark:text-gray-400 text-sm">Loading summary...</p>
+                      <p className="text-muted-foreground text-sm">Loading summary...</p>
                     )}
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+                  <div className="border-t border-border p-4">
                     <div className="flex space-x-2">
                       <motion.button
                         onClick={handleCreateDraft}
                         disabled={loading}
-                        className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                         whileTap={{ scale: 0.98 }}
                       >
                         {loading ? "Creating..." : "Create Draft"}
@@ -382,10 +382,10 @@ export default function InboxPage() {
                   </div>
                 </div>
               ) : (
-                <div className="h-full flex items-center justify-center text-gray-600 dark:text-gray-400">
+                <div className="h-full flex items-center justify-center text-muted-foreground">
                   <div className="text-center">
                     <div className="text-4xl mb-4">📧</div>
-                    <h3 className="mb-2">Select an email</h3>
+                    <h3 className="mb-2 text-foreground">Select an email</h3>
                     <p>Choose an email from the list to view details and generate summaries</p>
                   </div>
                 </div>
