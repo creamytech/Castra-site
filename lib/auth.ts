@@ -3,7 +3,6 @@ import { PrismaAdapter } from '@auth/prisma-adapter'
 import OktaProvider from 'next-auth/providers/okta'
 import GoogleProvider from 'next-auth/providers/google'
 import AzureADProvider from 'next-auth/providers/azure-ad'
-import CredentialsProvider from 'next-auth/providers/credentials'
 import { prisma } from './prisma'
 import { config } from './config'
 
@@ -65,44 +64,11 @@ if (config.azure.clientId && config.azure.clientSecret && config.azure.tenantId)
   )
 }
 
-// Always add credentials provider for demo mode
-providers.push(
-  CredentialsProvider({
-    id: 'credentials',
-    name: 'Demo',
-    credentials: {
-      email: { label: 'Email', type: 'email' },
-      password: { label: 'Password', type: 'password' }
-    },
-    async authorize(credentials) {
-      console.log('Credentials authorize called:', { email: credentials?.email })
-      // Allow demo login with any email/password
-      if (credentials?.email) {
-        const user = {
-          id: `demo-${Date.now()}`,
-          email: credentials.email,
-          name: 'Demo User',
-        }
-        console.log('Demo user created:', user)
-        return user
-      }
-      console.log('No email provided for demo login')
-      return null
-    }
-  })
-)
-
 console.log('Configured providers:', providers.map(p => p.id))
 
-// Completely disable adapter to avoid account linking issues
-const createAdapter = () => {
-  console.log('Adapter disabled - using JWT strategy only')
-  return undefined
-}
-
 export const authOptions: NextAuthOptions = {
-  adapter: createAdapter(),
-  debug: true, // Always enable debug for troubleshooting
+  adapter: PrismaAdapter(prisma),
+  debug: true,
   callbacks: {
     async signIn({ user, account, profile, email }: any) {
       console.log('SignIn Callback:', { 
@@ -113,70 +79,37 @@ export const authOptions: NextAuthOptions = {
         email
       })
       
-      // Always allow all sign-ins - no account linking restrictions
+      // Allow all sign-ins
       console.log('Sign-in allowed for:', account?.provider || account?.type)
       return true
     },
-    async jwt({ token, user, account, profile }: any) {
-      console.log('JWT Callback:', { 
-        provider: account?.provider, 
-        hasAccessToken: !!account?.access_token,
-        hasRefreshToken: !!account?.refresh_token,
-        userId: user?.id 
-      })
-      
-      // Handle Okta tokens
-      if (account?.provider === 'okta' && profile) {
-        token.oktaId = profile.sub
-        token.groups = profile.groups || []
-      }
-      
-      // Handle Google tokens with refresh token support
-      if (account?.provider === 'google') {
-        token.accessToken = account.access_token
-        token.refreshToken = account.refresh_token
-        token.expiresAt = account.expires_at ? account.expires_at * 1000 : undefined
-        console.log('Google tokens stored in JWT')
-      }
-      
-      if (user) {
-        token.id = user.id
-        console.log('User ID set in token:', user.id)
-      }
-      
-      return token
-    },
-    async session({ session, token }: any) {
+    async session({ session, user }: any) {
       console.log('Session Callback:', { 
-        hasToken: !!token,
-        userId: token?.id,
-        hasGoogleTokens: !!(token?.accessToken || token?.refreshToken),
-        tokenKeys: token ? Object.keys(token) : []
+        hasUser: !!user,
+        userId: user?.id,
+        userEmail: user?.email,
+        sessionKeys: session ? Object.keys(session) : []
       })
       
-      if (token) {
-        // Ensure session.user exists
-        if (!session.user) {
-          session.user = {}
-        }
-        
-        // Set user ID if available
-        if (token.id) {
-          session.user.id = token.id
-        }
-        
-        // Set other user properties
-        if (token.oktaId) {
-          session.user.oktaId = token.oktaId
-        }
-        if (token.groups) {
-          session.user.groups = token.groups
-        }
-        
-        // Add Google tokens to session
-        (session as any).accessToken = token.accessToken
-        ;(session as any).refreshToken = token.refreshToken
-        ;(session as any).expiresAt = token.expiresAt
+      // Ensure session.user exists and include user ID
+      if (!session.user) {
+        session.user = {}
+      }
+      
+      // Set user ID from database user
+      if (user?.id) {
+        session.user.id = user.id
+      }
+      
+      // Set other user properties
+      if (user?.email) {
+        session.user.email = user.email
+      }
+      if (user?.name) {
+        session.user.name = user.name
+      }
+      if (user?.image) {
+        session.user.image = user.image
       }
       
       console.log('Final session:', {
@@ -191,7 +124,7 @@ export const authOptions: NextAuthOptions = {
   },
   providers,
   session: {
-    strategy: 'jwt',
+    strategy: 'database',
   },
   pages: {
     signIn: '/auth/signin',

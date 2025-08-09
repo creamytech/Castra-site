@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { listUpcomingEvents } from '@/lib/google'
+import { prisma } from '@/lib/prisma'
+
+export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
-  if (!session?.user) {
+  if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -17,7 +20,7 @@ export async function POST(req: NextRequest) {
 
     // Get upcoming calendar events
     const events = await listUpcomingEvents(
-      (session.user as any).id,
+      session.user.id,
       { max: 50 },
       sessionTokens
     )
@@ -31,34 +34,38 @@ export async function POST(req: NextRequest) {
     for (const event of events) {
       for (const attendee of event.attendees) {
         if (attendee && !uniqueAttendees.has(attendee)) {
-          uniqueAttendees.set(attendee, {
-            email: attendee,
-            name: attendee.split('@')[0], // Basic name extraction
-            source: 'calendar',
-            tags: ['calendar-contact'],
-            lastContact: event.startISO || new Date().toISOString(),
-            emailCount: 0,
-            meetingCount: 1,
-            leadScore: 40, // Default score for calendar contacts
-            status: 'new' as const,
-            createdAt: new Date().toISOString()
+          // Check if contact already exists
+          const existingContact = await prisma.contact.findFirst({
+            where: {
+              userId: session.user.id,
+              email: attendee
+            }
           })
-          syncedCount++
-        } else if (uniqueAttendees.has(attendee)) {
-          // Increment meeting count for existing attendee
-          const existing = uniqueAttendees.get(attendee)
-          existing.meetingCount++
-          existing.lastContact = event.startISO || new Date().toISOString()
+
+          if (!existingContact) {
+            // Create new contact
+            const contact = await prisma.contact.create({
+              data: {
+                userId: session.user.id,
+                firstName: attendee.split('@')[0] || 'Unknown',
+                lastName: 'Contact',
+                email: attendee,
+                tags: ['calendar-contact'],
+                notes: `Synced from calendar event "${event.summary}" on ${new Date().toLocaleDateString()}`
+              }
+            })
+            newContacts.push(contact)
+            syncedCount++
+          }
+          
+          uniqueAttendees.set(attendee, { email: attendee })
         }
       }
     }
 
-    // Convert to array
-    const contacts = Array.from(uniqueAttendees.values())
-
     return NextResponse.json({ 
       syncedCount,
-      contacts 
+      contacts: newContacts 
     })
   } catch (error: any) {
     console.error('CRM sync calendar error:', error)

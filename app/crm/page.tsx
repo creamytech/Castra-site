@@ -9,14 +9,16 @@ export const dynamic = 'force-dynamic'
 
 interface Contact {
   id: string
-  name: string
-  email: string
+  firstName: string
+  lastName: string
+  email?: string
   phone?: string
-  status: 'new' | 'contacted' | 'qualified' | 'proposal' | 'closing' | 'closed'
-  leadScore: number
-  tags: string[]
+  company?: string
+  title?: string
   notes?: string
-  lastContact?: string
+  tags: string[]
+  createdAt: string
+  updatedAt: string
 }
 
 interface ToastMessage {
@@ -127,10 +129,10 @@ export default function CRMPage() {
   }, [status])
 
   const filteredContacts = contacts.filter(contact => {
-    const matchesSearch = contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         contact.email.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = selectedStatus === 'all' || contact.status === selectedStatus
-    return matchesSearch && matchesStatus
+    const fullName = `${contact.firstName} ${contact.lastName}`.toLowerCase()
+    const matchesSearch = fullName.includes(searchTerm.toLowerCase()) ||
+                         contact.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    return matchesSearch
   })
 
   const getStatusColor = (status: string) => {
@@ -192,19 +194,6 @@ export default function CRMPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="px-3 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder-gray-600 dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="px-3 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-              >
-                <option value="all">All Status</option>
-                <option value="new">New</option>
-                <option value="contacted">Contacted</option>
-                <option value="qualified">Qualified</option>
-                <option value="proposal">Proposal</option>
-                <option value="closing">Closing</option>
-                <option value="closed">Closed</option>
-              </select>
             </div>
             <div className="flex gap-2">
               <button
@@ -225,80 +214,80 @@ export default function CRMPage() {
           </div>
         </div>
 
-        {/* Kanban Board */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
-          {['new', 'contacted', 'qualified', 'proposal', 'closing', 'closed'].map(status => (
-            <div key={status} className="card">
-              <h3 className="font-medium text-gray-800 dark:text-white mb-4 capitalize">
-                {status} ({filteredContacts.filter(c => c.status === status).length})
-              </h3>
-              <div className="space-y-3">
-                {filteredContacts
-                  .filter(contact => contact.status === status)
-                  .map(contact => (
-                    <div
-                      key={contact.id}
-                      className="p-3 bg-gray-100 dark:bg-gray-800 rounded-lg border-l-4 border-purple-500"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium text-sm text-gray-800 dark:text-white">
-                          {contact.name}
-                        </h4>
-                        <span className={`px-2 py-1 text-xs rounded-full ${getLeadScoreColor(contact.leadScore)}`}>
-                          {contact.leadScore}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-                        {contact.email}
-                      </p>
-                      {contact.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mb-2">
-                          {contact.tags.slice(0, 2).map(tag => (
-                            <span
-                              key={tag}
-                              className="px-1 py-0.5 text-xs bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                          {contact.tags.length > 2 && (
-                            <span className="px-1 py-0.5 text-xs bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded">
-                              +{contact.tags.length - 2}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                      <div className="flex justify-between items-center">
-                        <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(contact.status)}`}>
-                          {contact.status}
-                        </span>
-                        <select
-                          value={contact.status}
-                          onChange={(e) => updateContactStatus(contact.id, e.target.value)}
-                          className="text-xs bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white rounded px-1 py-0.5"
-                        >
-                          <option value="new">New</option>
-                          <option value="contacted">Contacted</option>
-                          <option value="qualified">Qualified</option>
-                          <option value="proposal">Proposal</option>
-                          <option value="closing">Closing</option>
-                          <option value="closed">Closed</option>
-                        </select>
-                      </div>
-                    </div>
-                  ))}
+        {/* Contacts List */}
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="h2">Contacts</h2>
+            <button
+              onClick={fetchContacts}
+              disabled={loading}
+              className="btn-secondary text-sm"
+            >
+              {loading ? 'Loading...' : 'Refresh'}
+            </button>
+          </div>
+
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="text-gray-600 dark:text-gray-400">Loading contacts...</div>
+            </div>
+          ) : filteredContacts.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="text-gray-600 dark:text-gray-400">
+                {contacts.length === 0 ? 'No contacts found. Try syncing from email or calendar.' : 'No contacts match your search.'}
               </div>
             </div>
-          ))}
-        </div>
-
-        {filteredContacts.length === 0 && !loading && (
-          <div className="text-center py-8">
-            <div className="text-gray-600 dark:text-gray-400">
-              {contacts.length === 0 ? 'No contacts found. Try syncing from email or calendar.' : 'No contacts match your filters.'}
+          ) : (
+            <div className="space-y-3">
+              {filteredContacts.map((contact) => (
+                <div
+                  key={contact.id}
+                  className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg border-l-4 border-purple-500"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium text-gray-800 dark:text-white">
+                      {contact.firstName} {contact.lastName}
+                    </h4>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      {new Date(contact.createdAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                  
+                  {contact.email && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                      {contact.email}
+                    </p>
+                  )}
+                  
+                  {contact.company && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                      {contact.company} {contact.title && `• ${contact.title}`}
+                    </p>
+                  )}
+                  
+                  {contact.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {contact.tags.map(tag => (
+                        <span
+                          key={tag}
+                          className="px-2 py-1 text-xs bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {contact.notes && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                      {contact.notes}
+                    </p>
+                  )}
+                </div>
+              ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Toast notifications */}

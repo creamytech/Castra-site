@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { listRecentThreads, getThreadDetail } from '@/lib/google'
+import { prisma } from '@/lib/prisma'
+
+export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
-  if (!session?.user) {
+  if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -17,7 +20,7 @@ export async function POST(req: NextRequest) {
 
     // Get recent email threads
     const threads = await listRecentThreads(
-      (session.user as any).id,
+      session.user.id,
       20,
       sessionTokens
     )
@@ -32,7 +35,7 @@ export async function POST(req: NextRequest) {
       try {
         // Get thread details to extract sender information
         const threadDetail = await getThreadDetail(
-          (session.user as any).id,
+          session.user.id,
           thread.id!,
           sessionTokens
         )
@@ -44,24 +47,36 @@ export async function POST(req: NextRequest) {
           const sender = fromHeader?.value || ''
           
           if (sender && !uniqueSenders.has(sender)) {
-            uniqueSenders.set(sender, {
-              email: sender,
-              name: sender.split('@')[0], // Basic name extraction
-              source: 'email',
-              tags: ['email-contact'],
-              lastContact: new Date().toISOString(), // Use current time as fallback
-              emailCount: 1,
-              meetingCount: 0,
-              leadScore: 30, // Default score for email contacts
-              status: 'new' as const,
-              createdAt: new Date().toISOString()
+            // Parse email to extract name
+            const emailMatch = sender.match(/"?([^"<]+)"?\s*<?([^>]+)>?/)
+            const name = emailMatch ? emailMatch[1].trim() : sender.split('@')[0]
+            const email = emailMatch ? emailMatch[2] : sender
+            
+            // Check if contact already exists
+            const existingContact = await prisma.contact.findFirst({
+              where: {
+                userId: session.user.id,
+                email: email
+              }
             })
-            syncedCount++
-          } else if (uniqueSenders.has(sender)) {
-            // Increment email count for existing sender
-            const existing = uniqueSenders.get(sender)
-            existing.emailCount++
-            existing.lastContact = new Date().toISOString()
+
+            if (!existingContact) {
+              // Create new contact
+              const contact = await prisma.contact.create({
+                data: {
+                  userId: session.user.id,
+                  firstName: name.split(' ')[0] || 'Unknown',
+                  lastName: name.split(' ').slice(1).join(' ') || 'Contact',
+                  email: email,
+                  tags: ['email-contact'],
+                  notes: `Synced from email on ${new Date().toLocaleDateString()}`
+                }
+              })
+              newContacts.push(contact)
+              syncedCount++
+            }
+            
+            uniqueSenders.set(sender, { email, name })
           }
         }
       } catch (error) {
@@ -70,12 +85,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Convert to array
-    const contacts = Array.from(uniqueSenders.values())
-
     return NextResponse.json({ 
       syncedCount,
-      contacts 
+      contacts: newContacts 
     })
   } catch (error: any) {
     console.error('CRM sync email error:', error)
