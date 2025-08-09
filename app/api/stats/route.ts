@@ -40,8 +40,9 @@ export async function GET(request: NextRequest) {
       emailsToday = threads.filter(thread => {
         if (thread.messages && thread.messages.length > 0) {
           const lastMessage = thread.messages[thread.messages.length - 1];
-          if (lastMessage.dateISO) {
-            const messageDate = new Date(lastMessage.dateISO);
+          // Use internalDate from Gmail API response
+          if (lastMessage.internalDate) {
+            const messageDate = new Date(Number(lastMessage.internalDate));
             return messageDate >= today && messageDate < tomorrow;
           }
         }
