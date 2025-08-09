@@ -2,6 +2,72 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Castra Design System */
+:root {
+  --castra-primary: #9B5CFF;
+  --castra-primary-dark: #7C3AED;
+  --castra-primary-light: #A78BFA;
+  --castra-background: #0F172A;
+  --castra-surface: #1E293B;
+  --castra-text-primary: #F8FAFC;
+  --castra-text-secondary: #94A3B8;
+  --castra-border: #334155;
+}
+
+/* Typography System */
+@layer base {
+  h1 {
+    @apply text-5xl font-bold bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent;
+  }
+  
+  h2 {
+    @apply text-2xl font-semibold text-white dark:text-white text-gray-800;
+  }
+  
+  h3 {
+    @apply text-lg font-semibold text-white dark:text-white text-gray-800;
+  }
+  
+  body {
+    @apply text-gray-300 dark:text-gray-300 text-gray-700;
+  }
+}
+
+/* Button System */
+@layer components {
+  .btn-primary {
+    @apply bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-6 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-700 dark:bg-gray-700 bg-gray-100 hover:bg-gray-600 dark:hover:bg-gray-600 text-white dark:text-white text-gray-800 font-medium py-3 px-6 rounded-lg transition-all duration-300;
+  }
+  
+  .btn-outline {
+    @apply border border-purple-600 text-purple-400 hover:bg-purple-600 hover:text-white font-medium py-3 px-6 rounded-lg transition-all duration-300;
+  }
+  
+  .card {
+    @apply bg-gray-800 dark:bg-gray-800 bg-white rounded-lg p-6 shadow-lg border border-gray-700 dark:border-gray-700 border-gray-200;
+  }
+  
+  .status-indicator {
+    @apply inline-flex items-center px-2 py-1 rounded-full text-xs font-medium;
+  }
+  
+  .status-connected {
+    @apply bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200;
+  }
+  
+  .status-disconnected {
+    @apply bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200;
+  }
+  
+  .status-ready {
+    @apply bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200;
+  }
+}
+
 /* Custom animations for the sign-in page */
 @keyframes blob {
   0% {
@@ -32,4 +98,36 @@
 
 .animation-delay-6000 {
   animation-delay: 6s;
+}
+
+/* Message bubbles for chat */
+.message-bubble {
+  @apply rounded-lg p-4 mb-4 max-w-3xl;
+}
+
+.message-user {
+  @apply bg-purple-600 text-white ml-auto;
+}
+
+.message-ai {
+  @apply bg-gray-700 dark:bg-gray-700 bg-gray-100 text-white dark:text-white text-gray-800 mr-auto;
+}
+
+/* Quick action cards */
+.quick-action-card {
+  @apply bg-gray-800 dark:bg-gray-800 bg-white rounded-lg p-6 transition-all duration-300 hover:scale-105 cursor-pointer border border-gray-700 dark:border-gray-700 border-gray-200;
+}
+
+/* Integration cards */
+.integration-card {
+  @apply bg-gray-700 dark:bg-gray-700 bg-gray-100 rounded-lg p-4 flex items-center justify-between;
+}
+
+/* Tab system */
+.tab-active {
+  @apply bg-purple-600 text-white;
+}
+
+.tab-inactive {
+  @apply text-gray-300 dark:text-gray-300 text-gray-600 hover:text-white dark:hover:text-white hover:bg-gray-700 dark:hover:bg-gray-700;
 }

@@ -1,8 +1,19 @@
 'use client'
 
 import { useSession } from 'next-auth/react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import Toast from '@/components/Toast'
+import ThemeToggle from '@/components/ThemeToggle'
+
+interface Email {
+  id: string
+  threadId: string
+  subject: string
+  sender: string
+  snippet: string
+  date: string
+}
 
 interface ToastMessage {
   id: string
@@ -12,10 +23,12 @@ interface ToastMessage {
 
 export default function InboxPage() {
   const { data: session, status } = useSession()
-  const [threadId, setThreadId] = useState('')
+  const [emails, setEmails] = useState<Email[]>([])
+  const [selectedEmail, setSelectedEmail] = useState<Email | null>(null)
   const [summary, setSummary] = useState('')
   const [draftHtml, setDraftHtml] = useState('')
   const [loading, setLoading] = useState(false)
+  const [loadingEmails, setLoadingEmails] = useState(false)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
 
   const addToast = (message: string, type: 'error' | 'success' | 'info' = 'error') => {
@@ -27,15 +40,34 @@ export default function InboxPage() {
     setToasts(prev => prev.filter(toast => toast.id !== id))
   }
 
-  const handleSummarize = async () => {
-    if (!threadId.trim()) {
-      addToast('Please enter a thread ID')
-      return
+  const fetchEmails = async () => {
+    setLoadingEmails(true)
+    try {
+      const response = await fetch('/api/inbox?maxResults=10')
+      if (response.ok) {
+        const data = await response.json()
+        setEmails(data.threads || [])
+      } else {
+        addToast('Failed to fetch emails')
+      }
+    } catch (error) {
+      addToast('Network error. Please try again.')
+    } finally {
+      setLoadingEmails(false)
     }
+  }
 
-    setLoading(true)
+  useEffect(() => {
+    if (status === 'authenticated') {
+      fetchEmails()
+    }
+  }, [status])
+
+  const handleEmailSelect = async (email: Email) => {
+    setSelectedEmail(email)
     setSummary('')
     setDraftHtml('')
+    setLoading(true)
 
     try {
       const response = await fetch('/api/email/summarize', {
@@ -43,7 +75,7 @@ export default function InboxPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ threadId }),
+        body: JSON.stringify({ threadId: email.threadId }),
       })
 
       if (response.ok) {
@@ -66,8 +98,8 @@ export default function InboxPage() {
   }
 
   const handleCreateDraft = async () => {
-    if (!summary) {
-      addToast('Please generate a summary first')
+    if (!summary || !selectedEmail) {
+      addToast('Please select an email and generate a summary first')
       return
     }
 
@@ -81,9 +113,9 @@ export default function InboxPage() {
         },
         body: JSON.stringify({
           threadSummary: summary,
-          lastMessage: 'Sample last message',
-          to: 'recipient@example.com',
-          subject: 'Follow-up',
+          lastMessage: selectedEmail.snippet,
+          to: selectedEmail.sender,
+          subject: `Re: ${selectedEmail.subject}`,
         }),
       })
 
@@ -102,84 +134,163 @@ export default function InboxPage() {
     }
   }
 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    })
+  }
+
   if (status === 'loading') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
-        <div className="text-white">Loading...</div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 flex items-center justify-center">
+        <div className="text-white dark:text-white text-gray-800">Loading...</div>
       </div>
     )
   }
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
-        <div className="text-white">Not authenticated</div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 flex items-center justify-center">
+        <div className="text-white dark:text-white text-gray-800">Not authenticated</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-      <div className="max-w-4xl mx-auto px-4 py-16">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200">
+      <ThemeToggle />
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-            Castra Inbox
-          </h1>
-          <p className="text-xl text-gray-300">
+          <h1 className="mb-4">Castra Inbox</h1>
+          <p className="text-xl text-gray-300 dark:text-gray-300 text-gray-700">
             AI-powered email assistant
           </p>
         </div>
 
-        <div className="bg-gray-800 rounded-lg p-6 max-w-2xl mx-auto">
-          <div className="mb-6">
-            <label className="block text-white font-medium mb-2">
-              Gmail Thread ID
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={threadId}
-                onChange={(e) => setThreadId(e.target.value)}
-                placeholder="Enter Gmail thread ID"
-                className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <button
-                onClick={handleSummarize}
-                disabled={loading}
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg text-white font-medium transition-colors"
-              >
-                {loading ? 'Processing...' : 'Summarize'}
-              </button>
+        {/* Back to Dashboard */}
+        <div className="mb-6">
+          <Link
+            href="/connect"
+            className="text-gray-400 dark:text-gray-400 text-gray-600 hover:text-white dark:hover:text-white transition-colors"
+          >
+            ← Back to Dashboard
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Email List */}
+          <div className="lg:col-span-1">
+            <div className="card">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-white dark:text-white text-gray-800">Recent Emails</h2>
+                <button
+                  onClick={fetchEmails}
+                  disabled={loadingEmails}
+                  className="btn-secondary text-sm py-2 px-3"
+                >
+                  {loadingEmails ? 'Loading...' : 'Refresh'}
+                </button>
+              </div>
+              
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {emails.map((email) => (
+                  <button
+                    key={email.id}
+                    onClick={() => handleEmailSelect(email)}
+                    className={`w-full text-left p-3 rounded-lg transition-colors ${
+                      selectedEmail?.id === email.id
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-gray-700 dark:bg-gray-700 bg-gray-200 hover:bg-gray-600 dark:hover:bg-gray-600 text-white dark:text-white text-gray-800'
+                    }`}
+                  >
+                    <div className="font-medium truncate">{email.subject}</div>
+                    <div className="text-sm text-gray-400 dark:text-gray-400 text-gray-600 truncate">
+                      {email.sender}
+                    </div>
+                    <div className="text-xs text-gray-400 dark:text-gray-400 text-gray-600 mt-1">
+                      {formatDate(email.date)}
+                    </div>
+                    <div className="text-sm text-gray-300 dark:text-gray-300 text-gray-700 mt-1 line-clamp-2">
+                      {email.snippet}
+                    </div>
+                  </button>
+                ))}
+                
+                {emails.length === 0 && !loadingEmails && (
+                  <div className="text-center text-gray-400 dark:text-gray-400 text-gray-600 py-8">
+                    <p>No emails found</p>
+                    <p className="text-sm">Connect your Gmail account to see emails here</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
-          {summary && (
-            <div className="mb-6">
-              <h3 className="text-white font-semibold mb-2">Thread Summary</h3>
-              <div className="p-4 bg-gray-700 rounded-lg text-gray-200 whitespace-pre-line">
-                {summary}
-              </div>
-              <button
-                onClick={handleCreateDraft}
-                disabled={loading}
-                className="mt-3 px-6 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 rounded-lg text-white font-medium transition-colors"
-              >
-                {loading ? 'Creating...' : 'Create Draft'}
-              </button>
-            </div>
-          )}
+          {/* Email Details and Actions */}
+          <div className="lg:col-span-2">
+            {selectedEmail ? (
+              <div className="space-y-6">
+                {/* Email Summary */}
+                <div className="card">
+                  <h3 className="mb-4">Email Summary</h3>
+                  {loading ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      <span className="text-gray-400 dark:text-gray-400 text-gray-600">Generating summary...</span>
+                    </div>
+                  ) : summary ? (
+                    <div className="space-y-4">
+                      <div className="p-4 bg-gray-700 dark:bg-gray-700 bg-gray-200 rounded-lg text-gray-200 dark:text-gray-200 text-gray-800 whitespace-pre-line">
+                        {summary}
+                      </div>
+                      <button
+                        onClick={handleCreateDraft}
+                        disabled={loading}
+                        className="btn-primary"
+                      >
+                        {loading ? 'Creating...' : 'Create Reply Draft'}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-center text-gray-400 dark:text-gray-400 text-gray-600 py-8">
+                      <p>Click on an email to generate an AI summary</p>
+                    </div>
+                  )}
+                </div>
 
-          {draftHtml && (
-            <div>
-              <h3 className="text-white font-semibold mb-2">Draft Preview</h3>
-              <div className="p-4 bg-gray-700 rounded-lg text-gray-200">
-                <div dangerouslySetInnerHTML={{ __html: draftHtml }} />
+                {/* Draft Preview */}
+                {draftHtml && (
+                  <div className="card">
+                    <h3 className="mb-4">Draft Preview</h3>
+                    <div className="p-4 bg-gray-700 dark:bg-gray-700 bg-gray-200 rounded-lg text-gray-200 dark:text-gray-200 text-gray-800">
+                      <div dangerouslySetInnerHTML={{ __html: draftHtml }} />
+                    </div>
+                    <div className="mt-3 p-3 bg-green-900 dark:bg-green-900 bg-green-100 rounded-lg">
+                      <p className="text-green-200 dark:text-green-200 text-green-800 text-sm">
+                        ✓ Draft created in Gmail
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
-              <p className="mt-2 text-green-400 text-sm">
-                ✓ Draft created in Gmail
-              </p>
-            </div>
-          )}
+            ) : (
+              <div className="card">
+                <div className="text-center text-gray-400 dark:text-gray-400 text-gray-600 py-8">
+                  <div className="text-4xl mb-4">📧</div>
+                  <h3 className="mb-2">Select an Email</h3>
+                  <p>Choose an email from the list to view its AI summary and create reply drafts</p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
