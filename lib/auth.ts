@@ -57,9 +57,9 @@ if (config.azure.clientId && config.azure.clientSecret && config.azure.tenantId)
 }
 
 export const authOptions: NextAuthOptions = {
-  adapter: config.database.url && prisma ? PrismaAdapter(prisma) : undefined,
+  // Temporarily disable adapter to avoid account linking issues
+  // adapter: config.database.url && prisma ? PrismaAdapter(prisma) : undefined,
   debug: process.env.NODE_ENV === 'development',
-  allowDangerousEmailAccountLinking: true,
   providers: providers.length > 0 ? providers : [
     // Fallback provider for when no OAuth providers are configured
     {
@@ -142,13 +142,13 @@ export const authOptions: NextAuthOptions = {
         email
       })
       
-      // Allow sign in if user exists or if this is a new OAuth account
-      if (user || account) {
+      // Always allow OAuth sign-ins
+      if (account?.provider) {
         return true
       }
       
-      // For OAuth providers, always allow sign in
-      if (account?.provider) {
+      // Allow existing users
+      if (user) {
         return true
       }
       
