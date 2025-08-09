@@ -25,6 +25,10 @@ async function getGoogleOAuth(userId: string) {
     throw new Error('Google integration not configured')
   }
 
+  if (!prisma) {
+    throw new Error('Database not configured')
+  }
+
   const account = await prisma.account.findFirst({
     where: {
       userId,
