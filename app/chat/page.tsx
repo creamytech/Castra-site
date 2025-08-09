@@ -2,9 +2,8 @@
 
 import { useSession } from 'next-auth/react'
 import { useState, useRef, useEffect } from 'react'
-import Link from 'next/link'
+import MainLayout from '@/components/MainLayout'
 import Toast from '@/components/Toast'
-import ThemeToggle from '@/components/ThemeToggle'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -266,36 +265,31 @@ export default function ChatPage() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
-        <div className="text-gray-800 dark:text-white">Loading...</div>
-      </div>
+      <MainLayout showSidebar={false}>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-gray-800 dark:text-white">Loading...</div>
+        </div>
+      </MainLayout>
     )
   }
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
-        <div className="text-gray-800 dark:text-white">Not authenticated</div>
-      </div>
+      <MainLayout showSidebar={false}>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-gray-800 dark:text-white">Not authenticated</div>
+        </div>
+      </MainLayout>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      <ThemeToggle />
+    <MainLayout showSidebar={false}>
       <div className="flex h-screen">
         {/* Left Column - Conversation History */}
         <div className="w-80 bg-gray-100 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
           {/* Header */}
           <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between mb-4">
-              <Link 
-                href="/connect"
-                className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors"
-              >
-                ← Dashboard
-              </Link>
-            </div>
             <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">Conversations</h2>
             <button
               onClick={startNewConversation}
@@ -452,6 +446,6 @@ export default function ChatPage() {
           onClose={() => removeToast(toast.id)}
         />
       ))}
-    </div>
+    </MainLayout>
   )
 }

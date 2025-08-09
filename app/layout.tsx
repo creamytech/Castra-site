@@ -1,10 +1,13 @@
-import './globals.css'
 import type { Metadata } from 'next'
-import Providers from './providers'
+import { Inter } from 'next/font/google'
+import './globals.css'
+import { Providers } from '@/components/Providers'
+
+const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Castra - Realtor AI Co-Pilot',
-  description: 'Join the waitlist for Castra, your AI-powered realtor assistant.',
+  title: 'Castra - AI Realtor Assistant',
+  description: 'AI-powered realtor co-pilot for email, calendar, and CRM management',
 }
 
 export default function RootLayout({
@@ -13,7 +16,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -21,10 +24,10 @@ export default function RootLayout({
               (function() {
                 try {
                   var theme = localStorage.getItem('theme');
-                  if (theme === 'light' || (!theme && window.matchMedia('(prefers-color-scheme: light)').matches)) {
-                    document.documentElement.classList.remove('dark');
-                  } else {
+                  if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                     document.documentElement.classList.add('dark');
+                  } else {
+                    document.documentElement.classList.remove('dark');
                   }
                 } catch (e) {}
               })();
@@ -32,8 +35,10 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-300">
-        <Providers>{children}</Providers>
+      <body className={`${inter.className} bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-300`}>
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   )
