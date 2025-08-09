@@ -147,28 +147,28 @@ export default function InboxPage() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 flex items-center justify-center">
-        <div className="text-white dark:text-white text-gray-800">Loading...</div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
+        <div className="text-gray-800 dark:text-white">Loading...</div>
       </div>
     )
   }
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 flex items-center justify-center">
-        <div className="text-white dark:text-white text-gray-800">Not authenticated</div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
+        <div className="text-gray-800 dark:text-white">Not authenticated</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <ThemeToggle />
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="mb-4">Castra Inbox</h1>
-          <p className="text-xl text-gray-300 dark:text-gray-300 text-gray-700">
+          <p className="text-xl text-gray-700 dark:text-gray-300">
             AI-powered email assistant
           </p>
         </div>
@@ -177,7 +177,7 @@ export default function InboxPage() {
         <div className="mb-6">
           <Link
             href="/connect"
-            className="text-gray-400 dark:text-gray-400 text-gray-600 hover:text-white dark:hover:text-white transition-colors"
+            className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors"
           >
             ← Back to Dashboard
           </Link>
@@ -188,7 +188,7 @@ export default function InboxPage() {
           <div className="lg:col-span-1">
             <div className="card">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-white dark:text-white text-gray-800">Recent Emails</h2>
+                <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Recent Emails</h2>
                 <button
                   onClick={fetchEmails}
                   disabled={loadingEmails}
@@ -206,24 +206,24 @@ export default function InboxPage() {
                     className={`w-full text-left p-3 rounded-lg transition-colors ${
                       selectedEmail?.id === email.id
                         ? 'bg-purple-600 text-white'
-                        : 'bg-gray-700 dark:bg-gray-700 bg-gray-200 hover:bg-gray-600 dark:hover:bg-gray-600 text-white dark:text-white text-gray-800'
+                        : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-white'
                     }`}
                   >
                     <div className="font-medium truncate">{email.subject}</div>
-                    <div className="text-sm text-gray-400 dark:text-gray-400 text-gray-600 truncate">
+                    <div className="text-sm text-gray-600 dark:text-gray-400 truncate">
                       {email.sender}
                     </div>
-                    <div className="text-xs text-gray-400 dark:text-gray-400 text-gray-600 mt-1">
+                    <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                       {formatDate(email.date)}
                     </div>
-                    <div className="text-sm text-gray-300 dark:text-gray-300 text-gray-700 mt-1 line-clamp-2">
+                    <div className="text-sm text-gray-700 dark:text-gray-300 mt-1 line-clamp-2">
                       {email.snippet}
                     </div>
                   </button>
                 ))}
                 
                 {emails.length === 0 && !loadingEmails && (
-                  <div className="text-center text-gray-400 dark:text-gray-400 text-gray-600 py-8">
+                  <div className="text-center text-gray-600 dark:text-gray-400 py-8">
                     <p>No emails found</p>
                     <p className="text-sm">Connect your Gmail account to see emails here</p>
                   </div>
@@ -244,11 +244,11 @@ export default function InboxPage() {
                       <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
                       <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
                       <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                      <span className="text-gray-400 dark:text-gray-400 text-gray-600">Generating summary...</span>
+                      <span className="text-gray-600 dark:text-gray-400">Generating summary...</span>
                     </div>
                   ) : summary ? (
                     <div className="space-y-4">
-                      <div className="p-4 bg-gray-700 dark:bg-gray-700 bg-gray-200 rounded-lg text-gray-200 dark:text-gray-200 text-gray-800 whitespace-pre-line">
+                      <div className="p-4 bg-gray-200 dark:bg-gray-700 rounded-lg text-gray-800 dark:text-gray-200 whitespace-pre-line">
                         {summary}
                       </div>
                       <button
@@ -260,7 +260,7 @@ export default function InboxPage() {
                       </button>
                     </div>
                   ) : (
-                    <div className="text-center text-gray-400 dark:text-gray-400 text-gray-600 py-8">
+                    <div className="text-center text-gray-600 dark:text-gray-400 py-8">
                       <p>Click on an email to generate an AI summary</p>
                     </div>
                   )}
@@ -270,11 +270,11 @@ export default function InboxPage() {
                 {draftHtml && (
                   <div className="card">
                     <h3 className="mb-4">Draft Preview</h3>
-                    <div className="p-4 bg-gray-700 dark:bg-gray-700 bg-gray-200 rounded-lg text-gray-200 dark:text-gray-200 text-gray-800">
+                    <div className="p-4 bg-gray-200 dark:bg-gray-700 rounded-lg text-gray-800 dark:text-gray-200">
                       <div dangerouslySetInnerHTML={{ __html: draftHtml }} />
                     </div>
-                    <div className="mt-3 p-3 bg-green-900 dark:bg-green-900 bg-green-100 rounded-lg">
-                      <p className="text-green-200 dark:text-green-200 text-green-800 text-sm">
+                    <div className="mt-3 p-3 bg-green-100 dark:bg-green-900 rounded-lg">
+                      <p className="text-green-800 dark:text-green-200 text-sm">
                         ✓ Draft created in Gmail
                       </p>
                     </div>
@@ -283,7 +283,7 @@ export default function InboxPage() {
               </div>
             ) : (
               <div className="card">
-                <div className="text-center text-gray-400 dark:text-gray-400 text-gray-600 py-8">
+                <div className="text-center text-gray-600 dark:text-gray-400 py-8">
                   <div className="text-4xl mb-4">📧</div>
                   <h3 className="mb-2">Select an Email</h3>
                   <p>Choose an email from the list to view its AI summary and create reply drafts</p>

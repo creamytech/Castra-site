@@ -74,34 +74,34 @@ export default function DashboardPage() {
 
   if (status === 'loading' || loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 flex items-center justify-center">
-        <div className="text-white dark:text-white text-gray-800">Loading...</div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
+        <div className="text-gray-800 dark:text-white">Loading...</div>
       </div>
     )
   }
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 flex items-center justify-center">
-        <div className="text-white dark:text-white text-gray-800">Not authenticated</div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
+        <div className="text-gray-800 dark:text-white">Not authenticated</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <ThemeToggle />
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="mb-4">Castra Dashboard</h1>
-          <p className="text-xl text-gray-300 dark:text-gray-300 text-gray-700">
+          <p className="text-xl text-gray-700 dark:text-gray-300">
             Welcome back, {session.user.name || session.user.email}!
           </p>
         </div>
 
         {/* Navigation Tabs */}
-        <div className="bg-gray-800 dark:bg-gray-800 bg-gray-200 rounded-lg p-2 mb-8">
+        <div className="bg-gray-200 dark:bg-gray-800 rounded-lg p-2 mb-8">
           <div className="flex space-x-1">
             {[
               { id: 'overview', label: 'Overview', icon: '🏠' },
@@ -138,8 +138,8 @@ export default function DashboardPage() {
                       <div className="flex items-center space-x-3">
                         <div className="text-2xl">🔗</div>
                         <div>
-                          <div className="font-medium text-white dark:text-white text-gray-800">Google (Gmail + Calendar)</div>
-                          <div className="text-sm text-gray-400 dark:text-gray-400 text-gray-600">
+                          <div className="font-medium text-gray-800 dark:text-white">Google (Gmail + Calendar)</div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400">
                             {isConnected('google') ? 'Connected' : 'Not connected'}
                           </div>
                         </div>
@@ -163,8 +163,8 @@ export default function DashboardPage() {
                       <div className="flex items-center space-x-3">
                         <div className="text-2xl">🔗</div>
                         <div>
-                          <div className="font-medium text-white dark:text-white text-gray-800">Google Integration</div>
-                          <div className="text-sm text-gray-400 dark:text-gray-400 text-gray-600">Not configured</div>
+                          <div className="font-medium text-gray-800 dark:text-white">Google Integration</div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400">Not configured</div>
                         </div>
                       </div>
                       <span className="status-indicator status-disconnected">Not Available</span>
@@ -176,8 +176,8 @@ export default function DashboardPage() {
                       <div className="flex items-center space-x-3">
                         <div className="text-2xl">📧</div>
                         <div>
-                          <div className="font-medium text-white dark:text-white text-gray-800">Outlook (Email + Calendar)</div>
-                          <div className="text-sm text-gray-400 dark:text-gray-400 text-gray-600">
+                          <div className="font-medium text-gray-800 dark:text-white">Outlook (Email + Calendar)</div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400">
                             {isConnected('azure-ad') ? 'Connected' : 'Not connected'}
                           </div>
                         </div>
@@ -201,8 +201,8 @@ export default function DashboardPage() {
                       <div className="flex items-center space-x-3">
                         <div className="text-2xl">📧</div>
                         <div>
-                          <div className="font-medium text-white dark:text-white text-gray-800">Outlook Integration</div>
-                          <div className="text-sm text-gray-400 dark:text-gray-400 text-gray-600">Not configured</div>
+                          <div className="font-medium text-gray-800 dark:text-white">Outlook Integration</div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400">Not configured</div>
                         </div>
                       </div>
                       <span className="status-indicator status-disconnected">Not Available</span>
@@ -218,8 +218,8 @@ export default function DashboardPage() {
                   <Link href="/chat" className="quick-action-card group">
                     <div className="text-center">
                       <div className="text-3xl mb-3 group-hover:scale-110 transition-transform">💬</div>
-                      <h3 className="font-semibold text-white dark:text-white text-gray-800 mb-2">AI Chat</h3>
-                      <p className="text-sm text-gray-400 dark:text-gray-400 text-gray-600">Start a conversation with Castra's AI assistant</p>
+                      <h3 className="font-semibold text-gray-800 dark:text-white mb-2">AI Chat</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Start a conversation with Castra's AI assistant</p>
                       <div className="mt-4">
                         <span className="status-indicator status-ready">Ready</span>
                       </div>
@@ -229,8 +229,8 @@ export default function DashboardPage() {
                   <Link href="/inbox" className="quick-action-card group">
                     <div className="text-center">
                       <div className="text-3xl mb-3 group-hover:scale-110 transition-transform">📧</div>
-                      <h3 className="font-semibold text-white dark:text-white text-gray-800 mb-2">Email Inbox</h3>
-                      <p className="text-sm text-gray-400 dark:text-gray-400 text-gray-600">Manage your email communications</p>
+                      <h3 className="font-semibold text-gray-800 dark:text-white mb-2">Email Inbox</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Manage your email communications</p>
                       <div className="mt-4">
                         <span className={`status-indicator ${isConnected('google') || isConnected('azure-ad') ? 'status-connected' : 'status-disconnected'}`}>
                           {isConnected('google') || isConnected('azure-ad') ? 'Connected' : 'Not Connected'}
@@ -242,8 +242,8 @@ export default function DashboardPage() {
                   <Link href="/crm" className="quick-action-card group">
                     <div className="text-center">
                       <div className="text-3xl mb-3 group-hover:scale-110 transition-transform">👥</div>
-                      <h3 className="font-semibold text-white dark:text-white text-gray-800 mb-2">CRM</h3>
-                      <p className="text-sm text-gray-400 dark:text-gray-400 text-gray-600">Manage contacts, leads, and deals</p>
+                      <h3 className="font-semibold text-gray-800 dark:text-white mb-2">CRM</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Manage contacts, leads, and deals</p>
                       <div className="mt-4">
                         <span className="status-indicator status-ready">Ready</span>
                       </div>
@@ -253,8 +253,8 @@ export default function DashboardPage() {
                   <Link href="/calendar" className="quick-action-card group">
                     <div className="text-center">
                       <div className="text-3xl mb-3 group-hover:scale-110 transition-transform">📅</div>
-                      <h3 className="font-semibold text-white dark:text-white text-gray-800 mb-2">Calendar</h3>
-                      <p className="text-sm text-gray-400 dark:text-gray-400 text-gray-600">Schedule meetings and manage your calendar</p>
+                      <h3 className="font-semibold text-gray-800 dark:text-white mb-2">Calendar</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Schedule meetings and manage your calendar</p>
                       <div className="mt-4">
                         <span className={`status-indicator ${isConnected('google') ? 'status-connected' : 'status-disconnected'}`}>
                           {isConnected('google') ? 'Connected' : 'Not Connected'}
@@ -270,27 +270,27 @@ export default function DashboardPage() {
                 <h3 className="mb-4">Account Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p className="text-gray-400 dark:text-gray-400 text-gray-600">Name</p>
-                    <p className="text-white dark:text-white text-gray-800">{session.user.name || 'Not provided'}</p>
+                    <p className="text-gray-600 dark:text-gray-400">Name</p>
+                    <p className="text-gray-800 dark:text-white">{session.user.name || 'Not provided'}</p>
                   </div>
                   <div>
-                    <p className="text-gray-400 dark:text-gray-400 text-gray-600">Email</p>
-                    <p className="text-white dark:text-white text-gray-800">{session.user.email || 'Not provided'}</p>
+                    <p className="text-gray-600 dark:text-gray-400">Email</p>
+                    <p className="text-gray-800 dark:text-white">{session.user.email || 'Not provided'}</p>
                   </div>
                   <div>
-                    <p className="text-gray-400 dark:text-gray-400 text-gray-600">User ID</p>
-                    <p className="text-white dark:text-white text-gray-800 font-mono text-xs">{session.user.id}</p>
+                    <p className="text-gray-600 dark:text-gray-400">User ID</p>
+                    <p className="text-gray-800 dark:text-white font-mono text-xs">{session.user.id}</p>
                   </div>
                   {session.user.oktaId && (
                     <div>
-                      <p className="text-gray-400 dark:text-gray-400 text-gray-600">Okta ID</p>
-                      <p className="text-white dark:text-white text-gray-800 font-mono text-xs">{session.user.oktaId}</p>
+                      <p className="text-gray-600 dark:text-gray-400">Okta ID</p>
+                      <p className="text-gray-800 dark:text-white font-mono text-xs">{session.user.oktaId}</p>
                     </div>
                   )}
                   {session.user.groups && session.user.groups.length > 0 && (
                     <div className="md:col-span-2">
-                      <p className="text-gray-400 dark:text-gray-400 text-gray-600">Groups</p>
-                      <p className="text-white dark:text-white text-gray-800">{session.user.groups.join(', ')}</p>
+                      <p className="text-gray-600 dark:text-gray-400">Groups</p>
+                      <p className="text-gray-800 dark:text-white">{session.user.groups.join(', ')}</p>
                     </div>
                   )}
                 </div>
@@ -302,7 +302,7 @@ export default function DashboardPage() {
             <div className="text-center py-8">
               <div className="text-4xl mb-4">💬</div>
               <h3 className="mb-2">AI Chat</h3>
-              <p className="text-gray-400 dark:text-gray-400 text-gray-600 mb-6">Chat with Castra's AI assistant</p>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">Chat with Castra's AI assistant</p>
               <Link href="/chat" className="btn-primary">
                 Open Chat
               </Link>
@@ -313,7 +313,7 @@ export default function DashboardPage() {
             <div className="text-center py-8">
               <div className="text-4xl mb-4">📧</div>
               <h3 className="mb-2">Email Inbox</h3>
-              <p className="text-gray-400 dark:text-gray-400 text-gray-600 mb-6">Manage your email communications</p>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">Manage your email communications</p>
               <Link href="/inbox" className="btn-primary">
                 Open Inbox
               </Link>
@@ -324,7 +324,7 @@ export default function DashboardPage() {
             <div className="text-center py-8">
               <div className="text-4xl mb-4">👥</div>
               <h3 className="mb-2">CRM</h3>
-              <p className="text-gray-400 dark:text-gray-400 text-gray-600 mb-6">Manage contacts, leads, and deals</p>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">Manage contacts, leads, and deals</p>
               <Link href="/crm" className="btn-primary">
                 Open CRM
               </Link>
@@ -335,7 +335,7 @@ export default function DashboardPage() {
             <div className="text-center py-8">
               <div className="text-4xl mb-4">📅</div>
               <h3 className="mb-2">Calendar</h3>
-              <p className="text-gray-400 dark:text-gray-400 text-gray-600 mb-6">Schedule meetings and manage your calendar</p>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">Schedule meetings and manage your calendar</p>
               <Link href="/calendar" className="btn-primary">
                 Open Calendar
               </Link>
@@ -346,7 +346,7 @@ export default function DashboardPage() {
             <div className="text-center py-8">
               <div className="text-4xl mb-4">⚙️</div>
               <h3 className="mb-2">Admin Panel</h3>
-              <p className="text-gray-400 dark:text-gray-400 text-gray-600 mb-6">Administrative functions</p>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">Administrative functions</p>
               <Link href="/admin" className="btn-primary">
                 Open Admin
               </Link>

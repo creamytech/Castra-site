@@ -266,37 +266,37 @@ export default function ChatPage() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 flex items-center justify-center">
-        <div className="text-white dark:text-white text-gray-800">Loading...</div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
+        <div className="text-gray-800 dark:text-white">Loading...</div>
       </div>
     )
   }
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 flex items-center justify-center">
-        <div className="text-white dark:text-white text-gray-800">Not authenticated</div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
+        <div className="text-gray-800 dark:text-white">Not authenticated</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <ThemeToggle />
       <div className="flex h-screen">
         {/* Left Column - Conversation History */}
-        <div className="w-80 bg-gray-800 dark:bg-gray-800 bg-gray-100 border-r border-gray-700 dark:border-gray-700 border-gray-200 flex flex-col">
+        <div className="w-80 bg-gray-100 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
           {/* Header */}
-          <div className="p-4 border-b border-gray-700 dark:border-gray-700 border-gray-200">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between mb-4">
               <Link 
                 href="/connect"
-                className="text-gray-400 dark:text-gray-400 text-gray-600 hover:text-white dark:hover:text-white transition-colors"
+                className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors"
               >
                 ← Dashboard
               </Link>
             </div>
-            <h2 className="text-xl font-semibold text-white dark:text-white text-gray-800 mb-4">Conversations</h2>
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">Conversations</h2>
             <button
               onClick={startNewConversation}
               className="btn-primary w-full"
@@ -314,11 +314,11 @@ export default function ChatPage() {
                 className={`w-full text-left p-3 rounded-lg transition-colors ${
                   currentConversation?.id === conversation.id
                     ? 'bg-purple-600 text-white'
-                    : 'bg-gray-700 dark:bg-gray-700 bg-gray-200 hover:bg-gray-600 dark:hover:bg-gray-600 text-white dark:text-white text-gray-800'
+                    : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-white'
                 }`}
               >
                 <div className="font-medium truncate">{conversation.title}</div>
-                <div className="text-xs text-gray-400 dark:text-gray-400 text-gray-600 mt-1">
+                <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                   {formatTimestamp(conversation.timestamp)}
                 </div>
               </button>
@@ -329,11 +329,11 @@ export default function ChatPage() {
         {/* Right Column - Active Chat */}
         <div className="flex-1 flex flex-col">
           {/* Chat Header */}
-          <div className="p-6 border-b border-gray-700 dark:border-gray-700 border-gray-200">
-            <h1 className="text-2xl font-bold text-white dark:text-white text-gray-800">
+          <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+            <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
               {currentConversation ? currentConversation.title : 'Castra Chat'}
             </h1>
-            <p className="text-gray-400 dark:text-gray-400 text-gray-600">
+            <p className="text-gray-600 dark:text-gray-400">
               AI-powered realtor assistant
             </p>
           </div>
@@ -341,19 +341,19 @@ export default function ChatPage() {
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
             {messages.length === 0 && (
-              <div className="text-center text-gray-400 dark:text-gray-400 text-gray-600 py-8">
+              <div className="text-center text-gray-600 dark:text-gray-400 py-8">
                 <p className="mb-4">Try these example queries:</p>
                 <div className="space-y-2 text-sm">
-                  <div className="bg-gray-700 dark:bg-gray-700 bg-gray-200 rounded-lg p-3 cursor-pointer hover:bg-gray-600 dark:hover:bg-gray-600 transition-colors">
+                  <div className="bg-gray-200 dark:bg-gray-700 rounded-lg p-3 cursor-pointer hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
                     "Show hot buyer leads last 30 days (table)."
                   </div>
-                  <div className="bg-gray-700 dark:bg-gray-700 bg-gray-200 rounded-lg p-3 cursor-pointer hover:bg-gray-600 dark:hover:bg-gray-600 transition-colors">
+                  <div className="bg-gray-200 dark:bg-gray-700 rounded-lg p-3 cursor-pointer hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
                     "Draft follow-up to jane@buyer.com about 123 Elm St, subject 'Next steps'."
                   </div>
-                  <div className="bg-gray-700 dark:bg-gray-700 bg-gray-200 rounded-lg p-3 cursor-pointer hover:bg-gray-600 dark:hover:bg-gray-600 transition-colors">
+                  <div className="bg-gray-200 dark:bg-gray-700 rounded-lg p-3 cursor-pointer hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
                     "Schedule a meeting for tomorrow afternoon."
                   </div>
-                  <div className="bg-gray-700 dark:bg-gray-700 bg-gray-200 rounded-lg p-3 cursor-pointer hover:bg-gray-600 dark:hover:bg-gray-600 transition-colors">
+                  <div className="bg-gray-200 dark:bg-gray-700 rounded-lg p-3 cursor-pointer hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
                     "Prepare listing cover email for John re: 123 Elm St"
                   </div>
                 </div>
@@ -421,7 +421,7 @@ export default function ChatPage() {
           </div>
 
           {/* Input */}
-          <div className="p-6 border-t border-gray-700 dark:border-gray-700 border-gray-200">
+          <div className="p-6 border-t border-gray-200 dark:border-gray-700">
             <form onSubmit={handleSubmit} className="flex gap-2">
               <input
                 type="text"
@@ -429,7 +429,7 @@ export default function ChatPage() {
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Ask Castra anything..."
                 disabled={loading}
-                className="flex-1 px-4 py-2 bg-gray-700 dark:bg-gray-700 bg-gray-200 border border-gray-600 dark:border-gray-600 border-gray-300 text-white dark:text-white text-gray-800 placeholder-gray-400 dark:placeholder-gray-400 placeholder-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+                className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder-gray-600 dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
               />
               <button
                 type="submit"

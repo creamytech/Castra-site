@@ -21,15 +21,15 @@
   }
   
   h2 {
-    @apply text-2xl font-semibold text-white dark:text-white text-gray-800;
+    @apply text-2xl font-semibold text-gray-800 dark:text-white;
   }
   
   h3 {
-    @apply text-lg font-semibold text-white dark:text-white text-gray-800;
+    @apply text-lg font-semibold text-gray-800 dark:text-white;
   }
   
   body {
-    @apply text-gray-300 dark:text-gray-300 text-gray-700;
+    @apply text-gray-700 dark:text-gray-300;
   }
 }
 
@@ -40,15 +40,15 @@
   }
   
   .btn-secondary {
-    @apply bg-gray-700 dark:bg-gray-700 bg-gray-100 hover:bg-gray-600 dark:hover:bg-gray-600 text-white dark:text-white text-gray-800 font-medium py-3 px-6 rounded-lg transition-all duration-300;
+    @apply bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white font-medium py-3 px-6 rounded-lg transition-all duration-300;
   }
   
   .btn-outline {
-    @apply border border-purple-600 text-purple-400 hover:bg-purple-600 hover:text-white font-medium py-3 px-6 rounded-lg transition-all duration-300;
+    @apply border border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white font-medium py-3 px-6 rounded-lg transition-all duration-300;
   }
   
   .card {
-    @apply bg-gray-800 dark:bg-gray-800 bg-white rounded-lg p-6 shadow-lg border border-gray-700 dark:border-gray-700 border-gray-200;
+    @apply bg-white dark:bg-gray-800 rounded-lg p-6 shadow-lg border border-gray-200 dark:border-gray-700;
   }
   
   .status-indicator {
@@ -110,17 +110,17 @@
 }
 
 .message-ai {
-  @apply bg-gray-700 dark:bg-gray-700 bg-gray-100 text-white dark:text-white text-gray-800 mr-auto;
+  @apply bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 mr-auto;
 }
 
 /* Quick action cards */
 .quick-action-card {
-  @apply bg-gray-800 dark:bg-gray-800 bg-white rounded-lg p-6 transition-all duration-300 hover:scale-105 cursor-pointer border border-gray-700 dark:border-gray-700 border-gray-200;
+  @apply bg-white dark:bg-gray-800 rounded-lg p-6 transition-all duration-300 hover:scale-105 cursor-pointer border border-gray-200 dark:border-gray-700;
 }
 
 /* Integration cards */
 .integration-card {
-  @apply bg-gray-700 dark:bg-gray-700 bg-gray-100 rounded-lg p-4 flex items-center justify-between;
+  @apply bg-gray-100 dark:bg-gray-700 rounded-lg p-4 flex items-center justify-between;
 }
 
 /* Tab system */
@@ -129,5 +129,5 @@
 }
 
 .tab-inactive {
-  @apply text-gray-300 dark:text-gray-300 text-gray-600 hover:text-white dark:hover:text-white hover:bg-gray-700 dark:hover:bg-gray-700;
+  @apply text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700;
 }
