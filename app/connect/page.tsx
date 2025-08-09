@@ -88,6 +88,8 @@ export default function DashboardPage() {
       router.push('/inbox')
     } else if (tab === 'crm') {
       router.push('/crm')
+    } else if (tab === 'calendar') {
+      router.push('/calendar')
     }
   }
 
@@ -263,11 +265,11 @@ export default function DashboardPage() {
                       <div className="text-purple-200 text-sm">Contact Management</div>
                     </Link>
                     
-                    <div className="bg-gray-700 dark:bg-gray-700 bg-gray-200 rounded-lg p-4 text-center">
+                    <Link href="/calendar" className="bg-orange-600 hover:bg-orange-700 rounded-lg p-4 text-center transition-colors">
                       <div className="text-2xl mb-2">📅</div>
-                      <div className="text-white dark:text-white text-gray-800 font-medium">Calendar</div>
-                      <div className="text-gray-300 dark:text-gray-300 text-gray-600 text-sm">Coming Soon</div>
-                    </div>
+                      <div className="text-white font-medium">Calendar</div>
+                      <div className="text-orange-200 text-sm">Schedule Management</div>
+                    </Link>
                   </div>
                 </div>
 
@@ -350,10 +352,13 @@ export default function DashboardPage() {
             <div className="text-center py-8">
               <div className="text-4xl mb-4">📅</div>
               <h3 className="text-xl font-semibold text-white dark:text-white text-gray-800 mb-2">Calendar</h3>
-              <p className="text-gray-400 dark:text-gray-400 text-gray-600 mb-6">Schedule management coming soon</p>
-              <div className="inline-block px-6 py-3 bg-gray-600 rounded-lg text-gray-300 dark:text-gray-300 text-gray-600 font-medium">
-                Coming Soon
-              </div>
+              <p className="text-gray-400 dark:text-gray-400 text-gray-600 mb-6">Schedule meetings and manage your calendar</p>
+              <Link 
+                href="/calendar"
+                className="inline-block px-6 py-3 bg-orange-600 hover:bg-orange-700 rounded-lg text-white font-medium transition-colors"
+              >
+                Open Calendar
+              </Link>
             </div>
           )}
 
