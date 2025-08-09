@@ -17,6 +17,13 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    if (!prisma) {
+      return NextResponse.json(
+        { error: 'Database not configured' },
+        { status: 500 }
+      )
+    }
+
     const accounts = await prisma.account.findMany({
       where: {
         userId: session.user.id,

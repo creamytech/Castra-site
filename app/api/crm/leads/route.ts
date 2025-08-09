@@ -17,6 +17,13 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    if (!prisma) {
+      return NextResponse.json(
+        { error: 'Database not configured' },
+        { status: 500 }
+      )
+    }
+
     const leads = await prisma.lead.findMany({
       where: { userId: session.user.id },
       include: { contact: true },
@@ -50,6 +57,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Contact ID, source, and title are required' },
         { status: 400 }
+      )
+    }
+
+    if (!prisma) {
+      return NextResponse.json(
+        { error: 'Database not configured' },
+        { status: 500 }
       )
     }
 

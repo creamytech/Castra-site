@@ -41,7 +41,7 @@ if (config.azure.clientId && config.azure.clientSecret && config.azure.tenantId)
 }
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  adapter: config.database.url && prisma ? PrismaAdapter(prisma) : undefined,
   providers: providers.length > 0 ? providers : [
     // Fallback provider for when no OAuth providers are configured
     {

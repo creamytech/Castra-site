@@ -17,6 +17,13 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    if (!prisma) {
+      return NextResponse.json(
+        { error: 'Database not configured' },
+        { status: 500 }
+      )
+    }
+
     const contacts = await prisma.contact.findMany({
       where: { userId: session.user.id },
       orderBy: { createdAt: 'desc' },
@@ -49,6 +56,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'First name and email are required' },
         { status: 400 }
+      )
+    }
+
+    if (!prisma) {
+      return NextResponse.json(
+        { error: 'Database not configured' },
+        { status: 500 }
       )
     }
 
