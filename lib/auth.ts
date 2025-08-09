@@ -66,15 +66,10 @@ if (config.azure.clientId && config.azure.clientSecret && config.azure.tenantId)
 
 console.log('Configured providers:', providers.map(p => p.id))
 
-// Simple adapter - no custom account linking logic
+// Completely disable adapter to avoid account linking issues
 const createAdapter = () => {
-  // For development and when no database is configured, disable adapter
-  if (process.env.NODE_ENV === 'development' || !config.database.url || !prisma) {
-    console.log('Using JWT strategy without database adapter')
-    return undefined
-  }
-  
-  return PrismaAdapter(prisma)
+  console.log('Adapter disabled - using JWT strategy only')
+  return undefined
 }
 
 export const authOptions: NextAuthOptions = {
@@ -92,7 +87,7 @@ export const authOptions: NextAuthOptions = {
         email
       })
       
-      // Always allow all sign-ins for development
+      // Always allow all sign-ins - no account linking restrictions
       console.log('Sign-in allowed for:', account?.provider || account?.type)
       return true
     },

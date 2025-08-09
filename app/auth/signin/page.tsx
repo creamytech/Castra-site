@@ -21,19 +21,41 @@ export default function SignInPage() {
   }, [])
 
   const handleDemoSignIn = () => {
+    console.log('Demo sign-in clicked')
     setLoading(true)
     // Use default redirect behavior
     signIn('credentials', { 
       email: 'demo@castra.com', 
       password: 'demo123',
       callbackUrl: '/connect'
+    }).then((result) => {
+      console.log('Demo sign-in result:', result)
+      if (result?.error) {
+        setError(result.error)
+        setLoading(false)
+      }
+    }).catch((error) => {
+      console.error('Demo sign-in error:', error)
+      setError('Demo sign-in failed')
+      setLoading(false)
     })
   }
 
   const handleGoogleSignIn = () => {
+    console.log('Google sign-in clicked')
     setLoading(true)
     // Use default redirect behavior
-    signIn('google', { callbackUrl: '/connect' })
+    signIn('google', { callbackUrl: '/connect' }).then((result) => {
+      console.log('Google sign-in result:', result)
+      if (result?.error) {
+        setError(result.error)
+        setLoading(false)
+      }
+    }).catch((error) => {
+      console.error('Google sign-in error:', error)
+      setError('Google sign-in failed')
+      setLoading(false)
+    })
   }
 
   if (loading) {
