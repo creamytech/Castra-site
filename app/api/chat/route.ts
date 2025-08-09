@@ -32,6 +32,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Debug: Log the request
+    console.log('Chat request received:', {
+      messageCount: messages.length,
+      lastMessage: messages[messages.length - 1]?.content?.substring(0, 100)
+    })
+
     const tools = [
       {
         type: 'function',

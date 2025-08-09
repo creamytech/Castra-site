@@ -5,6 +5,12 @@ const openai = process.env.OPENAI_API_KEY ? new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 }) : null
 
+// Debug: Log if OpenAI is configured
+if (process.env.NODE_ENV === 'development') {
+  console.log('OpenAI configured:', !!openai)
+  console.log('API Key length:', process.env.OPENAI_API_KEY?.length || 0)
+}
+
 export interface GenerateReplyParams {
   threadSummary: string
   lastMessage: string
