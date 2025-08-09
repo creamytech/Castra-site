@@ -59,7 +59,6 @@ if (config.azure.clientId && config.azure.clientSecret && config.azure.tenantId)
 export const authOptions: NextAuthOptions = {
   adapter: config.database.url && prisma ? PrismaAdapter(prisma) : undefined,
   debug: process.env.NODE_ENV === 'development',
-  allowDangerousEmailAccountLinking: true,
   providers: providers.length > 0 ? providers : [
     // Fallback provider for when no OAuth providers are configured
     {
@@ -142,8 +141,9 @@ export const authOptions: NextAuthOptions = {
         email
       })
       
-      // For OAuth providers, allow sign-in
+      // For OAuth providers, allow sign-in and handle account linking
       if (account?.provider) {
+        // Always allow OAuth sign-ins - let the adapter handle account linking
         return true
       }
       
