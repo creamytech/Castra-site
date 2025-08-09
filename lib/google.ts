@@ -20,11 +20,26 @@ export interface CalendarEvent {
   attendees?: Array<{ email: string }>
 }
 
-async function getGoogleOAuth(userId: string) {
+async function getGoogleOAuth(userId: string, sessionTokens?: { accessToken?: string; refreshToken?: string }) {
   if (!isFeatureEnabled('gmail')) {
     throw new Error('Google integration not configured')
   }
 
+  const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET
+  )
+
+  // If session tokens are provided, use them
+  if (sessionTokens?.accessToken) {
+    oauth2Client.setCredentials({
+      access_token: sessionTokens.accessToken,
+      refresh_token: sessionTokens.refreshToken,
+    })
+    return oauth2Client
+  }
+
+  // Otherwise, try to get from database
   if (!prisma) {
     throw new Error('Database not configured')
   }
@@ -39,11 +54,6 @@ async function getGoogleOAuth(userId: string) {
   if (!account?.access_token) {
     throw new Error('Google account not connected')
   }
-
-  const oauth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET
-  )
 
   oauth2Client.setCredentials({
     access_token: account.access_token,

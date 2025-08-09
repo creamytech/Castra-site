@@ -25,6 +25,22 @@ if (config.google.clientId && config.google.clientSecret) {
     GoogleProvider({
       clientId: config.google.clientId,
       clientSecret: config.google.clientSecret,
+      authorization: {
+        params: {
+          access_type: "offline",
+          prompt: "consent",
+          scope: [
+            "openid",
+            "email",
+            "profile",
+            "https://www.googleapis.com/auth/gmail.modify",
+            "https://www.googleapis.com/auth/gmail.compose",
+            "https://www.googleapis.com/auth/gmail.send",
+            "https://www.googleapis.com/auth/calendar.events",
+            "https://www.googleapis.com/auth/calendar.readonly"
+          ].join(" ")
+        }
+      }
     })
   )
 }
@@ -70,9 +86,17 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async jwt({ token, user, account, profile }: any) {
+      // Handle Okta tokens
       if (account?.provider === 'okta' && profile) {
         token.oktaId = profile.sub
         token.groups = profile.groups || []
+      }
+      
+      // Handle Google tokens with refresh token support
+      if (account?.provider === 'google') {
+        token.accessToken = account.access_token
+        token.refreshToken = account.refresh_token
+        token.expiresAt = account.expires_at ? account.expires_at * 1000 : undefined
       }
       
       if (user) {
@@ -86,6 +110,10 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id
         session.user.oktaId = token.oktaId
         session.user.groups = token.groups
+        // Add Google tokens to session
+        (session as any).accessToken = token.accessToken
+        ;(session as any).refreshToken = token.refreshToken
+        ;(session as any).expiresAt = token.expiresAt
       }
       return session
     },
