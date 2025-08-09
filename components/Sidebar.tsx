@@ -105,7 +105,7 @@ export default function Sidebar() {
               </div>
             </div>
           )}
-          <ThemeToggle />
+          <ThemeToggle isCollapsed={isCollapsed} />
         </div>
       </div>
     </div>

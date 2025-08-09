@@ -252,15 +252,8 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
 
             {/* Footer */}
             <div className="p-3 border-t border-border bg-muted/50">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <div className="flex items-center space-x-4">
-                  <span>↑↓ Navigate</span>
-                  <span>↵ Select</span>
-                  <span>ESC Close</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span>Powered by Castra</span>
-                </div>
+              <div className="flex items-center justify-center text-xs text-muted-foreground">
+                <span>Powered by Castra</span>
               </div>
             </div>
           </div>

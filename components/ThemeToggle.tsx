@@ -2,7 +2,11 @@
 
 import { useState, useEffect } from 'react'
 
-export default function ThemeToggle() {
+interface ThemeToggleProps {
+  isCollapsed?: boolean
+}
+
+export default function ThemeToggle({ isCollapsed = false }: ThemeToggleProps) {
   const [isDark, setIsDark] = useState(false)
   const [mounted, setMounted] = useState(false)
 
@@ -40,12 +44,12 @@ export default function ThemeToggle() {
   if (!mounted) {
     return (
       <button
-        className="fixed top-6 right-6 z-50 p-3 bg-white/10 backdrop-blur-md rounded-full border border-white/20 hover:bg-white/20 transition-all duration-300 group"
+        className="p-2 rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors"
         aria-label="Toggle theme"
       >
-        <div className="relative w-6 h-6">
+        <div className="relative w-5 h-5">
           <svg
-            className="absolute inset-0 w-6 h-6"
+            className="absolute inset-0 w-5 h-5"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -61,13 +65,14 @@ export default function ThemeToggle() {
   return (
     <button
       onClick={toggleTheme}
-      className="fixed top-6 right-6 z-50 p-3 bg-white/10 backdrop-blur-md rounded-full border border-white/20 hover:bg-white/20 transition-all duration-300 group"
+      className="p-2 rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors"
       aria-label="Toggle theme"
+      title={isDark ? "Switch to light mode" : "Switch to dark mode"}
     >
-      <div className="relative w-6 h-6">
+      <div className="relative w-5 h-5">
         {/* Sun Icon */}
         <svg
-          className={`absolute inset-0 w-6 h-6 transition-all duration-500 ${
+          className={`absolute inset-0 w-5 h-5 transition-all duration-500 ${
             isDark ? 'opacity-0 rotate-90 scale-0' : 'opacity-100 rotate-0 scale-100'
           }`}
           fill="none"
@@ -80,7 +85,7 @@ export default function ThemeToggle() {
         
         {/* Moon Icon */}
         <svg
-          className={`absolute inset-0 w-6 h-6 transition-all duration-500 ${
+          className={`absolute inset-0 w-5 h-5 transition-all duration-500 ${
             isDark ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 -rotate-90 scale-0'
           }`}
           fill="none"
@@ -90,6 +95,11 @@ export default function ThemeToggle() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
         </svg>
       </div>
+      {!isCollapsed && (
+        <span className="ml-2 text-sm font-medium">
+          {isDark ? 'Dark' : 'Light'}
+        </span>
+      )}
     </button>
   )
 }
