@@ -59,6 +59,7 @@ if (config.azure.clientId && config.azure.clientSecret && config.azure.tenantId)
 export const authOptions: NextAuthOptions = {
   adapter: config.database.url && prisma ? PrismaAdapter(prisma) : undefined,
   debug: process.env.NODE_ENV === 'development',
+  allowDangerousEmailAccountLinking: true,
   providers: providers.length > 0 ? providers : [
     // Fallback provider for when no OAuth providers are configured
     {
@@ -133,12 +134,24 @@ export const authOptions: NextAuthOptions = {
       }
       return session
     },
-    async signIn({ user, account, profile }: any) {
+    async signIn({ user, account, profile, email }: any) {
       console.log('SignIn Callback:', { 
         provider: account?.provider,
         userId: user?.id,
-        userEmail: user?.email
+        userEmail: user?.email,
+        email
       })
+      
+      // Allow sign in if user exists or if this is a new OAuth account
+      if (user || account) {
+        return true
+      }
+      
+      // For OAuth providers, always allow sign in
+      if (account?.provider) {
+        return true
+      }
+      
       return true
     },
   },

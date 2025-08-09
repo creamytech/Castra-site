@@ -16,6 +16,8 @@ function AuthErrorContent() {
         return 'Access denied. You may not have permission to access this application.'
       case 'Verification':
         return 'Email verification failed. Please try again.'
+      case 'OAuthAccountNotLinked':
+        return 'This email is already associated with a different account. Please sign in with the original provider or use a different email address.'
       default:
         return 'An authentication error occurred. Please try again.'
     }
