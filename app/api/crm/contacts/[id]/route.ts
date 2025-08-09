@@ -1,45 +1,45 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic";
 
-export async function PATCH(
-  req: NextRequest,
+export async function PUT(
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   try {
-    const { status, notes, tags } = await req.json()
-    const contactId = params.id
-
-    if (!contactId) {
-      return NextResponse.json({ error: 'Contact ID is required' }, { status: 400 })
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Update contact with user scoping
-    const updatedContact = await prisma.contact.update({
+    const { firstName, lastName, email, phone, company, title, notes } = await request.json();
+
+    if (!firstName || !lastName) {
+      return NextResponse.json({ error: "First name and last name are required" }, { status: 400 });
+    }
+
+    const contact = await prisma.contact.update({
       where: {
-        id: contactId,
-        userId: session.user.id // Ensure user can only update their own contacts
+        id: params.id,
+        userId: session.user.id
       },
       data: {
-        notes: notes || '',
-        tags: tags || []
+        firstName,
+        lastName,
+        email,
+        phone,
+        company,
+        title,
+        notes
       }
-    })
+    });
 
-    return NextResponse.json({ contact: updatedContact })
-  } catch (error: any) {
-    console.error('CRM update contact error:', error)
-    return NextResponse.json(
-      { error: error.message ?? 'Failed to update contact' }, 
-      { status: 500 }
-    )
+    return NextResponse.json({ contact });
+  } catch (error) {
+    console.error("[crm-contact-update]", error);
+    return NextResponse.json({ error: "Failed to update contact" }, { status: 500 });
   }
 }
