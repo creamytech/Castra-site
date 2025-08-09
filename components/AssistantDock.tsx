@@ -210,7 +210,7 @@ export default function AssistantDock({ className = "" }: AssistantDockProps) {
 
   const openFullChat = () => {
     if (sessionId) {
-      window.open(`/app/chat?sessionId=${sessionId}`, '_blank');
+      window.open(`/chat?sessionId=${sessionId}`, '_blank');
     }
   };
 
@@ -221,7 +221,7 @@ export default function AssistantDock({ className = "" }: AssistantDockProps) {
       <AnimatePresence>
         {isOpen && (
           <motion.div 
-            className="bg-surface-50 dark:bg-surface-800 rounded-lg shadow-xl border border-border w-80 h-96 mb-4"
+            className="bg-card text-card-foreground rounded-lg shadow-xl border border-border w-80 h-96 mb-4"
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -229,18 +229,18 @@ export default function AssistantDock({ className = "" }: AssistantDockProps) {
           >
             <div className="p-4 border-b border-border">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-text">Castra Assistant</h3>
+                <h3 className="font-semibold text-foreground">Castra Assistant</h3>
                 <div className="flex space-x-2">
                   <button
                     onClick={openFullChat}
-                    className="text-text-muted hover:text-text text-sm transition-colors"
+                    className="text-muted-foreground hover:text-foreground text-sm transition-colors"
                     title="Open in full chat"
                   >
                     ↗
                   </button>
                   <button
                     onClick={() => setIsOpen(false)}
-                    className="text-text-muted hover:text-text transition-colors"
+                    className="text-muted-foreground hover:text-foreground transition-colors"
                   >
                     ✕
                   </button>
@@ -252,7 +252,7 @@ export default function AssistantDock({ className = "" }: AssistantDockProps) {
               {/* Messages */}
               <div className="flex-1 p-4 overflow-y-auto">
                 {messages.length === 0 ? (
-                  <div className="text-sm text-text-muted">
+                  <div className="text-sm text-muted-foreground">
                     Ask Castra anything about your real estate work...
                   </div>
                 ) : (
@@ -269,8 +269,8 @@ export default function AssistantDock({ className = "" }: AssistantDockProps) {
                           className={cn(
                             "max-w-xs px-3 py-2 rounded-lg text-sm",
                             message.role === "user"
-                              ? "bg-brand-600 text-white"
-                              : "bg-surface-200 dark:bg-surface-700 text-text"
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-foreground"
                           )}
                         >
                           <p className="whitespace-pre-wrap">{message.content}</p>
@@ -279,19 +279,19 @@ export default function AssistantDock({ className = "" }: AssistantDockProps) {
                     ))}
                     {streamingMessage && (
                       <div className="flex justify-start">
-                        <div className="max-w-xs px-3 py-2 rounded-lg text-sm bg-surface-200 dark:bg-surface-700 text-text">
+                        <div className="max-w-xs px-3 py-2 rounded-lg text-sm bg-muted text-foreground">
                           <p className="whitespace-pre-wrap">{streamingMessage}</p>
-                          <span className="inline-block w-2 h-4 bg-text-muted animate-pulse ml-1" />
+                          <span className="inline-block w-2 h-4 bg-muted-foreground animate-pulse ml-1" />
                         </div>
                       </div>
                     )}
                     {isLoading && !streamingMessage && (
                       <div className="flex justify-start">
-                        <div className="bg-surface-200 dark:bg-surface-700 px-3 py-2 rounded-lg">
+                        <div className="bg-muted px-3 py-2 rounded-lg">
                           <div className="flex space-x-1">
-                            <div className="w-2 h-2 bg-text-muted rounded-full animate-bounce"></div>
-                            <div className="w-2 h-2 bg-text-muted rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>
-                            <div className="w-2 h-2 bg-text-muted rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
+                            <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
+                            <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>
+                            <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
                           </div>
                         </div>
                       </div>
@@ -310,13 +310,13 @@ export default function AssistantDock({ className = "" }: AssistantDockProps) {
                     onChange={(e) => setInput(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder="Type your message..."
-                    className="flex-1 px-3 py-2 border border-border rounded-md focus:ring-2 focus:ring-border-focus focus:border-transparent bg-surface-0 dark:bg-surface-700 text-text placeholder:text-text-muted text-sm transition-colors"
+                    className="flex-1 px-3 py-2 border border-input rounded-md focus:ring-2 focus:ring-ring focus:border-transparent bg-input text-foreground placeholder:text-muted-foreground text-sm transition-colors"
                     disabled={isLoading}
                   />
                   <button
                     onClick={sendMessage}
                     disabled={isLoading || !input.trim()}
-                    className="px-4 py-2 bg-brand-600 hover:bg-brand-700 disabled:bg-surface-300 text-white rounded-md transition-colors text-sm focus-ring"
+                    className="px-4 py-2 bg-primary hover:bg-primary/90 disabled:bg-muted text-primary-foreground rounded-md transition-colors text-sm focus:ring-2 focus:ring-ring focus:ring-offset-2"
                   >
                     {isLoading ? "..." : "Send"}
                   </button>
@@ -329,7 +329,7 @@ export default function AssistantDock({ className = "" }: AssistantDockProps) {
       
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
-        className="bg-brand-600 hover:bg-brand-700 text-white rounded-full w-12 h-12 shadow-lg flex items-center justify-center transition-colors focus-ring"
+        className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full w-12 h-12 shadow-lg flex items-center justify-center transition-colors focus:ring-2 focus:ring-ring focus:ring-offset-2"
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
       >
