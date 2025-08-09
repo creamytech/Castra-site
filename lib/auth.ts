@@ -58,6 +58,7 @@ if (config.azure.clientId && config.azure.clientSecret && config.azure.tenantId)
 
 export const authOptions: NextAuthOptions = {
   adapter: config.database.url && prisma ? PrismaAdapter(prisma) : undefined,
+  debug: process.env.NODE_ENV === 'development',
   providers: providers.length > 0 ? providers : [
     // Fallback provider for when no OAuth providers are configured
     {
@@ -86,6 +87,13 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async jwt({ token, user, account, profile }: any) {
+      console.log('JWT Callback:', { 
+        provider: account?.provider, 
+        hasAccessToken: !!account?.access_token,
+        hasRefreshToken: !!account?.refresh_token,
+        userId: user?.id 
+      })
+      
       // Handle Okta tokens
       if (account?.provider === 'okta' && profile) {
         token.oktaId = profile.sub
@@ -97,15 +105,23 @@ export const authOptions: NextAuthOptions = {
         token.accessToken = account.access_token
         token.refreshToken = account.refresh_token
         token.expiresAt = account.expires_at ? account.expires_at * 1000 : undefined
+        console.log('Google tokens stored in JWT')
       }
       
       if (user) {
         token.id = user.id
+        console.log('User ID set in token:', user.id)
       }
       
       return token
     },
     async session({ session, token }: any) {
+      console.log('Session Callback:', { 
+        hasToken: !!token,
+        userId: token?.id,
+        hasGoogleTokens: !!(token?.accessToken || token?.refreshToken)
+      })
+      
       if (token) {
         session.user.id = token.id
         session.user.oktaId = token.oktaId
@@ -116,6 +132,14 @@ export const authOptions: NextAuthOptions = {
         ;(session as any).expiresAt = token.expiresAt
       }
       return session
+    },
+    async signIn({ user, account, profile }: any) {
+      console.log('SignIn Callback:', { 
+        provider: account?.provider,
+        userId: user?.id,
+        userEmail: user?.email
+      })
+      return true
     },
   },
   pages: {
