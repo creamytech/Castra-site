@@ -22,18 +22,19 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState('overview')
   const router = useRouter()
 
+  // Debug logging
+  console.log('DashboardPage render:', { status, session: !!session, user: session?.user })
+
   useEffect(() => {
+    console.log('DashboardPage useEffect:', { status, session: !!session, user: session?.user })
     if (status === 'authenticated') {
-      if (session?.user?.id) {
-        fetchAccounts()
-      } else {
-        // If session exists but no user.id (JWT strategy), just stop loading
-        setLoading(false)
-      }
+      // For JWT strategy, we don't need to check for user.id
+      // Just stop loading and show the dashboard
+      setLoading(false)
     } else if (status === 'unauthenticated') {
       setLoading(false)
     }
-  }, [session?.user?.id, status])
+  }, [status])
 
   const fetchAccounts = async () => {
     try {
