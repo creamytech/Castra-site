@@ -162,3 +162,35 @@ export async function createCalendarEvent(
     throw new Error('Failed to create calendar event')
   }
 }
+
+export async function listUpcomingEvents(
+  userId: string, 
+  { max = 10, timeMinISO }: { max?: number; timeMinISO?: string },
+  sessionTokens?: { accessToken?: string; refreshToken?: string }
+) {
+  try {
+    const auth = await getGoogleOAuth(userId, sessionTokens)
+    const calendar = google.calendar({ version: 'v3', auth })
+    
+    const { data } = await calendar.events.list({
+      calendarId: 'primary',
+      maxResults: max,
+      singleEvents: true,
+      orderBy: 'startTime',
+      timeMin: timeMinISO ?? new Date().toISOString(),
+    })
+
+    return data.items?.map(ev => ({
+      id: ev.id!,
+      summary: ev.summary ?? '(No title)',
+      startISO: ev.start?.dateTime ?? ev.start?.date ?? null,
+      endISO: ev.end?.dateTime ?? ev.end?.date ?? null,
+      attendees: (ev.attendees ?? []).map(a => a.email ?? '').filter(Boolean),
+      location: ev.location ?? null,
+      hangoutLink: ev.hangoutLink ?? null,
+    })) ?? []
+  } catch (error) {
+    console.error('Failed to list upcoming events:', error)
+    throw new Error('Failed to fetch calendar events')
+  }
+}
