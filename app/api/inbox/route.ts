@@ -21,19 +21,13 @@ export async function GET(request: NextRequest) {
     const maxResults = parseInt(searchParams.get('maxResults') || '10')
     const threadId = searchParams.get('threadId')
 
-    // Pass session tokens for JWT strategy
-    const sessionTokens = {
-      accessToken: (session as any).accessToken,
-      refreshToken: (session as any).refreshToken,
-    }
-
     if (threadId) {
       // Get specific thread details
-      const thread = await getThreadDetail(session.user.id, threadId, sessionTokens)
+      const thread = await getThreadDetail(session.user.id, threadId)
       return NextResponse.json({ thread })
     } else {
       // List recent threads
-      const threads = await listRecentThreads(session.user.id, maxResults, sessionTokens)
+      const threads = await listRecentThreads(session.user.id, maxResults)
       return NextResponse.json({ threads })
     }
   } catch (error) {

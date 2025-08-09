@@ -18,12 +18,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Test Gmail API access
-    const sessionTokens = {
-      accessToken: (session as any).accessToken,
-      refreshToken: (session as any).refreshToken,
-    }
-    
-    const threads = await listRecentThreads(session.user.id, 5, sessionTokens)
+    const threads = await listRecentThreads(session.user.id, 5)
     
     return NextResponse.json({
       success: true,

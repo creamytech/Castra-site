@@ -95,7 +95,7 @@ function toISO(msg: any): string | null {
   return null;
 }
 
-async function getGoogleOAuth(userId: string, sessionTokens?: { accessToken?: string; refreshToken?: string }) {
+async function getGoogleOAuth(userId: string) {
   if (!isFeatureEnabled("gmail")) {
     throw new Error("Google integration not configured");
   }
@@ -105,39 +105,29 @@ async function getGoogleOAuth(userId: string, sessionTokens?: { accessToken?: st
     process.env.GOOGLE_CLIENT_SECRET
   );
 
-  // If session tokens are provided, use them (JWT strategy)
-  if (sessionTokens?.accessToken) {
-    oauth2Client.setCredentials({
-      access_token: sessionTokens.accessToken,
-      refresh_token: sessionTokens.refreshToken,
-    });
-    return oauth2Client;
+  // Get tokens from database
+  const account = await prisma.account.findFirst({
+    where: {
+      userId,
+      provider: "google",
+    },
+  });
+
+  if (!account?.access_token) {
+    throw new Error("Google account not connected - no valid tokens found");
   }
 
-  // Otherwise, try to get from database (fallback for database strategy)
-  if (prisma) {
-    const account = await prisma.account.findFirst({
-      where: {
-        userId,
-        provider: "google",
-      },
-    });
+  oauth2Client.setCredentials({
+    access_token: account.access_token,
+    refresh_token: account.refresh_token,
+  });
 
-    if (account?.access_token) {
-      oauth2Client.setCredentials({
-        access_token: account.access_token,
-        refresh_token: account.refresh_token,
-      });
-      return oauth2Client;
-    }
-  }
-
-  throw new Error("Google account not connected - no valid tokens found");
+  return oauth2Client;
 }
 
-export async function listRecentThreads(userId: string, maxResults: number = 10, sessionTokens?: { accessToken?: string; refreshToken?: string }) {
+export async function listRecentThreads(userId: string, maxResults: number = 10) {
   try {
-    const auth = await getGoogleOAuth(userId, sessionTokens);
+    const auth = await getGoogleOAuth(userId);
     const gmail = google.gmail({ version: "v1", auth });
 
     const response = await gmail.users.threads.list({
@@ -173,9 +163,9 @@ export async function listRecentThreads(userId: string, maxResults: number = 10,
   }
 }
 
-export async function getThreadDetail(userId: string, threadId: string, sessionTokens?: { accessToken?: string; refreshToken?: string }): Promise<GmailThread> {
+export async function getThreadDetail(userId: string, threadId: string): Promise<GmailThread> {
   try {
-    const auth = await getGoogleOAuth(userId, sessionTokens);
+    const auth = await getGoogleOAuth(userId);
     const gmail = google.gmail({ version: "v1", auth });
 
     const response = await gmail.users.threads.get({
@@ -202,11 +192,10 @@ export async function createDraft(
   userId: string,
   to: string,
   subject: string,
-  htmlContent: string,
-  sessionTokens?: { accessToken?: string; refreshToken?: string }
+  htmlContent: string
 ) {
   try {
-    const auth = await getGoogleOAuth(userId, sessionTokens);
+    const auth = await getGoogleOAuth(userId);
     const gmail = google.gmail({ version: "v1", auth });
 
     const message = [
@@ -239,11 +228,10 @@ export async function createDraft(
 export async function createCalendarEvent(
   userId: string,
   { summary, startISO, endISO, attendees = [], timeZone = "UTC" }:
-  { summary: string; startISO: string; endISO: string; attendees?: string[]; timeZone?: string },
-  sessionTokens?: { accessToken?: string; refreshToken?: string }
+  { summary: string; startISO: string; endISO: string; attendees?: string[]; timeZone?: string }
 ) {
   try {
-    const auth = await getGoogleOAuth(userId, sessionTokens);
+    const auth = await getGoogleOAuth(userId);
     const calendar = google.calendar({ version: "v3", auth });
 
     // Validate ISO strings
@@ -281,41 +269,11 @@ export async function createCalendarEvent(
   } catch (error: any) {
     console.error("Failed to create calendar event:", error);
     
-    // Handle 401 errors (token expired) with retry logic
-    if (error.code === 401 && sessionTokens?.refreshToken) {
-      console.log("Token expired, attempting refresh...");
-      try {
-        // Clear session tokens to force database lookup
-        const retryAuth = await getGoogleOAuth(userId);
-        const calendar = google.calendar({ version: "v3", auth: retryAuth });
-        
-        const event = {
-          summary,
-          start: { dateTime: startISO, timeZone },
-          end: { dateTime: endISO, timeZone },
-          attendees: attendees.map(email => ({ email })),
-        };
-
-        const { data } = await calendar.events.insert({ 
-          calendarId: "primary", 
-          requestBody: event 
-        });
-
-        return { 
-          id: data.id, 
-          summary: data.summary, 
-          startISO: data.start?.dateTime || data.start?.date,
-          endISO: data.end?.dateTime || data.end?.date,
-          start: data.start,
-          end: data.end 
-        };
-      } catch (retryError) {
-        console.error("Retry failed:", retryError);
-        throw new Error("Authentication failed - please reconnect your Google account");
-      }
-    }
-
     // Handle specific Google API errors
+    if (error.code === 401) {
+      throw new Error("Authentication expired. Please reconnect your Google account.");
+    }
+    
     if (error.code === 403) {
       throw new Error("Calendar access denied - check Google Calendar permissions");
     }
@@ -330,11 +288,10 @@ export async function createCalendarEvent(
 
 export async function listUpcomingEvents(
   userId: string, 
-  { max = 10, timeMinISO }: { max?: number; timeMinISO?: string },
-  sessionTokens?: { accessToken?: string; refreshToken?: string }
+  { max = 10, timeMinISO }: { max?: number; timeMinISO?: string }
 ) {
   try {
-    const auth = await getGoogleOAuth(userId, sessionTokens);
+    const auth = await getGoogleOAuth(userId);
     const calendar = google.calendar({ version: "v3", auth });
     
     const { data } = await calendar.events.list({

@@ -13,16 +13,10 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const sessionTokens = {
-      accessToken: (session as any).accessToken,
-      refreshToken: (session as any).refreshToken,
-    }
-
     // Get recent email threads
     const threads = await listRecentThreads(
       session.user.id,
-      20,
-      sessionTokens
+      20
     )
 
     let syncedCount = 0
@@ -36,8 +30,7 @@ export async function POST(req: NextRequest) {
         // Get thread details to extract sender information
         const threadDetail = await getThreadDetail(
           session.user.id,
-          thread.id!,
-          sessionTokens
+          thread.id!
         )
 
         // Extract sender from the first message in the thread

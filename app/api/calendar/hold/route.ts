@@ -58,16 +58,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Pass session tokens for JWT strategy
-    const sessionTokens = {
-      accessToken: (session as any).accessToken,
-      refreshToken: (session as any).refreshToken,
-    }
-
     const event = await createCalendarEvent(
       session.user.id,
-      { summary, startISO, endISO, attendees, timeZone },
-      sessionTokens
+      { summary, startISO, endISO, attendees, timeZone }
     )
 
     return NextResponse.json({

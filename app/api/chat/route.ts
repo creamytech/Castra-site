@@ -22,17 +22,12 @@ export async function POST(req: NextRequest) {
 
     // Get additional context from email and calendar
     let contextInfo = ''
-    const sessionTokens = {
-      accessToken: (session as any).accessToken,
-      refreshToken: (session as any).refreshToken,
-    }
 
     try {
       // Get upcoming calendar events
       const events = await listUpcomingEvents(
         session.user.id,
-        { max: 5 },
-        sessionTokens
+        { max: 5 }
       )
       
       if (events.length > 0) {

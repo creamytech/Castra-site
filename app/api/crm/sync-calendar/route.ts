@@ -13,16 +13,10 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const sessionTokens = {
-      accessToken: (session as any).accessToken,
-      refreshToken: (session as any).refreshToken,
-    }
-
     // Get upcoming calendar events
     const events = await listUpcomingEvents(
       session.user.id,
-      { max: 50 },
-      sessionTokens
+      { max: 50 }
     )
 
     let syncedCount = 0
