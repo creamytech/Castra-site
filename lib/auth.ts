@@ -10,6 +10,7 @@ const providers = []
 
 // Add Okta provider if configured
 if (config.okta.clientId && config.okta.clientSecret && config.okta.issuer) {
+  console.log('Adding Okta provider')
   providers.push(
     OktaProvider({
       clientId: config.okta.clientId,
@@ -21,6 +22,7 @@ if (config.okta.clientId && config.okta.clientSecret && config.okta.issuer) {
 
 // Add Google provider if configured
 if (config.google.clientId && config.google.clientSecret) {
+  console.log('Adding Google provider')
   providers.push(
     GoogleProvider({
       clientId: config.google.clientId,
@@ -43,10 +45,16 @@ if (config.google.clientId && config.google.clientSecret) {
       }
     })
   )
+} else {
+  console.log('Google provider not configured:', {
+    clientId: !!config.google.clientId,
+    clientSecret: !!config.google.clientSecret
+  })
 }
 
 // Add Azure AD provider if configured
 if (config.azure.clientId && config.azure.clientSecret && config.azure.tenantId) {
+  console.log('Adding Azure AD provider')
   providers.push(
     AzureADProvider({
       clientId: config.azure.clientId,
@@ -56,21 +64,22 @@ if (config.azure.clientId && config.azure.clientSecret && config.azure.tenantId)
   )
 }
 
+console.log('Configured providers:', providers.map(p => p.id))
+
 // Simple adapter - no custom account linking logic
 const createAdapter = () => {
-  // For development, disable adapter to avoid account linking issues
-  if (process.env.NODE_ENV === 'development') {
-    console.log('Development mode: Using JWT strategy without database adapter')
+  // For development and when no database is configured, disable adapter
+  if (process.env.NODE_ENV === 'development' || !config.database.url || !prisma) {
+    console.log('Using JWT strategy without database adapter')
     return undefined
   }
   
-  if (!config.database.url || !prisma) return undefined
   return PrismaAdapter(prisma)
 }
 
 export const authOptions: NextAuthOptions = {
   adapter: createAdapter(),
-  debug: process.env.NODE_ENV === 'development',
+  debug: true, // Always enable debug for troubleshooting
   // Allow linking accounts with the same email
   // This will allow users to sign in with different providers using the same email
   callbacks: {
@@ -135,33 +144,42 @@ export const authOptions: NextAuthOptions = {
       return session
     },
   },
-  providers: providers.length > 0 ? providers : [
-    // Fallback provider for when no OAuth providers are configured
-    {
-      id: 'credentials',
-      name: 'Demo',
-      type: 'credentials',
-      credentials: {
-        email: { label: 'Email', type: 'email' },
-        password: { label: 'Password', type: 'password' }
-      },
-      async authorize(credentials) {
-        console.log('Credentials authorize called:', { email: credentials?.email })
-        // Allow demo login with any email/password when no OAuth providers are configured
-        if (credentials?.email) {
-          const user = {
-            id: `demo-${Date.now()}`,
-            email: credentials.email,
-            name: 'Demo User',
+  providers: (() => {
+    console.log('Final providers array length:', providers.length)
+    if (providers.length > 0) {
+      console.log('Using configured providers:', providers.map(p => p.id))
+      return providers
+    } else {
+      console.log('No providers configured, using fallback credentials provider')
+      return [
+        // Fallback provider for when no OAuth providers are configured
+        {
+          id: 'credentials',
+          name: 'Demo',
+          type: 'credentials',
+          credentials: {
+            email: { label: 'Email', type: 'email' },
+            password: { label: 'Password', type: 'password' }
+          },
+          async authorize(credentials) {
+            console.log('Credentials authorize called:', { email: credentials?.email })
+            // Allow demo login with any email/password when no OAuth providers are configured
+            if (credentials?.email) {
+              const user = {
+                id: `demo-${Date.now()}`,
+                email: credentials.email,
+                name: 'Demo User',
+              }
+              console.log('Demo user created:', user)
+              return user
+            }
+            console.log('No email provided for demo login')
+            return null
           }
-          console.log('Demo user created:', user)
-          return user
         }
-        console.log('No email provided for demo login')
-        return null
-      }
+      ]
     }
-  ],
+  })(),
   session: {
     strategy: 'jwt',
   },
