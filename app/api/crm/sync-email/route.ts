@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     // Get recent email threads
     const threads = await listRecentThreads(
       (session.user as any).id,
-      { maxResults: 20 },
+      20,
       sessionTokens
     )
 
