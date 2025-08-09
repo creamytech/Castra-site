@@ -12,25 +12,93 @@ interface Account {
   type: string
   access_token?: string
   refresh_token?: string
+  expires_at?: number
+  token_type?: string
+  scope?: string
+  id_token?: string
+  session_state?: string
+}
+
+interface ConnectionStatus {
+  provider: string
+  connected: boolean
+  lastRefresh?: string
+  accessToken?: string
+  refreshToken?: string
 }
 
 export default function ConnectPage() {
   const { data: session, status } = useSession()
   const [loading, setLoading] = useState(true)
   const [accounts, setAccounts] = useState<Account[]>([])
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus[]>([])
   const router = useRouter()
 
   useEffect(() => {
     if (status === 'authenticated') {
-      setLoading(false)
+      fetchAccounts()
     } else if (status === 'unauthenticated') {
       router.push('/auth/signin')
     }
   }, [status, router])
 
+  const fetchAccounts = async () => {
+    try {
+      const response = await fetch('/api/accounts')
+      if (response.ok) {
+        const data = await response.json()
+        setAccounts(data.accounts || [])
+        
+        // Process connection status
+        const statuses: ConnectionStatus[] = [
+          {
+            provider: 'google',
+            connected: data.accounts?.some((acc: Account) => acc.provider === 'google') || false,
+            lastRefresh: data.accounts?.find((acc: Account) => acc.provider === 'google')?.expires_at 
+              ? new Date(data.accounts.find((acc: Account) => acc.provider === 'google')!.expires_at! * 1000).toLocaleString()
+              : undefined,
+            accessToken: data.accounts?.find((acc: Account) => acc.provider === 'google')?.access_token ? 'Present' : undefined,
+            refreshToken: data.accounts?.find((acc: Account) => acc.provider === 'google')?.refresh_token ? 'Present' : undefined
+          },
+          {
+            provider: 'azure-ad',
+            connected: data.accounts?.some((acc: Account) => acc.provider === 'azure-ad') || false,
+            lastRefresh: data.accounts?.find((acc: Account) => acc.provider === 'azure-ad')?.expires_at 
+              ? new Date(data.accounts.find((acc: Account) => acc.provider === 'azure-ad')!.expires_at! * 1000).toLocaleString()
+              : undefined,
+            accessToken: data.accounts?.find((acc: Account) => acc.provider === 'azure-ad')?.access_token ? 'Present' : undefined,
+            refreshToken: data.accounts?.find((acc: Account) => acc.provider === 'azure-ad')?.refresh_token ? 'Present' : undefined
+          }
+        ]
+        setConnectionStatus(statuses)
+      }
+    } catch (error) {
+      console.error('Failed to fetch accounts:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleConnect = (provider: string) => {
-    // This would trigger the OAuth flow
-    console.log(`Connecting to ${provider}...`)
+    // Redirect to sign-in with specific provider
+    window.location.href = `/api/auth/signin/${provider}?callbackUrl=${encodeURIComponent(window.location.href)}`
+  }
+
+  const handleDisconnect = async (provider: string) => {
+    try {
+      const response = await fetch('/api/accounts/disconnect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider })
+      })
+      
+      if (response.ok) {
+        // Refresh accounts after disconnection
+        fetchAccounts()
+      }
+    } catch (error) {
+      console.error('Failed to disconnect:', error)
+    }
   }
 
   const isConnected = (provider: string) => {
@@ -137,21 +205,51 @@ export default function ConnectPage() {
       <div className="card mt-8">
         <h2 className="h2 mb-4">Integrations</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
-            <div className="flex items-center justify-between mb-2">
-              <span className="font-medium">Gmail</span>
-              <span className="text-green-600 dark:text-green-400 text-sm">Connected</span>
+          {connectionStatus.map((status) => (
+            <div key={status.provider} className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-medium capitalize">
+                  {status.provider === 'google' ? 'Gmail & Calendar' : 
+                   status.provider === 'azure-ad' ? 'Microsoft 365' : status.provider}
+                </span>
+                <span className={`text-sm ${
+                  status.connected 
+                    ? 'text-green-600 dark:text-green-400' 
+                    : 'text-red-600 dark:text-red-400'
+                }`}>
+                  {status.connected ? 'Connected' : 'Not Connected'}
+                </span>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                {status.connected 
+                  ? `${status.provider === 'google' ? 'Email & calendar integration active' : 'Office 365 integration active'}`
+                  : 'Click to connect your account'
+                }
+              </p>
+              {status.connected && status.lastRefresh && (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Last refresh: {status.lastRefresh}
+                </p>
+              )}
+              <div className="mt-3">
+                {status.connected ? (
+                  <button
+                    onClick={() => handleDisconnect(status.provider)}
+                    className="px-3 py-1 text-xs bg-red-500 hover:bg-red-600 text-white rounded transition-colors"
+                  >
+                    Disconnect
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleConnect(status.provider)}
+                    className="px-3 py-1 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors"
+                  >
+                    Connect
+                  </button>
+                )}
+              </div>
             </div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Email integration active</p>
-          </div>
-
-          <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
-            <div className="flex items-center justify-between mb-2">
-              <span className="font-medium">Google Calendar</span>
-              <span className="text-green-600 dark:text-green-400 text-sm">Connected</span>
-            </div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Calendar sync enabled</p>
-          </div>
+          ))}
 
           <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
             <div className="flex items-center justify-between mb-2">
@@ -172,6 +270,7 @@ export default function ConnectPage() {
             <div><strong>Email:</strong> {session.user?.email}</div>
             <div><strong>Name:</strong> {session.user?.name}</div>
             <div><strong>Session Status:</strong> {status}</div>
+            <div><strong>Connected Accounts:</strong> {accounts.length}</div>
           </div>
         </div>
       </div>

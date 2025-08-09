@@ -3,13 +3,12 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-// Force dynamic rendering for this route
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -17,16 +16,9 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    if (!prisma) {
-      return NextResponse.json(
-        { error: 'Database not configured' },
-        { status: 500 }
-      )
-    }
-
     const accounts = await prisma.account.findMany({
       where: {
-        userId: session.user.id,
+        userId: session.user.id
       },
       select: {
         id: true,
@@ -34,14 +26,22 @@ export async function GET(request: NextRequest) {
         type: true,
         access_token: true,
         refresh_token: true,
-      },
+        expires_at: true,
+        token_type: true,
+        scope: true,
+        id_token: true,
+        session_state: true
+      }
     })
 
     return NextResponse.json({ accounts })
-  } catch (error) {
-    console.error('Failed to fetch accounts:', error)
+  } catch (error: any) {
+    console.error('Accounts API error:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: error.message || 'Failed to fetch accounts',
+        details: 'Check database connection and user authentication'
+      },
       { status: 500 }
     )
   }

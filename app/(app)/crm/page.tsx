@@ -2,7 +2,6 @@
 
 import { useSession } from 'next-auth/react'
 import { useState, useEffect } from 'react'
-import MainLayout from '@/components/MainLayout'
 import Toast from '@/components/Toast'
 
 export const dynamic = 'force-dynamic'
@@ -155,26 +154,21 @@ export default function CRMPage() {
 
   if (status === 'loading') {
     return (
-      <MainLayout showSidebar={false}>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-gray-800 dark:text-white">Loading...</div>
-        </div>
-      </MainLayout>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-gray-800 dark:text-white">Loading...</div>
+      </div>
     )
   }
 
   if (!session) {
     return (
-      <MainLayout showSidebar={false}>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-gray-800 dark:text-white">You need to sign in.</div>
-        </div>
-      </MainLayout>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-gray-800 dark:text-white">You need to sign in.</div>
+      </div>
     )
   }
 
   return (
-    <MainLayout>
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="h1">CRM</h1>
@@ -299,6 +293,6 @@ export default function CRMPage() {
           onClose={() => removeToast(toast.id)}
         />
       ))}
-    </MainLayout>
+    </div>
   )
 }
