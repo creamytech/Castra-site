@@ -3,6 +3,8 @@
 import { useSession } from 'next-auth/react'
 import { useState, useEffect } from 'react'
 import Toast from '@/components/Toast'
+import FadeIn from '@/components/ui/FadeIn'
+import { motion, AnimatePresence } from 'framer-motion'
 
 export const dynamic = 'force-dynamic'
 
@@ -124,18 +126,21 @@ export default function CalendarPage() {
 
   return (
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="h1">Calendar</h1>
-          <p className="text-xl text-gray-700 dark:text-gray-300">
-            Manage your schedule and appointments
-          </p>
-        </div>
+        <FadeIn>
+          <div className="text-center mb-8">
+            <h1 className="h1">Calendar</h1>
+            <p className="text-xl text-gray-700 dark:text-gray-300">
+              Manage your schedule and appointments
+            </p>
+          </div>
+        </FadeIn>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Create Event Form */}
-          <div className="card">
-            <h2 className="h2 mb-4">Create New Event</h2>
-            <form onSubmit={createEvent} className="space-y-4">
+          <FadeIn delay={0.1}>
+            <div className="card">
+              <h2 className="h2 mb-4">Create New Event</h2>
+              <form onSubmit={createEvent} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Event Title
@@ -191,27 +196,31 @@ export default function CalendarPage() {
                 />
               </div>
 
-              <button
+              <motion.button
                 type="submit"
                 className="w-full btn-primary"
+                whileTap={{ scale: 0.98 }}
               >
                 Create Event
-              </button>
+              </motion.button>
             </form>
           </div>
+        </FadeIn>
 
           {/* Upcoming Events */}
-          <div className="card">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="h2">Upcoming Events</h2>
-              <button
-                onClick={fetchUpcomingEvents}
-                disabled={eventsLoading}
-                className="btn-secondary text-sm"
-              >
-                {eventsLoading ? 'Loading...' : 'Refresh'}
-              </button>
-            </div>
+          <FadeIn delay={0.2}>
+            <div className="card">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="h2">Upcoming Events</h2>
+                <motion.button
+                  onClick={fetchUpcomingEvents}
+                  disabled={eventsLoading}
+                  className="btn-secondary text-sm"
+                  whileTap={{ scale: 0.98 }}
+                >
+                  {eventsLoading ? 'Loading...' : 'Refresh'}
+                </motion.button>
+              </div>
 
             {eventsLoading ? (
               <div className="text-center py-8">
@@ -227,11 +236,18 @@ export default function CalendarPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {events.map((event) => (
-                  <div
-                    key={event.id}
-                    className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg border-l-4 border-purple-500"
-                  >
+                <AnimatePresence>
+                  {events.map((event, index) => (
+                    <motion.div
+                      key={event.id}
+                      className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg border-l-4 border-purple-500"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ delay: index * 0.05 }}
+                      whileHover={{ scale: 1.01 }}
+                      layout
+                    >
                     <h3 className="font-medium text-gray-800 dark:text-white mb-1">
                       {event.summary}
                     </h3>
@@ -243,11 +259,13 @@ export default function CalendarPage() {
                         Attendees: {event.attendees.join(', ')}
                       </div>
                     )}
-                  </div>
+                  </motion.div>
                 ))}
+                </AnimatePresence>
               </div>
             )}
           </div>
+        </FadeIn>
         </div>
       </div>
 

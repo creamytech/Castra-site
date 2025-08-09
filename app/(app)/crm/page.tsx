@@ -3,6 +3,8 @@
 import { useSession } from 'next-auth/react'
 import { useState, useEffect } from 'react'
 import Toast from '@/components/Toast'
+import FadeIn from '@/components/ui/FadeIn'
+import { motion, AnimatePresence } from 'framer-motion'
 
 export const dynamic = 'force-dynamic'
 
@@ -170,56 +172,64 @@ export default function CRMPage() {
 
   return (
       <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="h1">CRM</h1>
-          <p className="text-xl text-gray-700 dark:text-gray-300">
-            Manage your leads and contacts
-          </p>
-        </div>
+        <FadeIn>
+          <div className="text-center mb-8">
+            <h1 className="h1">CRM</h1>
+            <p className="text-xl text-gray-700 dark:text-gray-300">
+              Manage your leads and contacts
+            </p>
+          </div>
+        </FadeIn>
 
         {/* Controls */}
-        <div className="card mb-6">
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-            <div className="flex flex-col sm:flex-row gap-4 flex-1">
-              <input
-                type="text"
-                placeholder="Search contacts..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="px-3 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder-gray-600 dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={syncFromEmail}
-                disabled={loading}
-                className="btn-secondary"
-              >
-                {loading ? 'Syncing...' : 'Sync from Email'}
-              </button>
-              <button
-                onClick={syncFromCalendar}
-                disabled={loading}
-                className="btn-secondary"
-              >
-                {loading ? 'Syncing...' : 'Sync from Calendar'}
-              </button>
+        <FadeIn delay={0.1}>
+          <div className="card mb-6">
+            <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+              <div className="flex flex-col sm:flex-row gap-4 flex-1">
+                <input
+                  type="text"
+                  placeholder="Search contacts..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="px-3 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder-gray-600 dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              <div className="flex gap-2">
+                <motion.button
+                  onClick={syncFromEmail}
+                  disabled={loading}
+                  className="btn-secondary"
+                  whileTap={{ scale: 0.98 }}
+                >
+                  {loading ? 'Syncing...' : 'Sync from Email'}
+                </motion.button>
+                <motion.button
+                  onClick={syncFromCalendar}
+                  disabled={loading}
+                  className="btn-secondary"
+                  whileTap={{ scale: 0.98 }}
+                >
+                  {loading ? 'Syncing...' : 'Sync from Calendar'}
+                </motion.button>
+              </div>
             </div>
           </div>
-        </div>
+        </FadeIn>
 
         {/* Contacts List */}
-        <div className="card">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="h2">Contacts</h2>
-            <button
-              onClick={fetchContacts}
-              disabled={loading}
-              className="btn-secondary text-sm"
-            >
-              {loading ? 'Loading...' : 'Refresh'}
-            </button>
-          </div>
+        <FadeIn delay={0.2}>
+          <div className="card">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="h2">Contacts</h2>
+              <motion.button
+                onClick={fetchContacts}
+                disabled={loading}
+                className="btn-secondary text-sm"
+                whileTap={{ scale: 0.98 }}
+              >
+                {loading ? 'Loading...' : 'Refresh'}
+              </motion.button>
+            </div>
 
           {loading ? (
             <div className="text-center py-8">
@@ -231,13 +241,20 @@ export default function CRMPage() {
                 {contacts.length === 0 ? 'No contacts found. Try syncing from email or calendar.' : 'No contacts match your search.'}
               </div>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {filteredContacts.map((contact) => (
-                <div
-                  key={contact.id}
-                  className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg border-l-4 border-purple-500"
-                >
+                      ) : (
+              <div className="space-y-3">
+                <AnimatePresence>
+                  {filteredContacts.map((contact, index) => (
+                    <motion.div
+                      key={contact.id}
+                      className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg border-l-4 border-purple-500"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ delay: index * 0.05 }}
+                      whileHover={{ scale: 1.01 }}
+                      layout
+                    >
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-medium text-gray-800 dark:text-white">
                       {contact.firstName} {contact.lastName}
@@ -276,12 +293,14 @@ export default function CRMPage() {
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                       {contact.notes}
                     </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                                      )}
+                  </motion.div>
+                ))}
+                </AnimatePresence>
+              </div>
+            )}
+          </div>
+        </FadeIn>
       </div>
 
       {/* Toast notifications */}

@@ -4,6 +4,7 @@ import { useSession, signOut } from 'next-auth/react'
 import { useState, useEffect } from 'react'
 import Sidebar from '@/components/Sidebar'
 import QuickActions from '@/components/QuickActions'
+import TransitionProvider from './motion/TransitionProvider'
 
 export default function AppLayout({
   children,
@@ -79,7 +80,9 @@ export default function AppLayout({
 
         {/* Main Content */}
         <main className="p-6">
-          {children}
+          <TransitionProvider>
+            {children}
+          </TransitionProvider>
         </main>
       </div>
     </div>

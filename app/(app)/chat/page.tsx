@@ -3,6 +3,8 @@
 import { useSession } from 'next-auth/react'
 import { useState, useEffect, useRef } from 'react'
 import Toast from '@/components/Toast'
+import FadeIn from '@/components/ui/FadeIn'
+import { motion, AnimatePresence } from 'framer-motion'
 
 export const dynamic = 'force-dynamic'
 
@@ -223,32 +225,45 @@ export default function ChatPage() {
     <div className="max-w-7xl mx-auto h-full">
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full">
         {/* Left Column: Conversation History */}
-        <div className="lg:col-span-1">
-          <div className="card h-full">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="h2">Conversations</h2>
-              <button onClick={createNewConversation} className="btn-primary text-sm">
-                New Chat
-              </button>
-            </div>
-
-            <div className="space-y-2 max-h-96 lg:max-h-none overflow-y-auto">
-              {conversations.map((conversation) => (
-                <button
-                  key={conversation.id}
-                  onClick={() => selectConversation(conversation)}
-                  className={`w-full text-left p-3 rounded-lg transition-colors ${
-                    currentConversation?.id === conversation.id
-                      ? 'bg-purple-600 text-white'
-                      : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-800 dark:text-white'
-                  }`}
+        <FadeIn delay={0.1}>
+          <div className="lg:col-span-1">
+            <div className="card h-full">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="h2">Conversations</h2>
+                <motion.button 
+                  onClick={createNewConversation} 
+                  className="btn-primary text-sm"
+                  whileTap={{ scale: 0.98 }}
                 >
+                  New Chat
+                </motion.button>
+              </div>
+
+                          <div className="space-y-2 max-h-96 lg:max-h-none overflow-y-auto">
+                <AnimatePresence>
+                  {conversations.map((conversation, index) => (
+                    <motion.button
+                      key={conversation.id}
+                      onClick={() => selectConversation(conversation)}
+                      className={`w-full text-left p-3 rounded-lg transition-colors ${
+                        currentConversation?.id === conversation.id
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-800 dark:text-white'
+                      }`}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ delay: index * 0.05 }}
+                      whileHover={{ scale: 1.01 }}
+                      layout
+                    >
                   <div className="font-medium truncate">{conversation.title}</div>
                   <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                     {conversation.lastUpdated.toLocaleDateString()}
                   </div>
-                </button>
-              ))}
+                                  </motion.button>
+                ))}
+                </AnimatePresence>
 
               {conversations.length === 0 && (
                 <div className="text-center text-gray-600 dark:text-gray-400 py-8">
@@ -259,9 +274,11 @@ export default function ChatPage() {
             </div>
           </div>
         </div>
+        </FadeIn>
 
         {/* Right Column: Chat Interface */}
-        <div className="lg:col-span-3">
+        <FadeIn delay={0.2}>
+          <div className="lg:col-span-3">
           <div className="card h-full flex flex-col">
             <div className="flex-1 overflow-y-auto p-6">
               {messages.length === 0 ? (
@@ -272,47 +289,60 @@ export default function ChatPage() {
 
                   {/* Example queries */}
                   <div className="mt-6 space-y-2">
-                    <button
+                    <motion.button
                       onClick={() => setInputMessage("Draft a follow-up email for a client who viewed a property yesterday")}
                       className="block w-full p-3 text-left bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.98 }}
                     >
                       💌 Draft a follow-up email
-                    </button>
-                    <button
+                    </motion.button>
+                    <motion.button
                       onClick={() => setInputMessage("Schedule a showing with John Smith for tomorrow at 2pm")}
                       className="block w-full p-3 text-left bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.98 }}
                     >
                       📅 Schedule a showing
-                    </button>
-                    <button
+                    </motion.button>
+                    <motion.button
                       onClick={() => setInputMessage("Update my CRM with a new lead from today's open house")}
                       className="block w-full p-3 text-left bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.98 }}
                     >
                       👥 Update CRM lead
-                    </button>
+                    </motion.button>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div
-                        className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                          message.role === 'user'
-                            ? 'bg-purple-600 text-white'
-                            : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white'
-                        }`}
+                  <AnimatePresence>
+                    {messages.map((message, index) => (
+                      <motion.div
+                        key={message.id}
+                        className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        layout
                       >
-                        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                        <p className="text-xs opacity-70 mt-1">
-                          {message.timestamp.toLocaleTimeString()}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                        <motion.div
+                          className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                            message.role === 'user'
+                              ? 'bg-purple-600 text-white'
+                              : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white'
+                          }`}
+                          whileHover={{ scale: 1.01 }}
+                        >
+                          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                          <p className="text-xs opacity-70 mt-1">
+                            {message.timestamp.toLocaleTimeString()}
+                          </p>
+                        </motion.div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
 
                   {isLoading && (
                     <div className="flex justify-start">
@@ -320,10 +350,11 @@ export default function ChatPage() {
                         <div className="flex space-x-1">
                           <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
                           <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                        </div>
-                      </div>
-                    </div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}>            </div>
+          </div>
+        </div>
+        </FadeIn>
+      </div>
                   )}
                 </div>
               )}
@@ -341,13 +372,14 @@ export default function ChatPage() {
                   disabled={isLoading}
                   className="flex-1 px-3 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder-gray-600 dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
-                <button
+                <motion.button
                   type="submit"
                   disabled={isLoading || !inputMessage.trim()}
                   className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  whileTap={{ scale: 0.98 }}
                 >
                   {isLoading ? 'Sending...' : 'Send'}
-                </button>
+                </motion.button>
               </form>
             </div>
           </div>

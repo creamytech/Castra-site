@@ -3,6 +3,8 @@
 import { useSession } from 'next-auth/react'
 import { useState, useEffect } from 'react'
 import Toast from '@/components/Toast'
+import FadeIn from '@/components/ui/FadeIn'
+import { motion, AnimatePresence } from 'framer-motion'
 
 export const dynamic = 'force-dynamic'
 
@@ -204,22 +206,30 @@ export default function InboxPage() {
   return (
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="h1">Inbox</h1>
-          <p className="text-xl text-gray-700 dark:text-gray-300">
-            Your AI-powered email assistant
-          </p>
-        </div>
+        <FadeIn>
+          <div className="text-center mb-8">
+            <h1 className="h1">Inbox</h1>
+            <p className="text-xl text-gray-700 dark:text-gray-300">
+              Your AI-powered email assistant
+            </p>
+          </div>
+        </FadeIn>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column: Email List */}
-          <div className="lg:col-span-1 card">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="h2">Recent Emails</h2>
-              <button onClick={fetchEmails} disabled={loadingEmails} className="btn-secondary">
-                {loadingEmails ? 'Refreshing...' : 'Refresh'}
-              </button>
-            </div>
+          <FadeIn delay={0.1}>
+            <div className="lg:col-span-1 card">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="h2">Recent Emails</h2>
+                <motion.button 
+                  onClick={fetchEmails} 
+                  disabled={loadingEmails} 
+                  className="btn-secondary"
+                  whileTap={{ scale: 0.98 }}
+                >
+                  {loadingEmails ? 'Refreshing...' : 'Refresh'}
+                </motion.button>
+              </div>
 
             {/* Search and Filters */}
             <div className="mb-4 space-y-3">
@@ -268,16 +278,23 @@ export default function InboxPage() {
             </div>
 
             <div className="space-y-2 max-h-96 overflow-y-auto">
-              {filteredEmails.map((email) => (
-                <button
-                  key={email.id}
-                  onClick={() => handleEmailSelect(email)}
-                  className={`w-full text-left p-3 rounded-lg transition-colors border ${
-                    selectedEmail?.id === email.id
-                      ? 'bg-purple-100 dark:bg-purple-800 border-purple-500'
-                      : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700'
-                  }`}
-                >
+              <AnimatePresence>
+                {filteredEmails.map((email, index) => (
+                  <motion.button
+                    key={email.id}
+                    onClick={() => handleEmailSelect(email)}
+                    className={`w-full text-left p-3 rounded-lg transition-colors border ${
+                      selectedEmail?.id === email.id
+                        ? 'bg-purple-100 dark:bg-purple-800 border-purple-500'
+                        : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    }`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ delay: index * 0.05 }}
+                    whileHover={{ scale: 1.01 }}
+                    layout
+                  >
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
                       <div className="font-medium truncate">{email.subject}</div>
@@ -313,9 +330,10 @@ export default function InboxPage() {
                         </span>
                       )}
                     </div>
-                  )}
-                </button>
-              ))}
+                                     )}
+                 </motion.button>
+               ))}
+              </AnimatePresence>
               
               {filteredEmails.length === 0 && !loadingEmails && (
                 <div className="text-center text-gray-600 dark:text-gray-400 py-8">
@@ -326,9 +344,11 @@ export default function InboxPage() {
           </div>
 
           {/* Right Column: Email Detail & AI Summary */}
-          <div className="lg:col-span-2 card">
-            <h2 className="h2 mb-4">Email Details & AI Summary</h2>
-            {selectedEmail ? (
+          <FadeIn delay={0.2}>
+            <div className="lg:col-span-2 card">
+              <h2 className="h2 mb-4">Email Details & AI Summary</h2>
+              <AnimatePresence mode="wait">
+                {selectedEmail ? (
               <div>
                 <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">
                   {selectedEmail.subject}
@@ -350,13 +370,14 @@ export default function InboxPage() {
                   />
                 )}
 
-                <button
-                  onClick={handleCreateDraft}
-                  disabled={loading}
-                  className="btn-primary mt-4"
-                >
-                  {loading ? 'Drafting...' : 'Draft Follow-up Email'}
-                </button>
+                                 <motion.button
+                   onClick={handleCreateDraft}
+                   disabled={loading}
+                   className="btn-primary mt-4"
+                   whileTap={{ scale: 0.98 }}
+                 >
+                   {loading ? 'Drafting...' : 'Draft Follow-up Email'}
+                 </motion.button>
 
                 {/* Draft Preview */}
                 {draftHtml && (
@@ -369,12 +390,20 @@ export default function InboxPage() {
                   </div>
                 )}
               </div>
-            ) : (
-              <div className="text-center text-gray-600 dark:text-gray-400 py-8">
-                <p>Select an email to view details and AI summary.</p>
-              </div>
-            )}
-          </div>
+                         ) : (
+               <motion.div 
+                 key="empty-state"
+                 initial={{ opacity: 0 }}
+                 animate={{ opacity: 1 }}
+                 exit={{ opacity: 0 }}
+                 className="text-center text-gray-600 dark:text-gray-400 py-8"
+               >
+                 <p>Select an email to view details and AI summary.</p>
+               </motion.div>
+             )}
+              </AnimatePresence>
+            </div>
+          </FadeIn>
         </div>
       </div>
 
