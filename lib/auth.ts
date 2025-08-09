@@ -56,13 +56,53 @@ if (config.azure.clientId && config.azure.clientSecret && config.azure.tenantId)
   )
 }
 
+// Create custom adapter that handles account linking
+const createCustomAdapter = () => {
+  if (!config.database.url || !prisma) return undefined
+  
+  const prismaAdapter = PrismaAdapter(prisma)
+  
+  return {
+    ...prismaAdapter,
+    linkAccount: async (account: any) => {
+      try {
+        // Try to link the account normally
+        return await prismaAdapter.linkAccount!(account)
+      } catch (error: any) {
+        // If linking fails due to existing account, try to update it
+        if (error.code === 'P2002' || error.message?.includes('Unique constraint')) {
+          console.log('Account already exists, updating instead of linking')
+          // Update existing account instead of creating new one
+          return await prisma.account.upsert({
+            where: {
+              provider_providerAccountId: {
+                provider: account.provider,
+                providerAccountId: account.providerAccountId,
+              },
+            },
+            update: {
+              access_token: account.access_token,
+              expires_at: account.expires_at,
+              refresh_token: account.refresh_token,
+              token_type: account.token_type,
+              scope: account.scope,
+              id_token: account.id_token,
+              session_state: account.session_state,
+            },
+            create: account,
+          })
+        }
+        throw error
+      }
+    },
+  }
+}
+
 export const authOptions: NextAuthOptions = {
-  adapter: config.database.url && prisma ? PrismaAdapter(prisma) : undefined,
+  adapter: createCustomAdapter(),
   debug: process.env.NODE_ENV === 'development',
   // Allow linking accounts with the same email
   // This will allow users to sign in with different providers using the same email
-  // Allow dangerous email account linking for development
-  allowDangerousEmailAccountLinking: true,
   callbacks: {
     async signIn({ user, account, profile, email }: any) {
       console.log('SignIn Callback:', { 
@@ -77,6 +117,7 @@ export const authOptions: NextAuthOptions = {
       if (account?.provider) {
         // Always allow OAuth sign-ins - let the adapter handle account linking
         console.log('OAuth sign-in allowed for provider:', account.provider)
+        // For development, allow all OAuth sign-ins
         return true
       }
       
