@@ -56,53 +56,20 @@ if (config.azure.clientId && config.azure.clientSecret && config.azure.tenantId)
   )
 }
 
-// Create custom adapter that handles account linking
-const createCustomAdapter = () => {
-  if (!config.database.url || !prisma) return undefined
-  
-  const prismaAdapter = PrismaAdapter(prisma)
-  
-  return {
-    ...prismaAdapter,
-         linkAccount: async (account: any) => {
-       try {
-         // Try to link the account normally
-         await prismaAdapter.linkAccount!(account)
-       } catch (error: any) {
-         // If linking fails due to existing account, try to update it
-         if (error.code === 'P2002' || error.message?.includes('Unique constraint')) {
-           console.log('Account already exists, updating instead of linking')
-           // Update existing account instead of creating new one
-           if (prisma) {
-             await prisma.account.upsert({
-               where: {
-                 provider_providerAccountId: {
-                   provider: account.provider,
-                   providerAccountId: account.providerAccountId,
-                 },
-               },
-               update: {
-                 access_token: account.access_token,
-                 expires_at: account.expires_at,
-                 refresh_token: account.refresh_token,
-                 token_type: account.token_type,
-                 scope: account.scope,
-                 id_token: account.id_token,
-                 session_state: account.session_state,
-               },
-               create: account,
-             })
-           }
-         } else {
-           throw error
-         }
-       }
-     },
+// Simple adapter - no custom account linking logic
+const createAdapter = () => {
+  // For development, disable adapter to avoid account linking issues
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Development mode: Using JWT strategy without database adapter')
+    return undefined
   }
+  
+  if (!config.database.url || !prisma) return undefined
+  return PrismaAdapter(prisma)
 }
 
 export const authOptions: NextAuthOptions = {
-  adapter: createCustomAdapter(),
+  adapter: createAdapter(),
   debug: process.env.NODE_ENV === 'development',
   // Allow linking accounts with the same email
   // This will allow users to sign in with different providers using the same email
@@ -116,26 +83,8 @@ export const authOptions: NextAuthOptions = {
         email
       })
       
-      // For OAuth providers, handle account linking
-      if (account?.provider) {
-        // Always allow OAuth sign-ins - let the adapter handle account linking
-        console.log('OAuth sign-in allowed for provider:', account.provider)
-        // For development, allow all OAuth sign-ins
-        return true
-      }
-      
-      // For credentials provider (demo), always allow
-      if (account?.type === 'credentials') {
-        console.log('Credentials sign-in allowed')
-        return true
-      }
-      
-      // Allow existing users
-      if (user) {
-        return true
-      }
-      
-      // Default: allow all sign-ins
+      // Always allow all sign-ins for development
+      console.log('Sign-in allowed for:', account?.provider || account?.type)
       return true
     },
     async jwt({ token, user, account, profile }: any) {
