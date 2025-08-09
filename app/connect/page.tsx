@@ -120,6 +120,54 @@ export default function DashboardPage() {
         <div className="bg-gray-800 rounded-lg p-6">
           {activeTab === 'overview' && (
             <div className="space-y-6">
+              {/* Minimal Connect Section */}
+              <div className="text-center py-8">
+                <h2 className="text-2xl font-semibold text-white mb-6">Connect your tools</h2>
+                <div className="space-y-4">
+                  {isFeatureEnabled('gmail') ? (
+                    <div className="flex items-center justify-center">
+                      {isConnected('google') ? (
+                        <div className="bg-green-600 text-white px-6 py-3 rounded-lg font-medium">
+                          ✅ Google Connected (Gmail + Calendar)
+                        </div>
+                      ) : (
+                        <a
+                          href="/api/auth/signin/google"
+                          className="inline-flex items-center rounded-lg bg-white/10 px-6 py-3 hover:bg-white/20 transition-colors text-white font-medium"
+                        >
+                          🔗 Connect Google (Gmail + Calendar)
+                        </a>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-gray-400">
+                      Google integration not configured
+                    </div>
+                  )}
+                  
+                  {isFeatureEnabled('gmail') ? (
+                    <div className="flex items-center justify-center">
+                      {isConnected('azure-ad') ? (
+                        <div className="bg-green-600 text-white px-6 py-3 rounded-lg font-medium">
+                          ✅ Outlook Connected
+                        </div>
+                      ) : (
+                        <a
+                          href="/api/auth/signin/azure-ad"
+                          className="inline-flex items-center rounded-lg bg-white/10 px-6 py-3 hover:bg-white/20 transition-colors text-white font-medium"
+                        >
+                          🔗 Connect Outlook (Email + Calendar)
+                        </a>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-gray-400">
+                      Outlook integration not configured
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Quick Stats */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-gray-700 rounded-lg p-6">
@@ -217,86 +265,6 @@ export default function DashboardPage() {
                     <div className="md:col-span-2">
                       <p className="text-gray-400">Groups</p>
                       <p className="text-white">{session.user.groups.join(', ')}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Connected Accounts */}
-              <div className="bg-gray-700 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-white mb-4">Connected Accounts</h3>
-                <div className="space-y-4">
-                  {isFeatureEnabled('gmail') ? (
-                    <div className="flex items-center justify-between p-4 bg-gray-800 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center">
-                          <span className="text-white font-bold">G</span>
-                        </div>
-                        <div>
-                          <p className="text-white font-medium">Gmail & Calendar</p>
-                          <p className="text-gray-400 text-sm">Google Workspace</p>
-                        </div>
-                      </div>
-                      {isConnected('google') ? (
-                        <span className="text-green-400 text-sm font-medium">Connected</span>
-                      ) : (
-                        <button
-                          onClick={() => handleConnect('google')}
-                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white text-sm font-medium transition-colors"
-                        >
-                          Connect
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between p-4 bg-gray-800 rounded-lg opacity-50">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center">
-                          <span className="text-white font-bold">G</span>
-                        </div>
-                        <div>
-                          <p className="text-white font-medium">Gmail & Calendar</p>
-                          <p className="text-gray-400 text-sm">Not configured</p>
-                        </div>
-                      </div>
-                      <span className="text-gray-400 text-sm">Unavailable</span>
-                    </div>
-                  )}
-
-                  {isFeatureEnabled('gmail') ? (
-                    <div className="flex items-center justify-between p-4 bg-gray-800 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
-                          <span className="text-white font-bold">O</span>
-                        </div>
-                        <div>
-                          <p className="text-white font-medium">Outlook & Calendar</p>
-                          <p className="text-gray-400 text-sm">Microsoft 365</p>
-                        </div>
-                      </div>
-                      {isConnected('azure-ad') ? (
-                        <span className="text-green-400 text-sm font-medium">Connected</span>
-                      ) : (
-                        <button
-                          onClick={() => handleConnect('azure-ad')}
-                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white text-sm font-medium transition-colors"
-                        >
-                          Connect
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between p-4 bg-gray-800 rounded-lg opacity-50">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
-                          <span className="text-white font-bold">O</span>
-                        </div>
-                        <div>
-                          <p className="text-white font-medium">Outlook & Calendar</p>
-                          <p className="text-gray-400 text-sm">Not configured</p>
-                        </div>
-                      </div>
-                      <span className="text-gray-400 text-sm">Unavailable</span>
                     </div>
                   )}
                 </div>
