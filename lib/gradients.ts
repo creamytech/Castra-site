@@ -1,1 +1,0 @@
-export const premiumBlobs = [{ className: "from-[#2E2A47] to-transparent", style: { top: "-20%", left: "-10%", width: "50rem", height: "50rem" } }, { className: "from-[#D4AF37] to-transparent", style: { bottom: "-25%", right: "-10%", width: "42rem", height: "42rem" } }];

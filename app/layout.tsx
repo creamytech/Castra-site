@@ -1,1 +1,22 @@
-import "./globals.css"; import type { Metadata } from "next"; import { Inter, DM_Serif_Display } from "next/font/google"; import Providers from "@/components/Providers"; import Navbar from "@/components/Navbar"; import Footer from "@/components/Footer"; import MobileStickyCTA from "@/components/MobileStickyCTA"; const inter = Inter({ subsets: ["latin"], variable: "--font-inter" }); const serif = DM_Serif_Display({ subsets: ["latin"], weight: "400", variable: "--font-serif" }); export const metadata: Metadata = { title: "Castra  Inbox & Calendar Co-Pilot" }; export default function RootLayout({ children }: { children: React.ReactNode }) { return ( <html lang="en"> <body className={`${inter.variable} ${serif.variable} font-sans bg-soft text-indigo antialiased`}> <Providers> <Navbar /> {children} <Footer /> <MobileStickyCTA /> </Providers> </body> </html> ); }
+import './globals.css'
+import type { Metadata } from 'next'
+import Providers from './providers'
+
+export const metadata: Metadata = {
+  title: 'Castra - Realtor AI Co-Pilot',
+  description: 'Join the waitlist for Castra, your AI-powered realtor assistant.',
+}
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="en">
+      <body className="bg-gray-900 text-white">
+        <Providers>{children}</Providers>
+      </body>
+    </html>
+  )
+}

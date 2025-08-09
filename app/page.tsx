@@ -1,1 +1,76 @@
-import GradientBG from "@/components/GradientBG"; import LiveDemo from "@/components/LiveDemo"; import WaitlistDialog from "@/components/WaitlistDialog"; import TrustBar from "@/components/TrustBar"; import CTA from "@/components/CTA"; import { siteCopy } from "@/lib/copy"; export default function Home() { return ( <main className="relative"> <section className="relative overflow-hidden"> <GradientBG /> <div className="max-w-6xl mx-auto px-4 py-16 sm:py-24"> <div className="text-center"> <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/70 dark:bg-white/[0.06] border border-gold/20 text-xs font-medium animate-pulse"> {siteCopy.hero.eyebrow} </div> <h1 className="mt-4 font-serif text-4xl sm:text-6xl tracking-tight text-indigo animate-fade-in"> {siteCopy.hero.title} </h1> <p className="mt-4 text-base sm:text-lg text-slate max-w-2xl mx-auto animate-fade-in-delay"> {siteCopy.hero.subtitle} </p> <div className="mt-6 flex flex-wrap items-center justify-center gap-3 animate-fade-in-delay-2"> <a href="#demo" className="px-5 py-3 rounded-xl bg-[#2E2A47] text-white shadow-glow hover:shadow-glow/80 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#D4AF37]/30 transition-all duration-200 hover:scale-105"> {siteCopy.hero.primaryCta} </a> <WaitlistDialog triggerClassName="px-5 py-3 rounded-xl border border-gold text-gold hover:bg-gold/10 transition-all duration-200 hover:scale-105" /> </div> <div className="mt-4"> <TrustBar items={siteCopy.hero.trust} /> </div> </div> <div id="demo" className="mt-12 animate-fade-in-delay-3"> <span className="block text-center text-xs font-semibold text-indigo bg-gold/20 px-2 py-1 rounded w-fit mx-auto">Demo only  no live email access</span> <div className="mt-3"> <LiveDemo /> </div> </div> </div> </section> <section className="py-16"> <div className="max-w-6xl mx-auto px-4"> <CTA title={siteCopy.footer.ctaTitle} subtitle={siteCopy.footer.ctaSubtitle} buttonText={siteCopy.footer.ctaButton} /> </div> </section> </main> ); }
+'use client'
+
+import { useState } from 'react'
+
+export default function Home() {
+  const [email, setEmail] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [message, setMessage] = useState('')
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+    setMessage('')
+
+    try {
+      const response = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      })
+
+      if (response.ok) {
+        setMessage('Thanks for joining the waitlist!')
+        setEmail('')
+      } else {
+        setMessage('Something went wrong. Please try again.')
+      }
+    } catch (error) {
+      setMessage('Something went wrong. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <main className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+      <div className="max-w-4xl mx-auto px-4 py-16">
+        <div className="text-center">
+          <h1 className="text-5xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+            Castra
+          </h1>
+          <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
+            Your AI-powered realtor co-pilot. Join the waitlist to be among the first to experience the future of real estate.
+          </p>
+          
+          <form onSubmit={handleSubmit} className="max-w-md mx-auto">
+            <div className="flex gap-2">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email"
+                required
+                className="flex-1 px-4 py-3 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg font-medium transition-colors"
+              >
+                {isSubmitting ? 'Joining...' : 'Join Waitlist'}
+              </button>
+            </div>
+            {message && (
+              <p className={`mt-3 text-sm ${message.includes('Thanks') ? 'text-green-400' : 'text-red-400'}`}>
+                {message}
+              </p>
+            )}
+          </form>
+        </div>
+      </div>
+    </main>
+  )
+}

@@ -1,0 +1,168 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// NextAuth Models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  
+  // CRM Relations
+  contacts      Contact[]
+  leads         Lead[]
+  deals         Deal[]
+  templates     Template[]
+  toneEmbeddings ToneEmbedding[]
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// CRM Models
+model Contact {
+  id          String   @id @default(cuid())
+  userId      String
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String?
+  company     String?
+  title       String?
+  notes       String?
+  tags        String[]
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leads       Lead[]
+  deals       Deal[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([userId])
+}
+
+model Lead {
+  id          String   @id @default(cuid())
+  userId      String
+  contactId   String?
+  title       String
+  description String?
+  status      String   @default("new") // new, qualified, unqualified, converted
+  source      String?
+  value       Float?
+  notes       String?
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contact     Contact? @relation(fields: [contactId], references: [id])
+  deals       Deal[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([contactId])
+}
+
+model Deal {
+  id          String   @id @default(cuid())
+  userId      String
+  contactId   String?
+  leadId      String?
+  title       String
+  description String?
+  status      String   @default("prospecting") // prospecting, qualified, proposal, negotiation, closed-won, closed-lost
+  value       Float?
+  probability Float    @default(0)
+  closeDate   DateTime?
+  notes       String?
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contact     Contact? @relation(fields: [contactId], references: [id])
+  lead        Lead?    @relation(fields: [leadId], references: [id])
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([contactId])
+  @@index([leadId])
+}
+
+model Template {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  type        String   // email, sms, letter, etc.
+  subject     String?
+  content     String
+  variables   String[] // template variables like {{firstName}}, {{company}}
+  isActive    Boolean  @default(true)
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([userId])
+}
+
+model ToneEmbedding {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String   // e.g., "professional", "friendly", "formal"
+  description String?
+  embedding   Float[]  // vector embedding for AI tone matching
+  isActive    Boolean  @default(true)
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([userId])
+}
