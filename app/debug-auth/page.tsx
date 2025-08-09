@@ -1,7 +1,9 @@
 'use client'
 
-import { useSession, signIn, signOut } from 'next-auth/react'
-import { useState } from 'react'
+import { useSession } from 'next-auth/react'
+import { useState, useEffect } from 'react'
+
+export const dynamic = 'force-dynamic'
 
 export default function DebugAuthPage() {
   const { data: session, status } = useSession()

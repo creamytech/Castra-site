@@ -4,6 +4,9 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { isAdmin } from '@/lib/rbac'
+import MainLayout from '@/components/MainLayout'
+
+export const dynamic = 'force-dynamic'
 
 export default function AdminPage() {
   const { data: session, status } = useSession()

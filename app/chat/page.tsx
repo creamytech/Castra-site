@@ -5,6 +5,8 @@ import { useState, useRef, useEffect } from 'react'
 import MainLayout from '@/components/MainLayout'
 import Toast from '@/components/Toast'
 
+export const dynamic = 'force-dynamic'
+
 interface Message {
   role: 'user' | 'assistant'
   content: string

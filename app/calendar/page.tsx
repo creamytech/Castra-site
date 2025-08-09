@@ -5,7 +5,9 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import ThemeToggle from '@/components/ThemeToggle'
 
-type CalEvent = {
+export const dynamic = 'force-dynamic'
+
+interface CalEvent {
   id: string
   summary: string
   startISO: string | null

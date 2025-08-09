@@ -5,6 +5,8 @@ import { useState, useEffect } from 'react'
 import MainLayout from '@/components/MainLayout'
 import Toast from '@/components/Toast'
 
+export const dynamic = 'force-dynamic'
+
 interface Contact {
   id: string
   name: string

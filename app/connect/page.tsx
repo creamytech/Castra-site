@@ -5,6 +5,9 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import MainLayout from '@/components/MainLayout'
+import Toast from '@/components/Toast'
+
+export const dynamic = 'force-dynamic'
 
 interface Account {
   id: string

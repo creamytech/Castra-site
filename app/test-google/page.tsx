@@ -4,6 +4,8 @@ import { useSession } from 'next-auth/react'
 import { useState } from 'react'
 import Link from 'next/link'
 
+export const dynamic = 'force-dynamic'
+
 export default function TestGooglePage() {
   const { data: session } = useSession()
   const [testResult, setTestResult] = useState<string>('')
