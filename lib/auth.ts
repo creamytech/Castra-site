@@ -43,22 +43,22 @@ if (config.azure.clientId && config.azure.clientSecret && config.azure.tenantId)
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: providers.length > 0 ? providers : [
-    // Fallback provider for development/testing
+    // Fallback provider for when no OAuth providers are configured
     {
       id: 'credentials',
-      name: 'Development',
+      name: 'Demo',
       type: 'credentials',
       credentials: {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' }
       },
       async authorize(credentials) {
-        // For development only - allow any email/password
-        if (process.env.NODE_ENV === 'development' && credentials?.email) {
+        // Allow demo login with any email/password when no OAuth providers are configured
+        if (credentials?.email) {
           return {
-            id: 'dev-user',
+            id: 'demo-user',
             email: credentials.email,
-            name: 'Development User',
+            name: 'Demo User',
           }
         }
         return null

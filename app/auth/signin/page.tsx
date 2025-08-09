@@ -59,26 +59,21 @@ export default function SignInPage() {
               Sign in with Microsoft
             </button>
 
-            {process.env.NODE_ENV === 'development' && (
-              <button
-                onClick={() => signIn('credentials', { 
-                  email: 'dev@castra.com', 
-                  password: 'dev123',
-                  callbackUrl: '/connect' 
-                })}
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded transition-colors"
-              >
-                Development Sign In
-              </button>
-            )}
+            <button
+              onClick={() => signIn('credentials', { 
+                email: 'demo@castra.com', 
+                password: 'demo123',
+                callbackUrl: '/connect' 
+              })}
+              className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded transition-colors"
+            >
+              Demo Sign In
+            </button>
           </div>
 
           <div className="mt-6 text-center">
             <p className="text-gray-400 text-sm">
-              {process.env.NODE_ENV === 'development' 
-                ? 'Development mode: Use any email/password or click Development Sign In'
-                : 'Authentication providers not configured. Please contact your administrator.'
-              }
+              Demo mode: Use any email/password or click Demo Sign In to explore Castra
             </p>
           </div>
         </div>
