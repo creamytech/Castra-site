@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { listRecentThreads } from '@/lib/google'
+import { listRecentThreads, getThreadDetail } from '@/lib/google'
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic'
@@ -17,28 +17,29 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Test Gmail API access
+    const { searchParams } = new URL(request.url)
+    const maxResults = parseInt(searchParams.get('maxResults') || '10')
+    const threadId = searchParams.get('threadId')
+
+    // Pass session tokens for JWT strategy
     const sessionTokens = {
       accessToken: (session as any).accessToken,
       refreshToken: (session as any).refreshToken,
     }
-    
-    const threads = await listRecentThreads(session.user.id, 5, sessionTokens)
-    
-    return NextResponse.json({
-      success: true,
-      message: 'Gmail API access working',
-      threadCount: threads.length,
-      threads: threads.map((thread: any) => ({
-        id: thread.id,
-        snippet: thread.snippet
-      }))
-    })
+
+    if (threadId) {
+      // Get specific thread details
+      const thread = await getThreadDetail(session.user.id, threadId, sessionTokens)
+      return NextResponse.json({ thread })
+    } else {
+      // List recent threads
+      const threads = await listRecentThreads(session.user.id, maxResults, sessionTokens)
+      return NextResponse.json({ threads })
+    }
   } catch (error) {
-    console.error('Gmail API test error:', error)
+    console.error('Inbox API error:', error)
     return NextResponse.json(
       { 
-        success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
         details: 'Check if Google account is connected and tokens are valid'
       },

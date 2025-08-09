@@ -30,7 +30,7 @@ async function getGoogleOAuth(userId: string, sessionTokens?: { accessToken?: st
     process.env.GOOGLE_CLIENT_SECRET
   )
 
-  // If session tokens are provided, use them
+  // If session tokens are provided, use them (JWT strategy)
   if (sessionTokens?.accessToken) {
     oauth2Client.setCredentials({
       access_token: sessionTokens.accessToken,
@@ -39,33 +39,30 @@ async function getGoogleOAuth(userId: string, sessionTokens?: { accessToken?: st
     return oauth2Client
   }
 
-  // Otherwise, try to get from database
-  if (!prisma) {
-    throw new Error('Database not configured')
+  // Otherwise, try to get from database (fallback for database strategy)
+  if (prisma) {
+    const account = await prisma.account.findFirst({
+      where: {
+        userId,
+        provider: 'google',
+      },
+    })
+
+    if (account?.access_token) {
+      oauth2Client.setCredentials({
+        access_token: account.access_token,
+        refresh_token: account.refresh_token,
+      })
+      return oauth2Client
+    }
   }
 
-  const account = await prisma.account.findFirst({
-    where: {
-      userId,
-      provider: 'google',
-    },
-  })
-
-  if (!account?.access_token) {
-    throw new Error('Google account not connected')
-  }
-
-  oauth2Client.setCredentials({
-    access_token: account.access_token,
-    refresh_token: account.refresh_token,
-  })
-
-  return oauth2Client
+  throw new Error('Google account not connected - no valid tokens found')
 }
 
-export async function listRecentThreads(userId: string, maxResults: number = 10) {
+export async function listRecentThreads(userId: string, maxResults: number = 10, sessionTokens?: { accessToken?: string; refreshToken?: string }) {
   try {
-    const auth = await getGoogleOAuth(userId)
+    const auth = await getGoogleOAuth(userId, sessionTokens)
     const gmail = google.gmail({ version: 'v1', auth })
 
     const response = await gmail.users.threads.list({
@@ -80,9 +77,9 @@ export async function listRecentThreads(userId: string, maxResults: number = 10)
   }
 }
 
-export async function getThreadDetail(userId: string, threadId: string): Promise<GmailThread> {
+export async function getThreadDetail(userId: string, threadId: string, sessionTokens?: { accessToken?: string; refreshToken?: string }): Promise<GmailThread> {
   try {
-    const auth = await getGoogleOAuth(userId)
+    const auth = await getGoogleOAuth(userId, sessionTokens)
     const gmail = google.gmail({ version: 'v1', auth })
 
     const response = await gmail.users.threads.get({
@@ -101,10 +98,11 @@ export async function createDraft(
   userId: string,
   to: string,
   subject: string,
-  htmlContent: string
+  htmlContent: string,
+  sessionTokens?: { accessToken?: string; refreshToken?: string }
 ) {
   try {
-    const auth = await getGoogleOAuth(userId)
+    const auth = await getGoogleOAuth(userId, sessionTokens)
     const gmail = google.gmail({ version: 'v1', auth })
 
     const message = [
@@ -139,10 +137,11 @@ export async function createCalendarEvent(
   summary: string,
   startISO: string,
   endISO: string,
-  attendees: string[] = []
+  attendees: string[] = [],
+  sessionTokens?: { accessToken?: string; refreshToken?: string }
 ) {
   try {
-    const auth = await getGoogleOAuth(userId)
+    const auth = await getGoogleOAuth(userId, sessionTokens)
     const calendar = google.calendar({ version: 'v3', auth })
 
     const event = {

@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { listRecentThreads } from '@/lib/google'
+import { createCalendarEvent } from '@/lib/google'
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic'
 
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
 
@@ -17,28 +17,35 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Test Gmail API access
+    const { summary, startISO, endISO, attendees } = await request.json()
+
+    if (!summary || !startISO || !endISO) {
+      return NextResponse.json(
+        { error: 'Summary, start time, and end time are required' },
+        { status: 400 }
+      )
+    }
+
+    // Pass session tokens for JWT strategy
     const sessionTokens = {
       accessToken: (session as any).accessToken,
       refreshToken: (session as any).refreshToken,
     }
-    
-    const threads = await listRecentThreads(session.user.id, 5, sessionTokens)
-    
-    return NextResponse.json({
-      success: true,
-      message: 'Gmail API access working',
-      threadCount: threads.length,
-      threads: threads.map((thread: any) => ({
-        id: thread.id,
-        snippet: thread.snippet
-      }))
-    })
+
+    const event = await createCalendarEvent(
+      session.user.id,
+      summary,
+      startISO,
+      endISO,
+      attendees || [],
+      sessionTokens
+    )
+
+    return NextResponse.json({ event })
   } catch (error) {
-    console.error('Gmail API test error:', error)
+    console.error('Calendar API error:', error)
     return NextResponse.json(
       { 
-        success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
         details: 'Check if Google account is connected and tokens are valid'
       },

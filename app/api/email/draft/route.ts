@@ -70,7 +70,13 @@ Write a professional email draft:`,
 
     const htmlContent = completion.choices[0]?.message?.content || 'Unable to generate draft'
 
-    const draft = await createDraft(session.user.id, to, subject, htmlContent)
+    // Pass session tokens for JWT strategy
+    const sessionTokens = {
+      accessToken: (session as any).accessToken,
+      refreshToken: (session as any).refreshToken,
+    }
+
+    const draft = await createDraft(session.user.id, to, subject, htmlContent, sessionTokens)
 
     return NextResponse.json({
       html: htmlContent,
