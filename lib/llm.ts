@@ -54,7 +54,7 @@ Always respond in HTML format for better email presentation.`
   return completion.choices[0]?.message?.content || 'Unable to generate reply'
 }
 
-export async function generateChatReply(messages: any[], tools: any[], systemPrompt: string): Promise<string> {
+export async function generateChatReply(messages: any[], functions: any[], systemPrompt: string): Promise<string> {
   if (!openai) {
     throw new Error('OpenAI API key not configured')
   }
@@ -69,7 +69,10 @@ export async function generateChatReply(messages: any[], tools: any[], systemPro
         },
         ...messages,
       ],
-      tools,
+      tools: functions.map(fn => ({
+        type: "function",
+        function: fn
+      })),
       tool_choice: 'auto',
       max_tokens: 1000,
       temperature: 0.7,
@@ -210,8 +213,10 @@ async function executeTool(name: string, args: any): Promise<string> {
       case 'prepareListingCoverEmail':
         const result = await prepareListingCoverEmail(args)
         return JSON.stringify(result)
-      case 'createCalendarEvent':
+      case 'create_calendar_event':
         return await createCalendarEvent(args)
+      case 'get_recent_emails':
+        return await getRecentEmails(args)
       default:
         throw new Error(`Unknown tool: ${name}`)
     }
@@ -227,8 +232,10 @@ async function executeTool(name: string, args: any): Promise<string> {
         return 'This is a beautiful property with great potential. Contact me for more details.'
       case 'prepareListingCoverEmail':
         return JSON.stringify({ html: '<p>Sample email content</p>', preview: true })
-      case 'createCalendarEvent':
+      case 'create_calendar_event':
         return 'Calendar event creation failed. Please try again or create the event manually.'
+      case 'get_recent_emails':
+        return 'Email access failed. Please check your Gmail connection.'
       default:
         return 'Tool execution failed'
     }
@@ -238,28 +245,26 @@ async function executeTool(name: string, args: any): Promise<string> {
 async function createCalendarEvent(args: any): Promise<string> {
   try {
     // Extract event details from args
-    const { summary, startTime, endTime, attendees = [], location, description } = args
+    const { summary, start, end, attendees = [], location, description, timeZone = "America/New_York" } = args
     
-    if (!summary || !startTime) {
-      throw new Error('Missing required event details: summary and startTime')
+    if (!summary || !start || !end) {
+      throw new Error('Missing required event details: summary, start, and end')
     }
 
-    // Convert to ISO format if needed
-    const startISO = new Date(startTime).toISOString()
-    const endISO = endTime ? new Date(endTime).toISOString() : new Date(new Date(startTime).getTime() + 60 * 60 * 1000).toISOString()
-
     // Make API call to create event
-    const response = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/chat/create-event`, {
+    const response = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/calendar/events`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         summary,
-        startISO,
-        endISO,
+        description,
+        start,
+        end,
+        timeZone,
         attendees,
-        timeZone: 'UTC'
+        location
       })
     })
 
@@ -273,5 +278,41 @@ async function createCalendarEvent(args: any): Promise<string> {
   } catch (error) {
     console.error('Calendar event creation error:', error)
     throw new Error(`Failed to create calendar event: ${error instanceof Error ? error.message : 'Unknown error'}`)
+  }
+}
+
+async function getRecentEmails(args: any): Promise<string> {
+  try {
+    const { q = '', limit = 10 } = args
+
+    // Make API call to get recent emails
+    const response = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/gmail/sync?q=${encodeURIComponent(q)}&limit=${limit}`)
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Failed to fetch emails')
+    }
+
+    const result = await response.json()
+    const emails = result.messages || []
+
+    if (emails.length === 0) {
+      return 'No emails found matching your search criteria.'
+    }
+
+    // Format emails for display
+    const emailList = emails.map((email: any) => ({
+      from: email.from,
+      subject: email.subject || '(No subject)',
+      date: new Date(email.internalDate).toLocaleDateString(),
+      snippet: email.snippet
+    }))
+
+    return `Found ${emails.length} recent emails:\n\n${emailList.map((email: any) => 
+      `📧 **${email.subject}**\nFrom: ${email.from}\nDate: ${email.date}\n${email.snippet}\n`
+    ).join('\n')}`
+  } catch (error) {
+    console.error('Get recent emails error:', error)
+    throw new Error(`Failed to fetch emails: ${error instanceof Error ? error.message : 'Unknown error'}`)
   }
 }

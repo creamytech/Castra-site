@@ -61,8 +61,29 @@ model User {
   emailThreadCaches EmailThreadCache[]
   emailLogs     EmailLog[]
   
+  // Gmail Relations
+  messages      Message[]
+  
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+}
+
+// Gmail Message Model
+model Message {
+  id           String   @id
+  threadId     String
+  userId       String
+  from         String
+  subject      String
+  snippet      String
+  internalDate DateTime
+  labels       String[]
+  createdAt    DateTime @default(now())
+  
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, internalDate])
+  @@index([threadId])
 }
 
 // Chat Models

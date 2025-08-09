@@ -3,11 +3,12 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { SessionProvider } from "next-auth/react";
 import Sidebar from "@/components/Sidebar";
 import TransitionProvider from "./motion/TransitionProvider";
 import AssistantDock from "@/components/AssistantDock";
 import CommandPalette from "@/components/CommandPalette";
+import { UserMenu } from "@/components/user-menu";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { applyTheme, getInitialTheme } from "@/lib/ui/theme";
 
 export default function AppLayout({
@@ -50,7 +51,7 @@ export default function AppLayout({
           document.removeEventListener('keydown', handleNextKey);
           switch (e2.key) {
             case 'i':
-              window.open('/inbox', '_blank');
+              window.open('/dashboard/inbox', '_blank');
               break;
             case 'c':
               window.open('/calendar', '_blank');
@@ -76,88 +77,92 @@ export default function AppLayout({
 
   if (!isClient) {
     return (
-      <SessionProvider>
-        <div className="min-h-screen bg-background">
-          <div className="flex items-center justify-center min-h-screen">
-            <div className="text-foreground">Loading...</div>
-          </div>
+      <div className="min-h-screen bg-background">
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-foreground">Loading...</div>
         </div>
-      </SessionProvider>
+      </div>
     );
   }
 
   return (
-    <SessionProvider>
-      <div className="min-h-screen bg-background">
-        <Sidebar />
+    <div className="min-h-screen bg-background">
+      <Sidebar />
 
-        <div className="ml-64 transition-all duration-300">
-          {/* Header */}
-          <header className="bg-card text-card-foreground border-b border-border px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <h1 className="text-xl font-semibold text-foreground">Castra</h1>
-              </div>
-              
-              <div className="flex items-center space-x-4">
-                {/* Search Button */}
-                <button
-                  onClick={() => setIsCommandPaletteOpen(true)}
-                  className="flex items-center space-x-2 px-3 py-2 bg-muted hover:bg-muted/80 rounded-md transition-colors text-muted-foreground hover:text-foreground"
-                  title="Search (⌘K or /)"
-                >
-                  <span>🔍</span>
-                  <span className="hidden sm:inline">Search</span>
-                  <kbd className="hidden sm:inline text-xs bg-background px-1 rounded">
-                    ⌘K
-                  </kbd>
-                </button>
-
-                {/* Quick Actions */}
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => window.open('/chat', '_blank')}
-                    className="btn-ghost text-sm"
-                    title="New Chat (⌘N)"
-                  >
-                    💬 New Chat
-                  </button>
-                  <button
-                    onClick={() => window.open('/inbox', '_blank')}
-                    className="btn-ghost text-sm"
-                    title="Inbox (⌘G I)"
-                  >
-                    📧 Inbox
-                  </button>
-                  <button
-                    onClick={() => window.open('/calendar', '_blank')}
-                    className="btn-ghost text-sm"
-                    title="Calendar (⌘G C)"
-                  >
-                    📅 Calendar
-                  </button>
-                </div>
-              </div>
+      <div className="ml-64 transition-all duration-300">
+        {/* Header */}
+        <header className="bg-card text-card-foreground border-b border-border px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <h1 className="text-xl font-semibold text-foreground">Castra</h1>
             </div>
-          </header>
+            
+            <div className="flex items-center space-x-4">
+              {/* Search Button */}
+              <button
+                onClick={() => setIsCommandPaletteOpen(true)}
+                className="flex items-center space-x-2 px-3 py-2 bg-muted hover:bg-muted/80 rounded-md transition-colors text-muted-foreground hover:text-foreground"
+                title="Search (⌘K or /)"
+              >
+                <span>🔍</span>
+                <span className="hidden sm:inline">Search</span>
+                <kbd className="hidden sm:inline text-xs bg-background px-1 rounded">
+                  ⌘K
+                </kbd>
+              </button>
 
-          {/* Main Content */}
-          <main className="p-6">
-            <TransitionProvider>
-              {children}
-            </TransitionProvider>
-          </main>
-        </div>
+              {/* Quick Actions */}
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => window.open('/chat', '_blank')}
+                  className="btn-ghost text-sm"
+                  title="New Chat (⌘N)"
+                >
+                  💬 New Chat
+                </button>
+                <button
+                  onClick={() => window.open('/dashboard/inbox', '_blank')}
+                  className="btn-ghost text-sm"
+                  title="Inbox (⌘G I)"
+                >
+                  📧 Inbox
+                </button>
+                <button
+                  onClick={() => window.open('/calendar', '_blank')}
+                  className="btn-ghost text-sm"
+                  title="Calendar (⌘G C)"
+                >
+                  📅 Calendar
+                </button>
+              </div>
 
-        {/* Global Assistant Dock */}
-        <AssistantDock />
+              {/* User Menu */}
+              <UserMenu />
+            </div>
+          </div>
+        </header>
 
-        {/* Global Command Palette */}
-        <CommandPalette 
-          isOpen={isCommandPaletteOpen}
-          onClose={() => setIsCommandPaletteOpen(false)}
-        />
+        {/* Main Content */}
+        <main className="p-6">
+          <TransitionProvider>
+            {children}
+          </TransitionProvider>
+        </main>
       </div>
-    </SessionProvider>
+
+      {/* Theme Toggle - Bottom Left */}
+      <div className="fixed bottom-4 left-4 z-50">
+        <ThemeToggle />
+      </div>
+
+      {/* Global Assistant Dock */}
+      <AssistantDock />
+
+      {/* Global Command Palette */}
+      <CommandPalette 
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+      />
+    </div>
   );
 }
