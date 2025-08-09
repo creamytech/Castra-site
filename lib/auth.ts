@@ -150,18 +150,42 @@ export const authOptions: NextAuthOptions = {
       console.log('Session Callback:', { 
         hasToken: !!token,
         userId: token?.id,
-        hasGoogleTokens: !!(token?.accessToken || token?.refreshToken)
+        hasGoogleTokens: !!(token?.accessToken || token?.refreshToken),
+        tokenKeys: token ? Object.keys(token) : []
       })
       
       if (token) {
-        session.user.id = token.id
-        session.user.oktaId = token.oktaId
-        session.user.groups = token.groups
+        // Ensure session.user exists
+        if (!session.user) {
+          session.user = {}
+        }
+        
+        // Set user ID if available
+        if (token.id) {
+          session.user.id = token.id
+        }
+        
+        // Set other user properties
+        if (token.oktaId) {
+          session.user.oktaId = token.oktaId
+        }
+        if (token.groups) {
+          session.user.groups = token.groups
+        }
+        
         // Add Google tokens to session
         (session as any).accessToken = token.accessToken
         ;(session as any).refreshToken = token.refreshToken
         ;(session as any).expiresAt = token.expiresAt
       }
+      
+      console.log('Final session:', {
+        hasUser: !!session.user,
+        userId: session.user?.id,
+        userEmail: session.user?.email,
+        userName: session.user?.name
+      })
+      
       return session
     },
   },

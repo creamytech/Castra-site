@@ -23,10 +23,22 @@ export default function DashboardPage() {
   const router = useRouter()
 
   // Debug logging
-  console.log('DashboardPage render:', { status, session: !!session, user: session?.user })
+  console.log('DashboardPage render:', { 
+    status, 
+    session: !!session, 
+    user: session?.user,
+    sessionKeys: session ? Object.keys(session) : [],
+    userKeys: session?.user ? Object.keys(session.user) : []
+  })
 
   useEffect(() => {
-    console.log('DashboardPage useEffect:', { status, session: !!session, user: session?.user })
+    console.log('DashboardPage useEffect:', { 
+      status, 
+      session: !!session, 
+      user: session?.user,
+      sessionKeys: session ? Object.keys(session) : [],
+      userKeys: session?.user ? Object.keys(session.user) : []
+    })
     if (status === 'authenticated') {
       // For JWT strategy, we don't need to check for user.id
       // Just stop loading and show the dashboard
@@ -34,7 +46,7 @@ export default function DashboardPage() {
     } else if (status === 'unauthenticated') {
       setLoading(false)
     }
-  }, [status])
+  }, [status, session])
 
   const fetchAccounts = async () => {
     try {
