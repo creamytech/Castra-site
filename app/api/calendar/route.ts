@@ -17,11 +17,43 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { summary, startISO, endISO, attendees } = await request.json()
+    const body = await request.json().catch(() => ({}))
+    const { summary, startISO, endISO, attendees = [], timeZone = "UTC" } = body
 
-    if (!summary || !startISO || !endISO) {
+    // Validate required fields
+    if (!summary || typeof summary !== 'string') {
       return NextResponse.json(
-        { error: 'Summary, start time, and end time are required' },
+        { error: 'Summary is required and must be a string' },
+        { status: 400 }
+      )
+    }
+
+    if (!startISO || typeof startISO !== 'string') {
+      return NextResponse.json(
+        { error: 'Start time (startISO) is required and must be a valid ISO string' },
+        { status: 400 }
+      )
+    }
+
+    if (!endISO || typeof endISO !== 'string') {
+      return NextResponse.json(
+        { error: 'End time (endISO) is required and must be a valid ISO string' },
+        { status: 400 }
+      )
+    }
+
+    // Validate attendees array
+    if (attendees && !Array.isArray(attendees)) {
+      return NextResponse.json(
+        { error: 'Attendees must be an array of email strings' },
+        { status: 400 }
+      )
+    }
+
+    // Validate timeZone
+    if (timeZone && typeof timeZone !== 'string') {
+      return NextResponse.json(
+        { error: 'TimeZone must be a string' },
         { status: 400 }
       )
     }
@@ -34,22 +66,33 @@ export async function POST(request: NextRequest) {
 
     const event = await createCalendarEvent(
       session.user.id,
-      summary,
-      startISO,
-      endISO,
-      attendees || [],
+      { summary, startISO, endISO, attendees, timeZone },
       sessionTokens
     )
 
-    return NextResponse.json({ event })
-  } catch (error) {
+    return NextResponse.json({ 
+      success: true,
+      event,
+      message: 'Calendar event created successfully'
+    })
+  } catch (error: any) {
     console.error('Calendar API error:', error)
+    
+    // Return specific error messages for better debugging
+    const errorMessage = error.message || 'Unknown error occurred'
+    const statusCode = error.code === 401 ? 401 : 
+                      error.code === 403 ? 403 : 
+                      error.code === 400 ? 400 : 500
+
     return NextResponse.json(
       { 
-        error: error instanceof Error ? error.message : 'Unknown error',
-        details: 'Check if Google account is connected and tokens are valid'
+        error: errorMessage,
+        details: statusCode === 401 ? 'Authentication failed - please reconnect your Google account' :
+                 statusCode === 403 ? 'Calendar access denied - check Google Calendar permissions' :
+                 statusCode === 400 ? 'Invalid event data - check date format and required fields' :
+                 'Check if Google account is connected and tokens are valid'
       },
-      { status: 500 }
+      { status: statusCode }
     )
   }
 }

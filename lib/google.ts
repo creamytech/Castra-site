@@ -15,8 +15,8 @@ export interface GmailThread {
 
 export interface CalendarEvent {
   summary: string
-  start: { dateTime: string }
-  end: { dateTime: string }
+  start: { dateTime: string; timeZone?: string }
+  end: { dateTime: string; timeZone?: string }
   attendees?: Array<{ email: string }>
 }
 
@@ -134,32 +134,79 @@ export async function createDraft(
 
 export async function createCalendarEvent(
   userId: string,
-  summary: string,
-  startISO: string,
-  endISO: string,
-  attendees: string[] = [],
+  { summary, startISO, endISO, attendees = [], timeZone = "UTC" }:
+  { summary: string; startISO: string; endISO: string; attendees?: string[]; timeZone?: string },
   sessionTokens?: { accessToken?: string; refreshToken?: string }
 ) {
   try {
     const auth = await getGoogleOAuth(userId, sessionTokens)
     const calendar = google.calendar({ version: 'v3', auth })
 
+    // Validate ISO strings
+    const startDate = new Date(startISO)
+    const endDate = new Date(endISO)
+    
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      throw new Error('Invalid ISO date format provided')
+    }
+
+    if (startDate >= endDate) {
+      throw new Error('Start time must be before end time')
+    }
+
     const event = {
       summary,
-      start: { dateTime: startISO, timeZone: 'UTC' },
-      end: { dateTime: endISO, timeZone: 'UTC' },
+      start: { dateTime: startISO, timeZone },
+      end: { dateTime: endISO, timeZone },
       attendees: attendees.map(email => ({ email })),
     }
 
-    const response = await calendar.events.insert({
-      calendarId: 'primary',
-      requestBody: event,
+    const { data } = await calendar.events.insert({ 
+      calendarId: 'primary', 
+      requestBody: event 
     })
 
-    return response.data
-  } catch (error) {
+    return { id: data.id, summary: data.summary, start: data.start, end: data.end }
+  } catch (error: any) {
     console.error('Failed to create calendar event:', error)
-    throw new Error('Failed to create calendar event')
+    
+    // Handle 401 errors (token expired) with retry logic
+    if (error.code === 401 && sessionTokens?.refreshToken) {
+      console.log('Token expired, attempting refresh...')
+      try {
+        // Clear session tokens to force database lookup
+        const retryAuth = await getGoogleOAuth(userId)
+        const calendar = google.calendar({ version: 'v3', auth: retryAuth })
+        
+        const event = {
+          summary,
+          start: { dateTime: startISO, timeZone },
+          end: { dateTime: endISO, timeZone },
+          attendees: attendees.map(email => ({ email })),
+        }
+
+        const { data } = await calendar.events.insert({ 
+          calendarId: 'primary', 
+          requestBody: event 
+        })
+
+        return { id: data.id, summary: data.summary, start: data.start, end: data.end }
+      } catch (retryError) {
+        console.error('Retry failed:', retryError)
+        throw new Error('Authentication failed - please reconnect your Google account')
+      }
+    }
+
+    // Handle specific Google API errors
+    if (error.code === 403) {
+      throw new Error('Calendar access denied - check Google Calendar permissions')
+    }
+    
+    if (error.code === 400) {
+      throw new Error('Invalid event data - check date format and required fields')
+    }
+
+    throw new Error(error.message || 'Failed to create calendar event')
   }
 }
 
