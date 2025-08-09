@@ -20,6 +20,29 @@ export default function SignInPage() {
     checkSession()
   }, [])
 
+  const handleDemoSignIn = async () => {
+    setLoading(true)
+    try {
+      const result = await signIn('credentials', { 
+        email: 'demo@castra.com', 
+        password: 'demo123',
+        callbackUrl: '/connect',
+        redirect: false
+      })
+      
+      if (result?.error) {
+        setError('Demo sign-in failed. Please try again.')
+        setLoading(false)
+      } else if (result?.ok) {
+        window.location.href = '/connect'
+      }
+    } catch (error) {
+      console.error('Demo sign-in error:', error)
+      setError('Demo sign-in failed. Please try again.')
+      setLoading(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -100,14 +123,11 @@ export default function SignInPage() {
               </div>
 
               <button
-                onClick={() => signIn('credentials', { 
-                  email: 'demo@castra.com', 
-                  password: 'demo123',
-                  callbackUrl: '/connect' 
-                })}
-                className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-medium py-3 px-4 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+                onClick={handleDemoSignIn}
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-medium py-3 px-4 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                🚀 Try Demo Mode
+                {loading ? 'Signing in...' : '🚀 Try Demo Mode'}
               </button>
             </div>
 
