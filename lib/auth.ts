@@ -61,6 +61,8 @@ export const authOptions: NextAuthOptions = {
   debug: process.env.NODE_ENV === 'development',
   // Allow linking accounts with the same email
   // This will allow users to sign in with different providers using the same email
+  // Allow dangerous email account linking for development
+  allowDangerousEmailAccountLinking: true,
   callbacks: {
     async signIn({ user, account, profile, email }: any) {
       console.log('SignIn Callback:', { 

@@ -20,56 +20,20 @@ export default function SignInPage() {
     checkSession()
   }, [])
 
-  const handleDemoSignIn = async () => {
+  const handleDemoSignIn = () => {
     setLoading(true)
-    try {
-      const result = await signIn('credentials', { 
-        email: 'demo@castra.com', 
-        password: 'demo123',
-        callbackUrl: '/connect',
-        redirect: false
-      })
-      
-      if (result?.error) {
-        setError('Demo sign-in failed. Please try again.')
-        setLoading(false)
-      } else if (result?.ok) {
-        window.location.href = '/connect'
-      }
-    } catch (error) {
-      console.error('Demo sign-in error:', error)
-      setError('Demo sign-in failed. Please try again.')
-      setLoading(false)
-    }
+    // Use default redirect behavior
+    signIn('credentials', { 
+      email: 'demo@castra.com', 
+      password: 'demo123',
+      callbackUrl: '/connect'
+    })
   }
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignIn = () => {
     setLoading(true)
-    try {
-      // Clear any existing session first
-      await signIn('credentials', { 
-        email: 'temp@clear.com', 
-        password: 'temp',
-        redirect: false
-      })
-      
-      // Then sign in with Google
-      const result = await signIn('google', { 
-        callbackUrl: '/connect',
-        redirect: false
-      })
-      
-      if (result?.error) {
-        setError('Google sign-in failed. Please try again.')
-        setLoading(false)
-      } else if (result?.ok) {
-        window.location.href = '/connect'
-      }
-    } catch (error) {
-      console.error('Google sign-in error:', error)
-      setError('Google sign-in failed. Please try again.')
-      setLoading(false)
-    }
+    // Use default redirect behavior
+    signIn('google', { callbackUrl: '/connect' })
   }
 
   if (loading) {
