@@ -117,9 +117,25 @@ async function getGoogleOAuth(userId: string) {
     throw new Error("Google account not connected - no valid tokens found");
   }
 
+  // Set up token refresh handler
+  oauth2Client.on('tokens', async (tokens) => {
+    if (tokens.refresh_token) {
+      // Update the database with new tokens
+      await prisma.account.update({
+        where: { id: account.id },
+        data: {
+          access_token: tokens.access_token,
+          refresh_token: tokens.refresh_token,
+          expires_at: tokens.expiry_date ? Math.floor(tokens.expiry_date / 1000) : null,
+        },
+      });
+    }
+  });
+
   oauth2Client.setCredentials({
     access_token: account.access_token,
     refresh_token: account.refresh_token,
+    expiry_date: account.expires_at ? account.expires_at * 1000 : null,
   });
 
   return oauth2Client;

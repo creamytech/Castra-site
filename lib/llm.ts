@@ -98,12 +98,12 @@ export async function generateChatReply(messages: any[], tools: any[], systemPro
           toolResults.push({
             tool_call_id: toolCall.id,
             role: 'tool' as const,
-            content: `Error executing ${toolCall.function.name}: ${error}`,
+            content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
           })
         }
       }
 
-      // Get the final response after tool execution
+      // Send the tool results back to the model
       const finalCompletion = await openai.chat.completions.create({
         model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
         messages: [
@@ -124,8 +124,8 @@ export async function generateChatReply(messages: any[], tools: any[], systemPro
 
     return response.content || 'Unable to generate response'
   } catch (error) {
-    console.error('Error in generateChatReply:', error)
-    throw error
+    console.error('Chat reply generation error:', error)
+    return 'Sorry, I encountered an error while processing your request. Please try again.'
   }
 }
 
@@ -210,6 +210,8 @@ async function executeTool(name: string, args: any): Promise<string> {
       case 'prepareListingCoverEmail':
         const result = await prepareListingCoverEmail(args)
         return JSON.stringify(result)
+      case 'createCalendarEvent':
+        return await createCalendarEvent(args)
       default:
         throw new Error(`Unknown tool: ${name}`)
     }
@@ -225,8 +227,51 @@ async function executeTool(name: string, args: any): Promise<string> {
         return 'This is a beautiful property with great potential. Contact me for more details.'
       case 'prepareListingCoverEmail':
         return JSON.stringify({ html: '<p>Sample email content</p>', preview: true })
+      case 'createCalendarEvent':
+        return 'Calendar event creation failed. Please try again or create the event manually.'
       default:
         return 'Tool execution failed'
     }
+  }
+}
+
+async function createCalendarEvent(args: any): Promise<string> {
+  try {
+    // Extract event details from args
+    const { summary, startTime, endTime, attendees = [], location, description } = args
+    
+    if (!summary || !startTime) {
+      throw new Error('Missing required event details: summary and startTime')
+    }
+
+    // Convert to ISO format if needed
+    const startISO = new Date(startTime).toISOString()
+    const endISO = endTime ? new Date(endTime).toISOString() : new Date(new Date(startTime).getTime() + 60 * 60 * 1000).toISOString()
+
+    // Make API call to create event
+    const response = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/chat/create-event`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        summary,
+        startISO,
+        endISO,
+        attendees,
+        timeZone: 'UTC'
+      })
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Failed to create calendar event')
+    }
+
+    const result = await response.json()
+    return `Calendar event "${summary}" created successfully! Event ID: ${result.event.id}`
+  } catch (error) {
+    console.error('Calendar event creation error:', error)
+    throw new Error(`Failed to create calendar event: ${error instanceof Error ? error.message : 'Unknown error'}`)
   }
 }

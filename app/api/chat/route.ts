@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     
     if (messages.length === 0) {
       return NextResponse.json({ 
-        message: "Hi! I'm Castra, your AI-powered realtor co-pilot. Ask me about your leads, deals, email drafts, or schedule management. How can I help you today?" 
+        message: "Hi! I'm Castra, your AI-powered realtor co-pilot. I can help you with:\n\n• **Email Management**: Draft replies, summarize threads\n• **Calendar Events**: Create and manage appointments\n• **CRM Tasks**: Find contacts, manage leads\n• **Property Info**: Get listing details and prepare emails\n\nAsk me about your leads, deals, email drafts, or schedule management. How can I help you today?" 
       })
     }
 
@@ -50,7 +50,113 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const reply = await generateChatReply(enhancedMessages, [], 'You are Castra, an AI-powered realtor co-pilot. You help real estate professionals manage their business efficiently.')
+    // Define available tools
+    const tools = [
+      {
+        type: "function",
+        function: {
+          name: "findContacts",
+          description: "Search for contacts in the CRM system",
+          parameters: {
+            type: "object",
+            properties: {
+              query: {
+                type: "string",
+                description: "Search query for contacts"
+              }
+            },
+            required: ["query"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "findLeads",
+          description: "Search for leads in the CRM system",
+          parameters: {
+            type: "object",
+            properties: {
+              query: {
+                type: "string",
+                description: "Search query for leads"
+              }
+            },
+            required: ["query"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "createCalendarEvent",
+          description: "Create a new calendar event",
+          parameters: {
+            type: "object",
+            properties: {
+              summary: {
+                type: "string",
+                description: "Event title or summary"
+              },
+              startTime: {
+                type: "string",
+                description: "Start time in ISO format or natural language (e.g., 'tomorrow at 2pm')"
+              },
+              endTime: {
+                type: "string",
+                description: "End time in ISO format or natural language (optional, defaults to 1 hour after start)"
+              },
+              attendees: {
+                type: "array",
+                items: {
+                  type: "string"
+                },
+                description: "Array of attendee email addresses"
+              },
+              location: {
+                type: "string",
+                description: "Event location (optional)"
+              },
+              description: {
+                type: "string",
+                description: "Event description (optional)"
+              }
+            },
+            required: ["summary", "startTime"]
+          }
+        }
+      }
+    ]
+
+    const systemPrompt = `You are Castra, an AI-powered realtor co-pilot. You help real estate professionals manage their business efficiently.
+
+**Your Capabilities:**
+- **Email Management**: Help draft replies, summarize email threads
+- **Calendar Events**: Create and manage appointments, meetings, and showings
+- **CRM Tasks**: Find contacts, manage leads, track deals
+- **Property Info**: Get listing details and prepare marketing emails
+
+**When creating calendar events:**
+- Extract event details from natural language
+- Use clear, descriptive summaries
+- Include relevant attendees when mentioned
+- Set appropriate durations (default 1 hour if not specified)
+- Confirm the event was created successfully
+
+**Communication Style:**
+- Professional but approachable
+- Concise and helpful
+- Always confirm actions taken
+- Provide clear next steps when appropriate
+
+**Available Tools:**
+- findContacts: Search CRM contacts
+- findLeads: Search CRM leads  
+- createCalendarEvent: Create calendar events
+
+Use these tools when appropriate to help the user accomplish their tasks.`
+
+    const reply = await generateChatReply(enhancedMessages, tools, systemPrompt)
     
     return NextResponse.json({ message: reply })
   } catch (error: any) {
