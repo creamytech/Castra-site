@@ -8,7 +8,7 @@ import TransitionProvider from "./motion/TransitionProvider";
 import AssistantDock from "@/components/AssistantDock";
 import CommandPalette from "@/components/CommandPalette";
 import { UserMenu } from "@/components/user-menu";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { FloatingThemeToggle } from "@/components/theme/floating-toggle";
 import { applyTheme, getInitialTheme } from "@/lib/ui/theme";
 
 export default function AppLayout({
@@ -63,12 +63,6 @@ export default function AppLayout({
         };
         document.addEventListener('keydown', handleNextKey, { once: true });
       }
-
-      // Slash to focus search
-      if (e.key === '/' && !e.metaKey && !e.ctrlKey) {
-        e.preventDefault();
-        setIsCommandPaletteOpen(true);
-      }
     };
 
     document.addEventListener('keydown', handleKeyDown);
@@ -102,7 +96,7 @@ export default function AppLayout({
               <button
                 onClick={() => setIsCommandPaletteOpen(true)}
                 className="flex items-center space-x-2 px-3 py-2 bg-muted hover:bg-muted/80 rounded-md transition-colors text-muted-foreground hover:text-foreground"
-                title="Search (⌘K or /)"
+                title="Search (⌘K)"
               >
                 <span>🔍</span>
                 <span className="hidden sm:inline">Search</span>
@@ -150,10 +144,8 @@ export default function AppLayout({
         </main>
       </div>
 
-      {/* Theme Toggle - Bottom Left */}
-      <div className="fixed bottom-4 left-4 z-50">
-        <ThemeToggle />
-      </div>
+      {/* Floating Theme Toggle - Bottom Left */}
+      <FloatingThemeToggle />
 
       {/* Global Assistant Dock */}
       <AssistantDock />

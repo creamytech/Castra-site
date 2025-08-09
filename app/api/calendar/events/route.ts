@@ -24,15 +24,18 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const { summary, description, start, end, timeZone, attendees, location } = validationResult.data;
+    const { summary, description, start, end, timeZone, attendees, location, allDay } = validationResult.data;
 
     // Create event with proper Google Calendar format
     const event = await createCalendarEvent(session.user.id, {
       summary,
+      description,
+      location,
       startISO: start,
       endISO: end,
       timeZone,
-      attendees: attendees || []
+      attendees: attendees || [],
+      allDay
     });
 
     return NextResponse.json({

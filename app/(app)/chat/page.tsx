@@ -78,12 +78,12 @@ export default function ChatPage() {
     }
   };
 
-  const createNewSession = async () => {
+  const createNewSession = async (title: string = "Draft...") => {
     try {
       const response = await fetch("/api/chat/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: "New Chat" })
+        body: JSON.stringify({ title })
       });
 
       if (response.ok) {
@@ -92,11 +92,14 @@ export default function ChatPage() {
         setSessions(prev => [newSession, ...prev]);
         setCurrentSession(newSession);
         setMessages([]);
+        return newSession;
       } else {
         addToast("Failed to create new session");
+        return null;
       }
     } catch (error) {
       addToast("Network error creating session");
+      return null;
     }
   };
 
@@ -132,8 +135,10 @@ export default function ChatPage() {
         }
         setEditingTitle(null);
         setEditingValue("");
+        addToast("Session renamed successfully", "success");
       } else {
-        addToast("Failed to rename session");
+        const errorData = await response.json();
+        addToast(errorData.error || "Failed to rename session");
       }
     } catch (error) {
       addToast("Network error renaming session");
@@ -157,8 +162,24 @@ export default function ChatPage() {
     setEditingValue("");
   };
 
+  const handleRenameBlur = (sessionId: string) => {
+    if (editingValue.trim()) {
+      renameSession(sessionId, editingValue.trim());
+    } else {
+      cancelEditing();
+    }
+  };
+
   const sendMessage = async () => {
-    if (!inputMessage.trim() || !currentSession || isLoading) return;
+    if (!inputMessage.trim() || isLoading) return;
+
+    let sessionToUse = currentSession;
+    
+    // Auto-create session if none exists
+    if (!sessionToUse) {
+      sessionToUse = await createNewSession();
+      if (!sessionToUse) return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -176,7 +197,7 @@ export default function ChatPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          sessionId: currentSession.id,
+          sessionId: sessionToUse.id,
           messages: [...messages, userMessage].map(m => ({
             role: m.role,
             content: m.content
@@ -193,6 +214,12 @@ export default function ChatPage() {
           createdAt: new Date().toISOString(),
         };
         setMessages(prev => [...prev, assistantMessage]);
+        
+        // Auto-generate title after first assistant response if title is still "Draft..."
+        if (sessionToUse && sessionToUse.title === "Draft..." && messages.length === 0) {
+          const suggestedTitle = inputMessage.slice(0, 30) + (inputMessage.length > 30 ? "..." : "");
+          renameSession(sessionToUse.id, suggestedTitle);
+        }
       } else {
         addToast("Failed to send message");
       }
@@ -235,7 +262,7 @@ export default function ChatPage() {
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-semibold text-foreground">Chat Sessions</h2>
                   <button
-                    onClick={createNewSession}
+                    onClick={() => createNewSession()}
                     className="btn-primary text-sm"
                   >
                     + New
@@ -254,21 +281,32 @@ export default function ChatPage() {
                       className="mb-2"
                     >
                       {editingTitle === session.id ? (
-                        <form onSubmit={(e) => handleRenameSubmit(e, session.id)} className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2">
                           <input
                             type="text"
                             value={editingValue}
                             onChange={(e) => setEditingValue(e.target.value)}
+                            onBlur={() => handleRenameBlur(session.id)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                handleRenameSubmit(e as any, session.id);
+                              } else if (e.key === 'Escape') {
+                                cancelEditing();
+                              }
+                            }}
                             className="flex-1 px-2 py-1 text-sm bg-input border border-input rounded focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
                             autoFocus
                           />
-                          <button type="submit" className="text-xs text-primary hover:text-primary/80">
+                          <button 
+                            onClick={() => handleRenameSubmit({ preventDefault: () => {} } as any, session.id)} 
+                            className="text-xs text-primary hover:text-primary/80"
+                          >
                             ✓
                           </button>
                           <button type="button" onClick={cancelEditing} className="text-xs text-muted-foreground hover:text-foreground">
                             ✕
                           </button>
-                        </form>
+                        </div>
                       ) : (
                         <div className="flex items-center">
                           <button
@@ -302,7 +340,7 @@ export default function ChatPage() {
                 {sessions.length === 0 && (
                   <div className="text-center text-muted-foreground py-8">
                     <p>No chat sessions yet</p>
-                    <p className="text-sm">Start a new chat to begin</p>
+                    <p className="text-sm">Start typing to create a new chat</p>
                   </div>
                 )}
               </div>
@@ -319,7 +357,7 @@ export default function ChatPage() {
                   <div className="text-center text-muted-foreground py-8">
                     <div className="text-4xl mb-4">💬</div>
                     <h3 className="mb-2">Start a conversation</h3>
-                    <p>Ask me anything about your real estate workflow</p>
+                    <p>Just start typing to begin chatting - no need to click "New Chat"</p>
 
                     {/* Example queries */}
                     <div className="mt-6 space-y-2">
@@ -401,13 +439,13 @@ export default function ChatPage() {
                     type="text"
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
-                    placeholder="Type your message..."
+                    placeholder="Type your message... (auto-creates session)"
                     disabled={isLoading}
                     className="flex-1 px-3 py-2 bg-input border border-input text-foreground placeholder:text-muted-foreground rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                   <motion.button
                     type="submit"
-                    disabled={isLoading || !inputMessage.trim() || !currentSession}
+                    disabled={isLoading || !inputMessage.trim()}
                     className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     whileTap={{ scale: 0.98 }}
                   >

@@ -42,25 +42,30 @@ export async function POST(request: NextRequest) {
         const internalDate = new Date(parseInt(messageDetail.data.internalDate || '0'));
         const labels = messageDetail.data.labelIds || [];
 
-        // Upsert message in database
+        // Convert messageDetail.data to JSON-safe object
+        const payload = JSON.parse(JSON.stringify(messageDetail.data));
+
+        // Upsert message in database using gmailId
         const savedMessage = await prisma.message.upsert({
-          where: { id: message.id! },
+          where: { gmailId: message.id! },
           update: {
             from,
             subject,
             snippet,
             internalDate,
-            labels
+            labels,
+            payload
           },
           create: {
-            id: message.id!,
+            gmailId: message.id!,
             threadId: messageDetail.data.threadId || '',
             userId: session.user.id,
             from,
             subject,
             snippet,
             internalDate,
-            labels
+            labels,
+            payload
           }
         });
 

@@ -4,7 +4,6 @@ import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
-import ThemeToggle from './ThemeToggle'
 
 interface NavItem {
   id: string
@@ -105,7 +104,6 @@ export default function Sidebar() {
               </div>
             </div>
           )}
-          <ThemeToggle isCollapsed={isCollapsed} />
         </div>
       </div>
     </div>

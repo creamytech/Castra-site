@@ -243,8 +243,8 @@ export async function createDraft(
 
 export async function createCalendarEvent(
   userId: string,
-  { summary, startISO, endISO, attendees = [], timeZone = "UTC" }:
-  { summary: string; startISO: string; endISO: string; attendees?: Array<{ email: string }> | string[]; timeZone?: string }
+  { summary, startISO, endISO, attendees = [], timeZone = "UTC", description, location, allDay = false }:
+  { summary: string; startISO: string; endISO: string; attendees?: Array<{ email: string }> | string[]; timeZone?: string; description?: string; location?: string; allDay?: boolean }
 ) {
   try {
     const auth = await getGoogleOAuth(userId);
@@ -267,16 +267,28 @@ export async function createCalendarEvent(
       typeof attendee === 'string' ? { email: attendee } : attendee
     );
 
-    const event = {
-      summary,
-      start: { dateTime: startISO, timeZone },
-      end: { dateTime: endISO, timeZone },
-      attendees: formattedAttendees,
-    };
+    // Handle all-day events vs timed events
+    const eventBody = allDay
+      ? {
+          summary,
+          description,
+          location,
+          start: { date: startISO.slice(0, 10) },
+          end: { date: endISO.slice(0, 10) },
+          attendees: formattedAttendees
+        }
+      : {
+          summary,
+          description,
+          location,
+          start: { dateTime: startISO, timeZone },
+          end: { dateTime: endISO, timeZone },
+          attendees: formattedAttendees
+        };
 
     const { data } = await calendar.events.insert({ 
       calendarId: "primary", 
-      requestBody: event 
+      requestBody: eventBody 
     });
 
     return { 
