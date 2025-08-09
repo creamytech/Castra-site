@@ -4,6 +4,8 @@ import Link from 'next/link'
 import Section from '@/components/Section'
 import FAQ from '@/components/FAQ'
 
+export const dynamic = 'force-dynamic'
+
 const features = [
   {
     icon: '📧',
