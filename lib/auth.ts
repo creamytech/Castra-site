@@ -42,7 +42,29 @@ if (config.azure.clientId && config.azure.clientSecret && config.azure.tenantId)
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
-  providers,
+  providers: providers.length > 0 ? providers : [
+    // Fallback provider for development/testing
+    {
+      id: 'credentials',
+      name: 'Development',
+      type: 'credentials',
+      credentials: {
+        email: { label: 'Email', type: 'email' },
+        password: { label: 'Password', type: 'password' }
+      },
+      async authorize(credentials) {
+        // For development only - allow any email/password
+        if (process.env.NODE_ENV === 'development' && credentials?.email) {
+          return {
+            id: 'dev-user',
+            email: credentials.email,
+            name: 'Development User',
+          }
+        }
+        return null
+      }
+    }
+  ],
   session: {
     strategy: 'jwt',
   },
