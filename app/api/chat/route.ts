@@ -122,7 +122,7 @@ Always respond in HTML format for better presentation.`
   } catch (error) {
     console.error('Chat error:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: `Internal server error: ${error instanceof Error ? error.message : 'Unknown error'}` },
       { status: 500 }
     )
   }
