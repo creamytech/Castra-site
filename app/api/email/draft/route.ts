@@ -1,92 +1,126 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { createDraft } from '@/lib/google'
-import OpenAI from 'openai'
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { google } from "googleapis";
 
-// Force dynamic rendering for this route
-export const dynamic = 'force-dynamic'
-
-const openai = process.env.OPENAI_API_KEY ? new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-}) : null
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-
+    const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { threadSummary, lastMessage, to, subject } = await request.json()
+    const { threadId, to, subject, content } = await request.json();
 
-    if (!threadSummary || !to || !subject) {
-      return NextResponse.json(
-        { error: 'Thread summary, recipient, and subject are required' },
-        { status: 400 }
-      )
+    if (!to || !subject || !content) {
+      return NextResponse.json({ 
+        error: "To, subject, and content are required" 
+      }, { status: 400 });
     }
 
-    if (!openai) {
-      return NextResponse.json(
-        { error: 'OpenAI API key not configured' },
-        { status: 500 }
-      )
+    // Get user's memory (tone, signature, etc.)
+    const memories = await prisma.memory.findMany({
+      where: { userId: session.user.id }
+    });
+
+    const tone = memories.find(m => m.key === "tone")?.value || "professional";
+    const signature = memories.find(m => m.key === "signature")?.value || "";
+    const persona = memories.find(m => m.key === "persona")?.value || "";
+
+    // Get Gmail API client
+    const account = await prisma.account.findFirst({
+      where: { userId: session.user.id, provider: "google" }
+    });
+
+    if (!account?.access_token) {
+      return NextResponse.json({ error: "Google account not connected" }, { status: 400 });
     }
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4',
-      messages: [
-        {
-          role: 'system',
-          content: `You are Castra, an AI-powered realtor co-pilot. Create a professional email draft.
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      process.env.GOOGLE_REDIRECT_URI
+    );
 
-GUARDRAILS:
-- Be concise and warm
-- Draft-only (never send directly)
-- No legal advice
-- Professional but approachable
-- Use HTML formatting for better presentation
+    oauth2Client.setCredentials({
+      access_token: account.access_token,
+      refresh_token: account.refresh_token,
+    });
 
-Create a follow-up email based on the thread summary and last message.`,
-        },
-        {
-          role: 'user',
-          content: `Thread Summary: ${threadSummary}
-Last Message: ${lastMessage}
-Recipient: ${to}
-Subject: ${subject}
+    const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
-Write a professional email draft:`,
-        },
-      ],
-      max_tokens: 500,
-      temperature: 0.7,
-    })
-
-    const htmlContent = completion.choices[0]?.message?.content || 'Unable to generate draft'
-
-    // Pass session tokens for JWT strategy
-    const sessionTokens = {
-      accessToken: (session as any).accessToken,
-      refreshToken: (session as any).refreshToken,
+    // Build email content with user's tone and signature
+    let emailContent = content;
+    
+    // Apply tone if specified
+    if (tone && tone !== "professional") {
+      emailContent = `[Writing in ${tone} tone]\n\n${emailContent}`;
     }
 
-    const draft = await createDraft(session.user.id, to, subject, htmlContent, sessionTokens)
+    // Add signature if available
+    if (signature) {
+      emailContent += `\n\n${signature}`;
+    }
+
+    // Create email message
+    const message = [
+      `To: ${to}`,
+      `Subject: ${subject}`,
+      '',
+      emailContent
+    ].join('\n');
+
+    const encodedMessage = Buffer.from(message).toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+
+    // Create draft
+    const draft = await gmail.users.drafts.create({
+      userId: 'me',
+      requestBody: {
+        message: {
+          raw: encodedMessage,
+          threadId: threadId || undefined
+        }
+      }
+    });
+
+    // Generate HTML preview
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="border-bottom: 1px solid #e0e0e0; padding-bottom: 10px; margin-bottom: 20px;">
+          <strong>To:</strong> ${to}<br>
+          <strong>Subject:</strong> ${subject}
+        </div>
+        <div style="line-height: 1.6; white-space: pre-wrap;">
+          ${emailContent.replace(/\n/g, '<br>')}
+        </div>
+      </div>
+    `;
 
     return NextResponse.json({
+      draftId: draft.data.id,
+      messageId: draft.data.message?.id,
       html: htmlContent,
-      draftId: draft.id,
-    })
-  } catch (error) {
-    console.error('Failed to create draft:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+      threadId: draft.data.message?.threadId
+    });
+
+  } catch (error: any) {
+    console.error("[email-draft]", error);
+    
+    // Handle token refresh if needed
+    if (error.code === 401) {
+      return NextResponse.json({ 
+        error: "Authentication expired. Please reconnect your Google account." 
+      }, { status: 401 });
+    }
+
+    return NextResponse.json({ 
+      error: "Failed to create email draft" 
+    }, { status: 500 });
   }
 }

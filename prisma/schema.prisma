@@ -59,6 +59,7 @@ model User {
   chatMessages  ChatMessage[]
   memories      Memory[]
   emailThreadCaches EmailThreadCache[]
+  emailLogs     EmailLog[]
   
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -109,6 +110,19 @@ model EmailThreadCache {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   @@index([userId, updatedAt])
+}
+
+model EmailLog {
+  id        String   @id @default(cuid())
+  userId    String
+  messageId String   // Gmail message ID
+  threadId  String   // Gmail thread ID
+  action    String   // "SENT", "DRAFTED", "FAILED"
+  timestamp DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, timestamp])
+  @@index([messageId])
 }
 
 // CRM Models
