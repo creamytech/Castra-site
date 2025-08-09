@@ -36,7 +36,7 @@ ${agentProfile ? `Agent Profile: ${agentProfile}` : ''}
 Always respond in HTML format for better email presentation.`
 
   const completion = await openai.chat.completions.create({
-    model: 'gpt-4',
+    model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
     messages: [
       {
         role: 'system',
@@ -61,7 +61,7 @@ export async function generateChatReply(messages: any[], tools: any[], systemPro
 
   try {
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4',
+      model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
       messages: [
         {
           role: 'system',
@@ -105,7 +105,7 @@ export async function generateChatReply(messages: any[], tools: any[], systemPro
 
       // Get the final response after tool execution
       const finalCompletion = await openai.chat.completions.create({
-        model: 'gpt-4',
+        model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
         messages: [
           {
             role: 'system',
