@@ -26,28 +26,12 @@ interface ToastMessage {
 }
 
 export default function CRMPage() {
-  const [session, setSession] = useState<any>(null)
-  const [status, setStatus] = useState<string>('loading')
-  const [mounted, setMounted] = useState(false)
+  const { data: session, status } = useSession()
   const [contacts, setContacts] = useState<Contact[]>([])
   const [loading, setLoading] = useState(false)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  // Only use useSession on the client side
-  const { data: sessionData, status: sessionStatus } = useSession()
-
-  useEffect(() => {
-    if (mounted) {
-      setSession(sessionData)
-      setStatus(sessionStatus)
-    }
-  }, [sessionData, sessionStatus, mounted])
 
   const addToast = (message: string, type: 'error' | 'success' | 'info' = 'error') => {
     const id = Date.now().toString()
@@ -137,10 +121,10 @@ export default function CRMPage() {
   }
 
   useEffect(() => {
-    if (mounted && status === 'authenticated') {
+    if (status === 'authenticated') {
       fetchContacts()
     }
-  }, [status, mounted])
+  }, [status])
 
   const filteredContacts = contacts.filter(contact => {
     const matchesSearch = contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -167,16 +151,6 @@ export default function CRMPage() {
     return 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-200'
   }
 
-  if (!mounted) {
-    return (
-      <MainLayout showSidebar={false}>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-gray-800 dark:text-white">Loading...</div>
-        </div>
-      </MainLayout>
-    )
-  }
-
   if (status === 'loading') {
     return (
       <MainLayout showSidebar={false}>
@@ -191,7 +165,7 @@ export default function CRMPage() {
     return (
       <MainLayout showSidebar={false}>
         <div className="flex items-center justify-center min-h-screen">
-          <div className="text-gray-800 dark:text-white">Not authenticated</div>
+          <div className="text-gray-800 dark:text-white">You need to sign in.</div>
         </div>
       </MainLayout>
     )

@@ -1,29 +1,13 @@
 'use client'
 
 import { useSession, signIn, signOut } from 'next-auth/react'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 
 export const dynamic = 'force-dynamic'
 
 export default function DebugAuthPage() {
-  const [session, setSession] = useState<any>(null)
-  const [status, setStatus] = useState<string>('loading')
-  const [mounted, setMounted] = useState(false)
+  const { data: session, status } = useSession()
   const [debugInfo, setDebugInfo] = useState<string>('')
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  // Only use useSession on the client side
-  const { data: sessionData, status: sessionStatus } = useSession()
-
-  useEffect(() => {
-    if (mounted) {
-      setSession(sessionData)
-      setStatus(sessionStatus)
-    }
-  }, [sessionData, sessionStatus, mounted])
 
   const testGoogleSignIn = () => {
     signIn('google', { callbackUrl: '/debug-auth' })
@@ -41,7 +25,7 @@ export default function DebugAuthPage() {
     }, null, 2))
   }
 
-  if (!mounted) {
+  if (status === 'loading') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
         <div className="max-w-4xl mx-auto px-4 py-8">

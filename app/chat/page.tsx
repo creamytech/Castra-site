@@ -28,9 +28,7 @@ interface ToastMessage {
 }
 
 export default function ChatPage() {
-  const [session, setSession] = useState<any>(null)
-  const [status, setStatus] = useState<string>('loading')
-  const [mounted, setMounted] = useState(false)
+  const { data: session, status } = useSession()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
@@ -38,20 +36,6 @@ export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  // Only use useSession on the client side
-  const { data: sessionData, status: sessionStatus } = useSession()
-
-  useEffect(() => {
-    if (mounted) {
-      setSession(sessionData)
-      setStatus(sessionStatus)
-    }
-  }, [sessionData, sessionStatus, mounted])
 
   const addToast = (message: string, type: 'error' | 'success' | 'info' = 'error') => {
     const id = Date.now().toString()
@@ -88,9 +72,9 @@ export default function ChatPage() {
   }
 
   const updateConversationTitle = (conversationId: string, title: string) => {
-    setConversations(prev => 
-      prev.map(conv => 
-        conv.id === conversationId 
+    setConversations(prev =>
+      prev.map(conv =>
+        conv.id === conversationId
           ? { ...conv, title, lastUpdated: new Date() }
           : conv
       )
@@ -124,7 +108,7 @@ export default function ChatPage() {
           attendees: eventDetails.attendee ? [eventDetails.attendee] : []
         })
       })
-      
+
       if (response.ok) {
         addToast('Calendar event created successfully!', 'success')
         return true
@@ -161,7 +145,7 @@ export default function ChatPage() {
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
-          content: success 
+          content: success
             ? `✅ Calendar event created: "${eventDetails.summary}"`
             : '❌ Failed to create calendar event. Please try again.',
           timestamp: new Date()
@@ -207,23 +191,13 @@ export default function ChatPage() {
         lastUpdated: new Date()
       }
       setCurrentConversation(updatedConversation)
-      setConversations(prev => 
-        prev.map(conv => 
+      setConversations(prev =>
+        prev.map(conv =>
           conv.id === currentConversation.id ? updatedConversation : conv
         )
       )
     }
   }, [messages, currentConversation])
-
-  if (!mounted) {
-    return (
-      <MainLayout showSidebar={false}>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-gray-800 dark:text-white">Loading...</div>
-        </div>
-      </MainLayout>
-    )
-  }
 
   if (status === 'loading') {
     return (
@@ -239,7 +213,7 @@ export default function ChatPage() {
     return (
       <MainLayout showSidebar={false}>
         <div className="flex items-center justify-center min-h-screen">
-          <div className="text-gray-800 dark:text-white">Not authenticated</div>
+          <div className="text-gray-800 dark:text-white">You need to sign in.</div>
         </div>
       </MainLayout>
     )
@@ -258,7 +232,7 @@ export default function ChatPage() {
                   New Chat
                 </button>
               </div>
-              
+
               <div className="space-y-2 max-h-96 lg:max-h-none overflow-y-auto">
                 {conversations.map((conversation) => (
                   <button
@@ -276,7 +250,7 @@ export default function ChatPage() {
                     </div>
                   </button>
                 ))}
-                
+
                 {conversations.length === 0 && (
                   <div className="text-center text-gray-600 dark:text-gray-400 py-8">
                     <p>No conversations yet</p>
@@ -296,7 +270,7 @@ export default function ChatPage() {
                     <div className="text-4xl mb-4">💬</div>
                     <h3 className="mb-2">Start a conversation</h3>
                     <p>Ask me anything about your real estate workflow</p>
-                    
+
                     {/* Example queries */}
                     <div className="mt-6 space-y-2">
                       <button
@@ -340,7 +314,7 @@ export default function ChatPage() {
                         </div>
                       </div>
                     ))}
-                    
+
                     {isLoading && (
                       <div className="flex justify-start">
                         <div className="bg-gray-200 dark:bg-gray-700 px-4 py-2 rounded-lg">

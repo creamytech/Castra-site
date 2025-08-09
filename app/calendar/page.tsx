@@ -23,9 +23,7 @@ interface ToastMessage {
 }
 
 export default function CalendarPage() {
-  const [session, setSession] = useState<any>(null)
-  const [status, setStatus] = useState<string>('loading')
-  const [mounted, setMounted] = useState(false)
+  const { data: session, status } = useSession()
   const [events, setEvents] = useState<CalEvent[]>([])
   const [eventsLoading, setEventsLoading] = useState(false)
   const [eventsError, setEventsError] = useState<string | null>(null)
@@ -36,20 +34,6 @@ export default function CalendarPage() {
     endISO: '',
     attendees: ''
   })
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  // Only use useSession on the client side
-  const { data: sessionData, status: sessionStatus } = useSession()
-
-  useEffect(() => {
-    if (mounted) {
-      setSession(sessionData)
-      setStatus(sessionStatus)
-    }
-  }, [sessionData, sessionStatus, mounted])
 
   const addToast = (message: string, type: 'error' | 'success' | 'info' = 'error') => {
     const id = Date.now().toString()
@@ -112,25 +96,15 @@ export default function CalendarPage() {
   }
 
   useEffect(() => {
-    if (mounted && status === 'authenticated') {
+    if (status === 'authenticated') {
       fetchUpcomingEvents()
     }
-  }, [status, mounted])
+  }, [status])
 
   const formatRange = (start: string, end: string) => {
     const startDate = new Date(start)
     const endDate = new Date(end)
     return `${startDate.toLocaleDateString()} ${startDate.toLocaleTimeString()} - ${endDate.toLocaleTimeString()}`
-  }
-
-  if (!mounted) {
-    return (
-      <MainLayout showSidebar={false}>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-gray-800 dark:text-white">Loading...</div>
-        </div>
-      </MainLayout>
-    )
   }
 
   if (status === 'loading') {
@@ -147,7 +121,7 @@ export default function CalendarPage() {
     return (
       <MainLayout showSidebar={false}>
         <div className="flex items-center justify-center min-h-screen">
-          <div className="text-gray-800 dark:text-white">Not authenticated</div>
+          <div className="text-gray-800 dark:text-white">You need to sign in.</div>
         </div>
       </MainLayout>
     )

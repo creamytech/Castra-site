@@ -3,86 +3,39 @@
 import { useSession } from 'next-auth/react'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { signIn } from 'next-auth/react'
 import MainLayout from '@/components/MainLayout'
-import Toast from '@/components/Toast'
 
 export const dynamic = 'force-dynamic'
 
 interface Account {
   id: string
   provider: string
-  access_token: string
-  refresh_token: string
+  type: string
+  access_token?: string
+  refresh_token?: string
 }
 
-export default function DashboardPage() {
-  const [session, setSession] = useState<any>(null)
-  const [status, setStatus] = useState<string>('loading')
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  // Only use useSession on the client side
-  const { data: sessionData, status: sessionStatus } = useSession()
-
-  useEffect(() => {
-    if (mounted) {
-      setSession(sessionData)
-      setStatus(sessionStatus)
-    }
-  }, [sessionData, sessionStatus, mounted])
-
+export default function ConnectPage() {
+  const { data: session, status } = useSession()
+  const [loading, setLoading] = useState(true)
+  const [accounts, setAccounts] = useState<Account[]>([])
   const router = useRouter()
 
   useEffect(() => {
-    if (mounted) {
-      if (sessionStatus === 'authenticated') {
-        setLoading(false)
-      } else if (sessionStatus === 'unauthenticated') {
-        router.push('/auth/signin')
-      }
+    if (status === 'authenticated') {
+      setLoading(false)
+    } else if (status === 'unauthenticated') {
+      router.push('/auth/signin')
     }
-  }, [sessionStatus, router, mounted])
-
-  const [loading, setLoading] = useState(true)
-  const [accounts, setAccounts] = useState<Account[]>([])
+  }, [status, router])
 
   const handleConnect = (provider: string) => {
-    if (provider === 'google') {
-      signIn('google', { callbackUrl: '/connect' })
-    } else if (provider === 'azure-ad') {
-      signIn('azure-ad', { callbackUrl: '/connect' })
-    }
+    // This would trigger the OAuth flow
+    console.log(`Connecting to ${provider}...`)
   }
 
   const isConnected = (provider: string) => {
-    // Check database accounts first (if adapter was enabled)
-    const hasDatabaseAccount = accounts.some(account => account.provider === provider && account.access_token)
-
-    // Also check session tokens for Google (since we're using JWT strategy)
-    if (provider === 'google' && session) {
-      const hasSessionTokens = !!(session as any).accessToken || !!(session as any).refreshToken
-      return hasDatabaseAccount || hasSessionTokens
-    }
-    return hasDatabaseAccount
-  }
-
-  const isFeatureEnabled = (feature: string) => {
-    // For now, all features are enabled
-    return true
-  }
-
-  if (!mounted) {
-    return (
-      <MainLayout showSidebar={false}>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-gray-800 dark:text-white">Loading...</div>
-        </div>
-      </MainLayout>
-    )
+    return accounts.some(account => account.provider === provider)
   }
 
   if (status === 'loading') {
@@ -99,7 +52,7 @@ export default function DashboardPage() {
     return (
       <MainLayout showSidebar={false}>
         <div className="flex items-center justify-center min-h-screen">
-          <div className="text-gray-800 dark:text-white">Not authenticated</div>
+          <div className="text-gray-800 dark:text-white">You need to sign in.</div>
         </div>
       </MainLayout>
     )
@@ -107,180 +60,124 @@ export default function DashboardPage() {
 
   return (
     <MainLayout>
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
+      <div className="max-w-6xl mx-auto">
         <div className="text-center mb-8">
-          <h1 className="mb-4">Castra Dashboard</h1>
+          <h1 className="h1">Dashboard</h1>
           <p className="text-xl text-gray-700 dark:text-gray-300">
-            Welcome back, {session.user.name || session.user.email}!
+            Welcome to your Castra dashboard
           </p>
         </div>
 
-        <div className="space-y-8">
-          {/* Integrations Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Quick Stats */}
           <div className="card">
-            <h2 className="mb-6">Integrations</h2>
-            <div className="space-y-4">
-              {isFeatureEnabled('gmail') ? (
-                <div className="integration-card">
-                  <div className="flex items-center space-x-3">
-                    <div className="text-2xl">🔗</div>
-                    <div>
-                      <div className="font-medium text-gray-800 dark:text-white">Google (Gmail + Calendar)</div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
-                        {isConnected('google') ? 'Connected' : 'Not connected'}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <span className={`status-indicator ${isConnected('google') ? 'status-connected' : 'status-disconnected'}`}>
-                      {isConnected('google') ? 'Connected' : 'Disconnected'}
-                    </span>
-                    {!isConnected('google') && (
-                      <button
-                        onClick={() => handleConnect('google')}
-                        className="btn-primary text-sm py-2 px-4"
-                      >
-                        Connect
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="integration-card">
-                  <div className="flex items-center space-x-3">
-                    <div className="text-2xl">🔗</div>
-                    <div>
-                      <div className="font-medium text-gray-800 dark:text-white">Google Integration</div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">Not configured</div>
-                    </div>
-                  </div>
-                  <span className="status-indicator status-disconnected">Not Available</span>
-                </div>
-              )}
-
-              {isFeatureEnabled('gmail') ? (
-                <div className="integration-card">
-                  <div className="flex items-center space-x-3">
-                    <div className="text-2xl">📧</div>
-                    <div>
-                      <div className="font-medium text-gray-800 dark:text-white">Outlook (Email + Calendar)</div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
-                        {isConnected('azure-ad') ? 'Connected' : 'Not connected'}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <span className={`status-indicator ${isConnected('azure-ad') ? 'status-connected' : 'status-disconnected'}`}>
-                      {isConnected('azure-ad') ? 'Connected' : 'Disconnected'}
-                    </span>
-                    {!isConnected('azure-ad') && (
-                      <button
-                        onClick={() => handleConnect('azure-ad')}
-                        className="btn-primary text-sm py-2 px-4"
-                      >
-                        Connect
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="integration-card">
-                  <div className="flex items-center space-x-3">
-                    <div className="text-2xl">📧</div>
-                    <div>
-                      <div className="font-medium text-gray-800 dark:text-white">Outlook Integration</div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">Not configured</div>
-                    </div>
-                  </div>
-                  <span className="status-indicator status-disconnected">Not Available</span>
-                </div>
-              )}
+            <h2 className="h2 mb-4">Quick Stats</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">12</div>
+                <div className="text-sm text-blue-600 dark:text-blue-400">Active Leads</div>
+              </div>
+              <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                <div className="text-2xl font-bold text-green-600 dark:text-green-400">8</div>
+                <div className="text-sm text-green-600 dark:text-green-400">Showings This Week</div>
+              </div>
+              <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">3</div>
+                <div className="text-sm text-purple-600 dark:text-purple-400">Pending Offers</div>
+              </div>
+              <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">24</div>
+                <div className="text-sm text-yellow-600 dark:text-yellow-400">Unread Emails</div>
+              </div>
             </div>
           </div>
 
           {/* Quick Actions */}
           <div className="card">
-            <h2 className="mb-6">Quick Actions</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="quick-action-card group">
-                <div className="text-center">
-                  <div className="text-3xl mb-3 group-hover:scale-110 transition-transform">💬</div>
-                  <h3 className="font-semibold text-gray-800 dark:text-white mb-2">AI Chat</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Start a conversation with Castra's AI assistant</p>
-                  <div className="mt-4">
-                    <span className="status-indicator status-ready">Ready</span>
+            <h2 className="h2 mb-4">Quick Actions</h2>
+            <div className="space-y-3">
+              <button className="w-full p-4 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors text-left">
+                <div className="flex items-center space-x-3">
+                  <div className="text-2xl">💬</div>
+                  <div>
+                    <div className="font-medium">Start AI Chat</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">Ask Castra anything</div>
                   </div>
                 </div>
-              </div>
+              </button>
               
-              <div className="quick-action-card group">
-                <div className="text-center">
-                  <div className="text-3xl mb-3 group-hover:scale-110 transition-transform">📧</div>
-                  <h3 className="font-semibold text-gray-800 dark:text-white mb-2">Email Inbox</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Manage your email communications</p>
-                  <div className="mt-4">
-                    <span className={`status-indicator ${isConnected('google') || isConnected('azure-ad') ? 'status-connected' : 'status-disconnected'}`}>
-                      {isConnected('google') || isConnected('azure-ad') ? 'Connected' : 'Not Connected'}
-                    </span>
+              <button className="w-full p-4 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors text-left">
+                <div className="flex items-center space-x-3">
+                  <div className="text-2xl">📧</div>
+                  <div>
+                    <div className="font-medium">Check Inbox</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">Review emails</div>
                   </div>
                 </div>
-              </div>
+              </button>
               
-              <div className="quick-action-card group">
-                <div className="text-center">
-                  <div className="text-3xl mb-3 group-hover:scale-110 transition-transform">👥</div>
-                  <h3 className="font-semibold text-gray-800 dark:text-white mb-2">CRM</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Manage contacts, leads, and deals</p>
-                  <div className="mt-4">
-                    <span className="status-indicator status-ready">Ready</span>
+              <button className="w-full p-4 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors text-left">
+                <div className="flex items-center space-x-3">
+                  <div className="text-2xl">📅</div>
+                  <div>
+                    <div className="font-medium">Schedule Meeting</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">Book appointments</div>
                   </div>
                 </div>
-              </div>
+              </button>
               
-              <div className="quick-action-card group">
-                <div className="text-center">
-                  <div className="text-3xl mb-3 group-hover:scale-110 transition-transform">📅</div>
-                  <h3 className="font-semibold text-gray-800 dark:text-white mb-2">Calendar</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Schedule meetings and manage your calendar</p>
-                  <div className="mt-4">
-                    <span className={`status-indicator ${isConnected('google') ? 'status-connected' : 'status-disconnected'}`}>
-                      {isConnected('google') ? 'Connected' : 'Not Connected'}
-                    </span>
+              <button className="w-full p-4 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors text-left">
+                <div className="flex items-center space-x-3">
+                  <div className="text-2xl">👥</div>
+                  <div>
+                    <div className="font-medium">Add Lead</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">Create new contact</div>
                   </div>
                 </div>
-              </div>
+              </button>
             </div>
           </div>
+        </div>
 
-          {/* Account Information */}
-          <div className="card">
-            <h3 className="mb-4">Account Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-gray-600 dark:text-gray-400">Name</p>
-                <p className="text-gray-800 dark:text-white">{session.user.name || 'Not provided'}</p>
+        {/* Integrations Section */}
+        <div className="card mt-8">
+          <h2 className="h2 mb-4">Integrations</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-medium">Gmail</span>
+                <span className="text-green-600 dark:text-green-400 text-sm">Connected</span>
               </div>
-              <div>
-                <p className="text-gray-600 dark:text-gray-400">Email</p>
-                <p className="text-gray-800 dark:text-white">{session.user.email || 'Not provided'}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Email integration active</p>
+            </div>
+            
+            <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-medium">Google Calendar</span>
+                <span className="text-green-600 dark:text-green-400 text-sm">Connected</span>
               </div>
-              <div>
-                <p className="text-gray-600 dark:text-gray-400">User ID</p>
-                <p className="text-gray-800 dark:text-white font-mono text-xs">{session.user.id}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Calendar sync enabled</p>
+            </div>
+            
+            <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-medium">CRM</span>
+                <span className="text-blue-600 dark:text-blue-400 text-sm">Ready</span>
               </div>
-              {session.user.oktaId && (
-                <div>
-                  <p className="text-gray-600 dark:text-gray-400">Okta ID</p>
-                  <p className="text-gray-800 dark:text-white font-mono text-xs">{session.user.oktaId}</p>
-                </div>
-              )}
-              {session.user.groups && session.user.groups.length > 0 && (
-                <div className="md:col-span-2">
-                  <p className="text-gray-600 dark:text-gray-400">Groups</p>
-                  <p className="text-gray-800 dark:text-white">{session.user.groups.join(', ')}</p>
-                </div>
-              )}
+              <p className="text-sm text-gray-600 dark:text-gray-400">Lead management available</p>
+            </div>
+          </div>
+        </div>
+
+        {/* User Information */}
+        <div className="card mt-8">
+          <h2 className="h2 mb-4">Account Information</h2>
+          <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
+            <div className="space-y-2 text-sm">
+              <div><strong>User ID:</strong> {session.user?.id}</div>
+              <div><strong>Email:</strong> {session.user?.email}</div>
+              <div><strong>Name:</strong> {session.user?.name}</div>
+              <div><strong>Session Status:</strong> {status}</div>
             </div>
           </div>
         </div>

@@ -1,31 +1,15 @@
 'use client'
 
 import { useSession } from 'next-auth/react'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import MainLayout from '@/components/MainLayout'
 
 export const dynamic = 'force-dynamic'
 
 export default function TestGooglePage() {
-  const [session, setSession] = useState<any>(null)
-  const [status, setStatus] = useState<string>('loading')
-  const [mounted, setMounted] = useState(false)
+  const { data: session, status } = useSession()
   const [testResults, setTestResults] = useState<any>(null)
   const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  // Only use useSession on the client side
-  const { data: sessionData, status: sessionStatus } = useSession()
-
-  useEffect(() => {
-    if (mounted) {
-      setSession(sessionData)
-      setStatus(sessionStatus)
-    }
-  }, [sessionData, sessionStatus, mounted])
 
   const testGoogleConnection = async () => {
     setLoading(true)
@@ -38,16 +22,6 @@ export default function TestGooglePage() {
     } finally {
       setLoading(false)
     }
-  }
-
-  if (!mounted) {
-    return (
-      <MainLayout showSidebar={false}>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-gray-800 dark:text-white">Loading...</div>
-        </div>
-      </MainLayout>
-    )
   }
 
   if (status === 'loading') {
@@ -64,7 +38,7 @@ export default function TestGooglePage() {
     return (
       <MainLayout showSidebar={false}>
         <div className="flex items-center justify-center min-h-screen">
-          <div className="text-gray-800 dark:text-white">Not authenticated</div>
+          <div className="text-gray-800 dark:text-white">You need to sign in.</div>
         </div>
       </MainLayout>
     )

@@ -25,9 +25,7 @@ interface ToastMessage {
 }
 
 export default function InboxPage() {
-  const [session, setSession] = useState<any>(null)
-  const [status, setStatus] = useState<string>('loading')
-  const [mounted, setMounted] = useState(false)
+  const { data: session, status } = useSession()
   const [emails, setEmails] = useState<Email[]>([])
   const [filteredEmails, setFilteredEmails] = useState<Email[]>([])
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null)
@@ -39,20 +37,6 @@ export default function InboxPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [searchFilter, setSearchFilter] = useState<'all' | 'sender' | 'subject' | 'content'>('all')
   const [selectedLabels, setSelectedLabels] = useState<string[]>([])
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  // Only use useSession on the client side
-  const { data: sessionData, status: sessionStatus } = useSession()
-
-  useEffect(() => {
-    if (mounted) {
-      setSession(sessionData)
-      setStatus(sessionStatus)
-    }
-  }, [sessionData, sessionStatus, mounted])
 
   const addToast = (message: string, type: 'error' | 'success' | 'info' = 'error') => {
     const id = Date.now().toString()
@@ -87,10 +71,10 @@ export default function InboxPage() {
   }
 
   useEffect(() => {
-    if (mounted && status === 'authenticated') {
+    if (status === 'authenticated') {
       fetchEmails()
     }
-  }, [status, mounted])
+  }, [status])
 
   // Filter emails based on search term and filters
   useEffect(() => {
@@ -186,16 +170,6 @@ export default function InboxPage() {
     return Array.from(labels)
   }
 
-  if (!mounted) {
-    return (
-      <MainLayout showSidebar={false}>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-gray-800 dark:text-white">Loading...</div>
-        </div>
-      </MainLayout>
-    )
-  }
-
   if (status === 'loading') {
     return (
       <MainLayout showSidebar={false}>
@@ -210,7 +184,7 @@ export default function InboxPage() {
     return (
       <MainLayout showSidebar={false}>
         <div className="flex items-center justify-center min-h-screen">
-          <div className="text-gray-800 dark:text-white">Not authenticated</div>
+          <div className="text-gray-800 dark:text-white">You need to sign in.</div>
         </div>
       </MainLayout>
     )
