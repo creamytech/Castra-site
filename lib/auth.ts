@@ -59,37 +59,39 @@ if (config.azure.clientId && config.azure.clientSecret && config.azure.tenantId)
 export const authOptions: NextAuthOptions = {
   adapter: config.database.url && prisma ? PrismaAdapter(prisma) : undefined,
   debug: process.env.NODE_ENV === 'development',
-  providers: providers.length > 0 ? providers : [
-    // Fallback provider for when no OAuth providers are configured
-    {
-      id: 'credentials',
-      name: 'Demo',
-      type: 'credentials',
-      credentials: {
-        email: { label: 'Email', type: 'email' },
-        password: { label: 'Password', type: 'password' }
-      },
-      async authorize(credentials) {
-        console.log('Credentials authorize called:', { email: credentials?.email })
-        // Allow demo login with any email/password when no OAuth providers are configured
-        if (credentials?.email) {
-          const user = {
-            id: `demo-${Date.now()}`,
-            email: credentials.email,
-            name: 'Demo User',
-          }
-          console.log('Demo user created:', user)
-          return user
-        }
-        console.log('No email provided for demo login')
-        return null
-      }
-    }
-  ],
-  session: {
-    strategy: 'jwt',
-  },
+  // Allow linking accounts with the same email
+  // This will allow users to sign in with different providers using the same email
   callbacks: {
+    async signIn({ user, account, profile, email }: any) {
+      console.log('SignIn Callback:', { 
+        provider: account?.provider,
+        type: account?.type,
+        userId: user?.id,
+        userEmail: user?.email,
+        email
+      })
+      
+      // For OAuth providers, handle account linking
+      if (account?.provider) {
+        // Always allow OAuth sign-ins - let the adapter handle account linking
+        console.log('OAuth sign-in allowed for provider:', account.provider)
+        return true
+      }
+      
+      // For credentials provider (demo), always allow
+      if (account?.type === 'credentials') {
+        console.log('Credentials sign-in allowed')
+        return true
+      }
+      
+      // Allow existing users
+      if (user) {
+        return true
+      }
+      
+      // Default: allow all sign-ins
+      return true
+    },
     async jwt({ token, user, account, profile }: any) {
       console.log('JWT Callback:', { 
         provider: account?.provider, 
@@ -137,34 +139,36 @@ export const authOptions: NextAuthOptions = {
       }
       return session
     },
-    async signIn({ user, account, profile, email }: any) {
-      console.log('SignIn Callback:', { 
-        provider: account?.provider,
-        type: account?.type,
-        userId: user?.id,
-        userEmail: user?.email,
-        email
-      })
-      
-      // For OAuth providers, allow sign-in
-      if (account?.provider) {
-        return true
+  },
+  providers: providers.length > 0 ? providers : [
+    // Fallback provider for when no OAuth providers are configured
+    {
+      id: 'credentials',
+      name: 'Demo',
+      type: 'credentials',
+      credentials: {
+        email: { label: 'Email', type: 'email' },
+        password: { label: 'Password', type: 'password' }
+      },
+      async authorize(credentials) {
+        console.log('Credentials authorize called:', { email: credentials?.email })
+        // Allow demo login with any email/password when no OAuth providers are configured
+        if (credentials?.email) {
+          const user = {
+            id: `demo-${Date.now()}`,
+            email: credentials.email,
+            name: 'Demo User',
+          }
+          console.log('Demo user created:', user)
+          return user
+        }
+        console.log('No email provided for demo login')
+        return null
       }
-      
-      // For credentials provider (demo), always allow
-      if (account?.type === 'credentials') {
-        console.log('Credentials sign-in allowed')
-        return true
-      }
-      
-      // Allow existing users
-      if (user) {
-        return true
-      }
-      
-      // Default: allow all sign-ins
-      return true
-    },
+    }
+  ],
+  session: {
+    strategy: 'jwt',
   },
   pages: {
     signIn: '/auth/signin',
