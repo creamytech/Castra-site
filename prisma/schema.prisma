@@ -54,8 +54,61 @@ model User {
   templates     Template[]
   toneEmbeddings ToneEmbedding[]
   
+  // Chat Relations
+  chatSessions  ChatSession[]
+  chatMessages  ChatMessage[]
+  memories      Memory[]
+  emailThreadCaches EmailThreadCache[]
+  
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+}
+
+// Chat Models
+model ChatSession {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String?
+  createdAt DateTime @default(now())
+  messages  ChatMessage[]
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, createdAt])
+}
+
+model ChatMessage {
+  id         String   @id @default(cuid())
+  sessionId  String
+  userId     String
+  role       String   // "user" | "assistant" | "tool"
+  content    String   // plain or HTML
+  createdAt  DateTime @default(now())
+  session    ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([sessionId, createdAt])
+}
+
+model Memory {
+  id        String   @id @default(cuid())
+  userId    String
+  key       String   // e.g., "tone", "client:john-smith:notes"
+  value     String
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, key])
+}
+
+model EmailThreadCache {
+  id        String   @id
+  userId    String
+  snippet   String?
+  payload   Bytes?   // raw gzip'd JSON if needed
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, updatedAt])
 }
 
 // CRM Models

@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'
 import Sidebar from '@/components/Sidebar'
 import QuickActions from '@/components/QuickActions'
 import TransitionProvider from './motion/TransitionProvider'
+import AssistantDock from '@/components/AssistantDock'
 
 export default function AppLayout({
   children,
@@ -85,6 +86,9 @@ export default function AppLayout({
           </TransitionProvider>
         </main>
       </div>
+
+      {/* Global Assistant Dock */}
+      <AssistantDock />
     </div>
   )
 }
