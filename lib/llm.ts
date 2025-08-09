@@ -130,6 +130,10 @@ export async function generateChatReply(messages: any[], tools: any[], systemPro
 }
 
 export async function generateCalendarEventExtraction(message: string) {
+  if (!openai) {
+    throw new Error('OpenAI API key not configured')
+  }
+
   try {
     const prompt = `Extract calendar event details from the following message. Return a JSON object with the following structure:
 {
