@@ -22,11 +22,12 @@ export const config = {
      * Match all request paths except for the ones starting with:
      * - api/auth (auth API routes)
      * - api/waitlist (waitlist API route)
+     * - auth/ (auth pages)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public folder
      */
-    '/((?!api/auth|api/waitlist|_next/static|_next/image|favicon.ico|public).*)',
+    '/((?!api/auth|api/waitlist|auth|_next/static|_next/image|favicon.ico|public).*)',
   ],
 }
