@@ -1,4 +1,5 @@
 import OpenAI from 'openai'
+import { findContacts, findLeads, describeListing, prepareListingCoverEmail } from './tools'
 
 const openai = process.env.OPENAI_API_KEY ? new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -67,5 +68,68 @@ export async function generateChatReply(messages: any[], tools: any[], systemPro
     temperature: 0.7,
   })
 
-  return completion.choices[0]?.message?.content || 'Unable to generate response'
+  const response = completion.choices[0]?.message
+
+  if (!response) {
+    return 'Unable to generate response'
+  }
+
+  // If the model wants to call a tool, execute it
+  if (response.tool_calls && response.tool_calls.length > 0) {
+    const toolResults = []
+    
+    for (const toolCall of response.tool_calls) {
+      try {
+        const result = await executeTool(toolCall.function.name, JSON.parse(toolCall.function.arguments))
+        toolResults.push({
+          tool_call_id: toolCall.id,
+          role: 'tool' as const,
+          content: result,
+        })
+      } catch (error) {
+        console.error(`Error executing tool ${toolCall.function.name}:`, error)
+        toolResults.push({
+          tool_call_id: toolCall.id,
+          role: 'tool' as const,
+          content: `Error executing ${toolCall.function.name}: ${error}`,
+        })
+      }
+    }
+
+    // Get the final response after tool execution
+    const finalCompletion = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [
+        {
+          role: 'system',
+          content: systemPrompt,
+        },
+        ...messages,
+        response,
+        ...toolResults,
+      ],
+      max_tokens: 1000,
+      temperature: 0.7,
+    })
+
+    return finalCompletion.choices[0]?.message?.content || 'Unable to generate response'
+  }
+
+  return response.content || 'Unable to generate response'
+}
+
+async function executeTool(name: string, args: any): Promise<string> {
+  switch (name) {
+    case 'findContacts':
+      return JSON.stringify(await findContacts('demo-user', args))
+    case 'findLeads':
+      return JSON.stringify(await findLeads('demo-user', args))
+    case 'describeListing':
+      return await describeListing(args)
+    case 'prepareListingCoverEmail':
+      const result = await prepareListingCoverEmail(args)
+      return JSON.stringify(result)
+    default:
+      throw new Error(`Unknown tool: ${name}`)
+  }
 }
