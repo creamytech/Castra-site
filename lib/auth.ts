@@ -3,6 +3,7 @@ import { PrismaAdapter } from '@auth/prisma-adapter'
 import OktaProvider from 'next-auth/providers/okta'
 import GoogleProvider from 'next-auth/providers/google'
 import AzureADProvider from 'next-auth/providers/azure-ad'
+import CredentialsProvider from 'next-auth/providers/credentials'
 import { prisma } from './prisma'
 import { config } from './config'
 
@@ -64,6 +65,33 @@ if (config.azure.clientId && config.azure.clientSecret && config.azure.tenantId)
   )
 }
 
+// Always add credentials provider for demo mode
+providers.push(
+  CredentialsProvider({
+    id: 'credentials',
+    name: 'Demo',
+    credentials: {
+      email: { label: 'Email', type: 'email' },
+      password: { label: 'Password', type: 'password' }
+    },
+    async authorize(credentials) {
+      console.log('Credentials authorize called:', { email: credentials?.email })
+      // Allow demo login with any email/password
+      if (credentials?.email) {
+        const user = {
+          id: `demo-${Date.now()}`,
+          email: credentials.email,
+          name: 'Demo User',
+        }
+        console.log('Demo user created:', user)
+        return user
+      }
+      console.log('No email provided for demo login')
+      return null
+    }
+  })
+)
+
 console.log('Configured providers:', providers.map(p => p.id))
 
 // Completely disable adapter to avoid account linking issues
@@ -75,8 +103,6 @@ const createAdapter = () => {
 export const authOptions: NextAuthOptions = {
   adapter: createAdapter(),
   debug: true, // Always enable debug for troubleshooting
-  // Allow linking accounts with the same email
-  // This will allow users to sign in with different providers using the same email
   callbacks: {
     async signIn({ user, account, profile, email }: any) {
       console.log('SignIn Callback:', { 
@@ -139,42 +165,7 @@ export const authOptions: NextAuthOptions = {
       return session
     },
   },
-  providers: (() => {
-    console.log('Final providers array length:', providers.length)
-    if (providers.length > 0) {
-      console.log('Using configured providers:', providers.map(p => p.id))
-      return providers
-    } else {
-      console.log('No providers configured, using fallback credentials provider')
-      return [
-        // Fallback provider for when no OAuth providers are configured
-        {
-          id: 'credentials',
-          name: 'Demo',
-          type: 'credentials',
-          credentials: {
-            email: { label: 'Email', type: 'email' },
-            password: { label: 'Password', type: 'password' }
-          },
-          async authorize(credentials) {
-            console.log('Credentials authorize called:', { email: credentials?.email })
-            // Allow demo login with any email/password when no OAuth providers are configured
-            if (credentials?.email) {
-              const user = {
-                id: `demo-${Date.now()}`,
-                email: credentials.email,
-                name: 'Demo User',
-              }
-              console.log('Demo user created:', user)
-              return user
-            }
-            console.log('No email provided for demo login')
-            return null
-          }
-        }
-      ]
-    }
-  })(),
+  providers,
   session: {
     strategy: 'jwt',
   },
