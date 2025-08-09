@@ -193,27 +193,29 @@ export default function ChatPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/chat", {
+      // Call the session-specific message API
+      const response = await fetch(`/api/chat/sessions/${sessionToUse.id}/message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          sessionId: sessionToUse.id,
-          messages: [...messages, userMessage].map(m => ({
-            role: m.role,
-            content: m.content
-          }))
+          role: "user",
+          content: inputMessage
         })
       });
 
       if (response.ok) {
         const data = await response.json();
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: data.message,
-          createdAt: new Date().toISOString(),
-        };
-        setMessages(prev => [...prev, assistantMessage]);
+        
+        // Add the assistant message if it exists
+        if (data.assistantMessage) {
+          const assistantMessage: Message = {
+            id: data.assistantMessage.id,
+            role: "assistant",
+            content: data.assistantMessage.content,
+            createdAt: data.assistantMessage.createdAt,
+          };
+          setMessages(prev => [...prev, assistantMessage]);
+        }
         
         // Auto-generate title after first assistant response if title is still "Draft..."
         if (sessionToUse && sessionToUse.title === "Draft..." && messages.length === 0) {
