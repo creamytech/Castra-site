@@ -2,6 +2,7 @@
 
 import { signIn, getSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
+import ThemeToggle from '@/components/ThemeToggle'
 
 export default function SignInPage() {
   const [loading, setLoading] = useState(true)
@@ -29,13 +30,15 @@ export default function SignInPage() {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
+      <ThemeToggle />
+      
       {/* Animated Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-pink-600/20 animate-pulse"></div>
-        <div className="absolute top-0 left-0 w-72 h-72 bg-blue-500/30 rounded-full mix-blend-multiply filter blur-xl animate-blob"></div>
-        <div className="absolute top-0 right-0 w-72 h-72 bg-purple-500/30 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-2000"></div>
-        <div className="absolute bottom-0 left-0 w-72 h-72 bg-pink-500/30 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-4000"></div>
-        <div className="absolute bottom-0 right-0 w-72 h-72 bg-yellow-500/30 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-6000"></div>
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 dark:from-blue-900 dark:via-purple-900 dark:to-indigo-900 bg-gradient-to-br from-blue-100 via-purple-100 to-indigo-100">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-pink-600/20 dark:from-blue-600/20 dark:via-purple-600/20 dark:to-pink-600/20 from-blue-400/30 via-purple-400/30 to-pink-400/30 animate-pulse"></div>
+        <div className="absolute top-0 left-0 w-72 h-72 bg-blue-500/30 dark:bg-blue-500/30 bg-blue-400/40 rounded-full mix-blend-multiply filter blur-xl animate-blob"></div>
+        <div className="absolute top-0 right-0 w-72 h-72 bg-purple-500/30 dark:bg-purple-500/30 bg-purple-400/40 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-2000"></div>
+        <div className="absolute bottom-0 left-0 w-72 h-72 bg-pink-500/30 dark:bg-pink-500/30 bg-pink-400/40 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-4000"></div>
+        <div className="absolute bottom-0 right-0 w-72 h-72 bg-yellow-500/30 dark:bg-yellow-500/30 bg-yellow-400/40 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-6000"></div>
       </div>
 
       {/* Content */}
