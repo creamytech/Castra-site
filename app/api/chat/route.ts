@@ -11,10 +11,13 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { messages } = await req.json()
-
-    if (!messages || !Array.isArray(messages)) {
-      return NextResponse.json({ error: 'Messages array is required' }, { status: 400 })
+    const body = await req.json().catch(() => ({}))
+    const messages: {role: "user" | "assistant"; content: string}[] = Array.isArray(body.messages) ? body.messages : []
+    
+    if (messages.length === 0) {
+      return NextResponse.json({ 
+        message: "Hi! I'm Castra, your AI-powered realtor co-pilot. Ask me about your leads, deals, email drafts, or schedule management. How can I help you today?" 
+      })
     }
 
     // Get additional context from email and calendar
@@ -27,7 +30,7 @@ export async function POST(req: NextRequest) {
     try {
       // Get upcoming calendar events
       const events = await listUpcomingEvents(
-        (session.user as any).id,
+        session.user.id,
         { max: 5 },
         sessionTokens
       )

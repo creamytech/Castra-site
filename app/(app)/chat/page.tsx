@@ -154,11 +154,16 @@ export default function ChatPage() {
         return
       }
 
-      // Regular chat request
+      // Regular chat request - always send messages array
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: inputMessage })
+        body: JSON.stringify({ 
+          messages: [...messages, userMessage].map(msg => ({
+            role: msg.role,
+            content: msg.content
+          }))
+        })
       })
 
       if (response.ok) {
@@ -166,7 +171,7 @@ export default function ChatPage() {
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
-          content: data.reply,
+          content: data.message || data.reply || 'Sorry, I couldn\'t process your request.',
           timestamp: new Date()
         }
         setMessages(prev => [...prev, assistantMessage])
@@ -215,136 +220,135 @@ export default function ChatPage() {
   }
 
   return (
-      <div className="max-w-7xl mx-auto h-full">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full">
-          {/* Left Column: Conversation History */}
-          <div className="lg:col-span-1">
-            <div className="card h-full">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="h2">Conversations</h2>
-                <button onClick={createNewConversation} className="btn-primary text-sm">
-                  New Chat
-                </button>
-              </div>
+    <div className="max-w-7xl mx-auto h-full">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full">
+        {/* Left Column: Conversation History */}
+        <div className="lg:col-span-1">
+          <div className="card h-full">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="h2">Conversations</h2>
+              <button onClick={createNewConversation} className="btn-primary text-sm">
+                New Chat
+              </button>
+            </div>
 
-              <div className="space-y-2 max-h-96 lg:max-h-none overflow-y-auto">
-                {conversations.map((conversation) => (
-                  <button
-                    key={conversation.id}
-                    onClick={() => selectConversation(conversation)}
-                    className={`w-full text-left p-3 rounded-lg transition-colors ${
-                      currentConversation?.id === conversation.id
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-800 dark:text-white'
-                    }`}
-                  >
-                    <div className="font-medium truncate">{conversation.title}</div>
-                    <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                      {conversation.lastUpdated.toLocaleDateString()}
-                    </div>
-                  </button>
-                ))}
-
-                {conversations.length === 0 && (
-                  <div className="text-center text-gray-600 dark:text-gray-400 py-8">
-                    <p>No conversations yet</p>
-                    <p className="text-sm">Start a new chat to begin</p>
+            <div className="space-y-2 max-h-96 lg:max-h-none overflow-y-auto">
+              {conversations.map((conversation) => (
+                <button
+                  key={conversation.id}
+                  onClick={() => selectConversation(conversation)}
+                  className={`w-full text-left p-3 rounded-lg transition-colors ${
+                    currentConversation?.id === conversation.id
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-800 dark:text-white'
+                  }`}
+                >
+                  <div className="font-medium truncate">{conversation.title}</div>
+                  <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                    {conversation.lastUpdated.toLocaleDateString()}
                   </div>
-                )}
-              </div>
+                </button>
+              ))}
+
+              {conversations.length === 0 && (
+                <div className="text-center text-gray-600 dark:text-gray-400 py-8">
+                  <p>No conversations yet</p>
+                  <p className="text-sm">Start a new chat to begin</p>
+                </div>
+              )}
             </div>
           </div>
+        </div>
 
-          {/* Right Column: Chat Interface */}
-          <div className="lg:col-span-3">
-            <div className="card h-full flex flex-col">
-              <div className="flex-1 overflow-y-auto p-6">
-                {messages.length === 0 ? (
-                  <div className="text-center text-gray-600 dark:text-gray-400 py-8">
-                    <div className="text-4xl mb-4">💬</div>
-                    <h3 className="mb-2">Start a conversation</h3>
-                    <p>Ask me anything about your real estate workflow</p>
+        {/* Right Column: Chat Interface */}
+        <div className="lg:col-span-3">
+          <div className="card h-full flex flex-col">
+            <div className="flex-1 overflow-y-auto p-6">
+              {messages.length === 0 ? (
+                <div className="text-center text-gray-600 dark:text-gray-400 py-8">
+                  <div className="text-4xl mb-4">💬</div>
+                  <h3 className="mb-2">Start a conversation</h3>
+                  <p>Ask me anything about your real estate workflow</p>
 
-                    {/* Example queries */}
-                    <div className="mt-6 space-y-2">
-                      <button
-                        onClick={() => setInputMessage("Draft a follow-up email for a client who viewed a property yesterday")}
-                        className="block w-full p-3 text-left bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                      >
-                        💌 Draft a follow-up email
-                      </button>
-                      <button
-                        onClick={() => setInputMessage("Schedule a showing with John Smith for tomorrow at 2pm")}
-                        className="block w-full p-3 text-left bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                      >
-                        📅 Schedule a showing
-                      </button>
-                      <button
-                        onClick={() => setInputMessage("Update my CRM with a new lead from today's open house")}
-                        className="block w-full p-3 text-left bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                      >
-                        👥 Update CRM lead
-                      </button>
-                    </div>
+                  {/* Example queries */}
+                  <div className="mt-6 space-y-2">
+                    <button
+                      onClick={() => setInputMessage("Draft a follow-up email for a client who viewed a property yesterday")}
+                      className="block w-full p-3 text-left bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    >
+                      💌 Draft a follow-up email
+                    </button>
+                    <button
+                      onClick={() => setInputMessage("Schedule a showing with John Smith for tomorrow at 2pm")}
+                      className="block w-full p-3 text-left bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    >
+                      📅 Schedule a showing
+                    </button>
+                    <button
+                      onClick={() => setInputMessage("Update my CRM with a new lead from today's open house")}
+                      className="block w-full p-3 text-left bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    >
+                      👥 Update CRM lead
+                    </button>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    {messages.map((message) => (
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    >
                       <div
-                        key={message.id}
-                        className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                        className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                          message.role === 'user'
+                            ? 'bg-purple-600 text-white'
+                            : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white'
+                        }`}
                       >
-                        <div
-                          className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                            message.role === 'user'
-                              ? 'bg-purple-600 text-white'
-                              : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white'
-                          }`}
-                        >
-                          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                          <p className="text-xs opacity-70 mt-1">
-                            {message.timestamp.toLocaleTimeString()}
-                          </p>
+                        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                        <p className="text-xs opacity-70 mt-1">
+                          {message.timestamp.toLocaleTimeString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+
+                  {isLoading && (
+                    <div className="flex justify-start">
+                      <div className="bg-gray-200 dark:bg-gray-700 px-4 py-2 rounded-lg">
+                        <div className="flex space-x-1">
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                         </div>
                       </div>
-                    ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
 
-                    {isLoading && (
-                      <div className="flex justify-start">
-                        <div className="bg-gray-200 dark:bg-gray-700 px-4 py-2 rounded-lg">
-                          <div className="flex space-x-1">
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-
-              {/* Input Form */}
-              <div className="border-t border-gray-200 dark:border-gray-700 p-4">
-                <form onSubmit={handleSubmit} className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={inputMessage}
-                    onChange={(e) => setInputMessage(e.target.value)}
-                    placeholder="Type your message..."
-                    disabled={isLoading}
-                    className="flex-1 px-3 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder-gray-600 dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                  <button
-                    type="submit"
-                    disabled={isLoading || !inputMessage.trim()}
-                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {isLoading ? 'Sending...' : 'Send'}
-                  </button>
-                </form>
-              </div>
+            {/* Input Form */}
+            <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+              <form onSubmit={handleSubmit} className="flex space-x-2">
+                <input
+                  type="text"
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  placeholder="Type your message..."
+                  disabled={isLoading}
+                  className="flex-1 px-3 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder-gray-600 dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+                <button
+                  type="submit"
+                  disabled={isLoading || !inputMessage.trim()}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isLoading ? 'Sending...' : 'Send'}
+                </button>
+              </form>
             </div>
           </div>
         </div>
