@@ -129,6 +129,71 @@ export async function generateChatReply(messages: any[], tools: any[], systemPro
   }
 }
 
+export async function generateCalendarEventExtraction(message: string) {
+  try {
+    const prompt = `Extract calendar event details from the following message. Return a JSON object with the following structure:
+{
+  "summary": "Event title/summary",
+  "startTime": "ISO datetime string",
+  "endTime": "ISO datetime string", 
+  "duration": number in minutes,
+  "attendees": ["email1@example.com", "email2@example.com"],
+  "location": "optional location",
+  "description": "optional description"
+}
+
+Rules:
+- If no specific time is mentioned, use tomorrow at 2pm as default
+- If no duration is mentioned, use 60 minutes as default
+- Extract email addresses from the message for attendees
+- Use natural language for summary
+- Return only valid JSON
+
+Message: "${message}"
+
+JSON:`
+
+    const response = await openai.chat.completions.create({
+      model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a calendar event extraction assistant. Extract event details from natural language and return valid JSON only.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      temperature: 0.1,
+      max_tokens: 500
+    })
+
+    const content = response.choices[0]?.message?.content
+    if (!content) {
+      throw new Error('No response from AI')
+    }
+
+    // Try to extract JSON from the response
+    const jsonMatch = content.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      throw new Error('No valid JSON found in response')
+    }
+
+    const eventDetails = JSON.parse(jsonMatch[0])
+    
+    // Validate required fields
+    if (!eventDetails.summary || !eventDetails.startTime) {
+      throw new Error('Missing required event details')
+    }
+
+    return eventDetails
+  } catch (error) {
+    console.error('Calendar event extraction error:', error)
+    throw new Error('Failed to extract event details')
+  }
+}
+
 async function executeTool(name: string, args: any): Promise<string> {
   try {
     switch (name) {

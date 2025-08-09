@@ -111,16 +111,65 @@ export default function ChatPage() {
         const isSchedulingRequest = userMessage.toLowerCase().includes('schedule') || 
                                   userMessage.toLowerCase().includes('meeting') ||
                                   userMessage.toLowerCase().includes('appointment') ||
-                                  userMessage.toLowerCase().includes('time')
+                                  userMessage.toLowerCase().includes('time') ||
+                                  userMessage.toLowerCase().includes('book') ||
+                                  userMessage.toLowerCase().includes('showing') ||
+                                  userMessage.toLowerCase().includes('call')
 
         // Check if this is a listing cover email request
         const isListingCoverRequest = userMessage.toLowerCase().includes('prepare listing cover email') ||
                                     userMessage.toLowerCase().includes('listing cover') ||
                                     userMessage.toLowerCase().includes('cover email')
 
+        // Check if this is a direct calendar event creation
+        const isDirectCalendarCreation = userMessage.toLowerCase().includes('book a showing') ||
+                                       userMessage.toLowerCase().includes('schedule a meeting') ||
+                                       userMessage.toLowerCase().includes('create event') ||
+                                       userMessage.toLowerCase().includes('add to calendar')
+
         let assistantMessage: Message
 
-        if (isSchedulingRequest) {
+        if (isDirectCalendarCreation) {
+          // Try to extract event details and create directly
+          try {
+            const eventDetails = await extractEventDetails(userMessage)
+            if (eventDetails) {
+              const eventResponse = await createCalendarEvent(eventDetails)
+              assistantMessage = {
+                role: 'assistant',
+                content: `✅ Calendar event created successfully!\n\n**Event Details:**\n- Summary: ${eventDetails.summary}\n- Date: ${eventDetails.startTime}\n- Duration: ${eventDetails.duration} minutes\n- Attendees: ${eventDetails.attendees.join(', ') || 'None'}\n\nEvent ID: ${eventResponse.id}`
+              }
+            } else {
+              // Fall back to AI suggestions
+              const slotsResponse = await fetch('/api/calendar/suggest', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  window: userMessage,
+                  constraints: '',
+                }),
+              })
+
+              if (slotsResponse.ok) {
+                const slotsData = await slotsResponse.json()
+                assistantMessage = {
+                  role: 'assistant',
+                  content: data.message,
+                  timeSlots: slotsData.slots,
+                  schedulingRequest: true
+                }
+              } else {
+                assistantMessage = { role: 'assistant', content: data.message }
+                addToast('Failed to get time slots', 'error')
+              }
+            }
+          } catch (error) {
+            assistantMessage = { role: 'assistant', content: 'Sorry, I couldn\'t create the calendar event. Please try again with more specific details.' }
+            addToast('Failed to create calendar event', 'error')
+          }
+        } else if (isSchedulingRequest) {
           // Get time slots
           const slotsResponse = await fetch('/api/calendar/suggest', {
             method: 'POST',
@@ -135,8 +184,8 @@ export default function ChatPage() {
 
           if (slotsResponse.ok) {
             const slotsData = await slotsResponse.json()
-            assistantMessage = { 
-              role: 'assistant', 
+            assistantMessage = {
+              role: 'assistant',
               content: data.message,
               timeSlots: slotsData.slots,
               schedulingRequest: true
@@ -152,8 +201,8 @@ export default function ChatPage() {
           
           if (htmlMatch) {
             const htmlContent = htmlMatch[1]
-            assistantMessage = { 
-              role: 'assistant', 
+            assistantMessage = {
+              role: 'assistant',
               content: assistantMessageContent.replace(/```html\n[\s\S]*?\n```/, ''),
               htmlPreview: htmlContent,
               isEmailPreview: true
@@ -193,6 +242,54 @@ export default function ChatPage() {
       addToast('Network error. Please try again.', 'error')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const extractEventDetails = async (message: string): Promise<any> => {
+    try {
+      const response = await fetch('/api/calendar/extract', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        return data.eventDetails
+      }
+      return null
+    } catch (error) {
+      console.error('Failed to extract event details:', error)
+      return null
+    }
+  }
+
+  const createCalendarEvent = async (eventDetails: any) => {
+    try {
+      const response = await fetch('/api/calendar', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          summary: eventDetails.summary,
+          startISO: eventDetails.startTime,
+          endISO: eventDetails.endTime,
+          attendees: eventDetails.attendees || [],
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        return data.event
+      } else {
+        throw new Error('Failed to create calendar event')
+      }
+    } catch (error) {
+      console.error('Failed to create calendar event:', error)
+      throw error
     }
   }
 

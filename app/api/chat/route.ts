@@ -2,133 +2,63 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { generateChatReply } from '@/lib/llm'
-import {
-  findContacts,
-  findLeads,
-  describeListing,
-  prepareListingCoverEmail,
-} from '@/lib/tools'
+import { listUpcomingEvents } from '@/lib/google'
 
-// Force dynamic rendering for this route
-export const dynamic = 'force-dynamic'
+export async function POST(req: NextRequest) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
-export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
-
-    const { messages } = await request.json()
+    const { messages } = await req.json()
 
     if (!messages || !Array.isArray(messages)) {
-      return NextResponse.json(
-        { error: 'Messages array is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Messages array is required' }, { status: 400 })
     }
 
-    // Debug: Log the request
-    console.log('Chat request received:', {
-      messageCount: messages.length,
-      lastMessage: messages[messages.length - 1]?.content?.substring(0, 100)
-    })
+    // Get additional context from email and calendar
+    let contextInfo = ''
+    const sessionTokens = {
+      accessToken: (session as any).accessToken,
+      refreshToken: (session as any).refreshToken,
+    }
 
-    const tools = [
-      {
-        type: 'function',
-        function: {
-          name: 'findContacts',
-          description: 'Search for contacts by tag, email, or name',
-          parameters: {
-            type: 'object',
-            properties: {
-              tag: { type: 'string', description: 'Tag to search for' },
-              email: { type: 'string', description: 'Email to search for' },
-              name: { type: 'string', description: 'Name to search for' },
-            },
-          },
-        },
-      },
-      {
-        type: 'function',
-        function: {
-          name: 'findLeads',
-          description: 'Search for leads by status, source, or date range',
-          parameters: {
-            type: 'object',
-            properties: {
-              status: { type: 'string', description: 'Lead status to filter by' },
-              source: { type: 'string', description: 'Lead source to filter by' },
-              since: { type: 'string', description: 'ISO date to filter leads since' },
-            },
-          },
-        },
-      },
-      {
-        type: 'function',
-        function: {
-          name: 'describeListing',
-          description: 'Generate a property description for a listing',
-          parameters: {
-            type: 'object',
-            properties: {
-              address: { type: 'string', description: 'Property address to describe' },
-            },
-            required: ['address'],
-          },
-        },
-      },
-      {
-        type: 'function',
-        function: {
-          name: 'prepareListingCoverEmail',
-          description: 'Prepare a listing cover email with client and property details',
-          parameters: {
-            type: 'object',
-            properties: {
-              clientName: { type: 'string', description: 'Client name for the email' },
-              address: { type: 'string', description: 'Property address' },
-              price: { type: 'number', description: 'Property price' },
-              closeDate: { type: 'string', description: 'Close date in ISO format' },
-            },
-            required: ['clientName', 'address', 'price', 'closeDate'],
-          },
-        },
-      },
-    ]
+    try {
+      // Get upcoming calendar events
+      const events = await listUpcomingEvents(
+        (session.user as any).id,
+        { max: 5 },
+        sessionTokens
+      )
+      
+      if (events.length > 0) {
+        contextInfo += '\n\n**Upcoming Calendar Events:**\n'
+        events.forEach(event => {
+          const date = new Date(event.startISO || '').toLocaleString()
+          contextInfo += `- ${event.summary} (${date})\n`
+        })
+      }
+    } catch (error) {
+      console.error('Failed to fetch calendar context:', error)
+    }
 
-    const systemPrompt = `You are Castra, an AI-powered realtor co-pilot. You help real estate professionals manage their business efficiently.
+    // Add context to the last user message
+    const enhancedMessages = [...messages]
+    if (enhancedMessages.length > 0 && contextInfo) {
+      const lastMessage = enhancedMessages[enhancedMessages.length - 1]
+      if (lastMessage.role === 'user') {
+        lastMessage.content += contextInfo
+      }
+    }
 
-GUARDRAILS:
-- Be concise and warm in tone
-- Create draft emails only (never send directly)
-- Never provide legal advice
-- Propose 2-3 times when scheduling
-- Format data in HTML tables when appropriate
-- Be professional but approachable
-- Use describeListing when asked to describe properties
-- Use prepareListingCoverEmail when asked to prepare listing cover emails
-
-AVAILABLE TOOLS:
-- findContacts: Search user's contacts
-- findLeads: Search user's leads  
-- describeListing: Generate property descriptions
-- prepareListingCoverEmail: Create listing cover emails
-
-Always respond in HTML format for better presentation.`
-
-    const response = await generateChatReply(messages, tools, systemPrompt)
-
-    return NextResponse.json({ message: response })
-  } catch (error) {
-    console.error('Chat error:', error)
+    const reply = await generateChatReply(enhancedMessages, [], 'You are Castra, an AI-powered realtor co-pilot. You help real estate professionals manage their business efficiently.')
+    
+    return NextResponse.json({ message: reply })
+  } catch (error: any) {
+    console.error('Chat API error:', error)
     return NextResponse.json(
-      { error: `Internal server error: ${error instanceof Error ? error.message : 'Unknown error'}` },
+      { error: error.message ?? 'Failed to generate chat reply' }, 
       { status: 500 }
     )
   }
