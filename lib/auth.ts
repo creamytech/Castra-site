@@ -64,37 +64,39 @@ const createCustomAdapter = () => {
   
   return {
     ...prismaAdapter,
-    linkAccount: async (account: any) => {
-      try {
-        // Try to link the account normally
-        return await prismaAdapter.linkAccount!(account)
-      } catch (error: any) {
-        // If linking fails due to existing account, try to update it
-        if (error.code === 'P2002' || error.message?.includes('Unique constraint')) {
-          console.log('Account already exists, updating instead of linking')
-          // Update existing account instead of creating new one
-          return await prisma.account.upsert({
-            where: {
-              provider_providerAccountId: {
-                provider: account.provider,
-                providerAccountId: account.providerAccountId,
-              },
-            },
-            update: {
-              access_token: account.access_token,
-              expires_at: account.expires_at,
-              refresh_token: account.refresh_token,
-              token_type: account.token_type,
-              scope: account.scope,
-              id_token: account.id_token,
-              session_state: account.session_state,
-            },
-            create: account,
-          })
-        }
-        throw error
-      }
-    },
+         linkAccount: async (account: any) => {
+       try {
+         // Try to link the account normally
+         return await prismaAdapter.linkAccount!(account)
+       } catch (error: any) {
+         // If linking fails due to existing account, try to update it
+         if (error.code === 'P2002' || error.message?.includes('Unique constraint')) {
+           console.log('Account already exists, updating instead of linking')
+           // Update existing account instead of creating new one
+           if (prisma) {
+             return await prisma.account.upsert({
+               where: {
+                 provider_providerAccountId: {
+                   provider: account.provider,
+                   providerAccountId: account.providerAccountId,
+                 },
+               },
+               update: {
+                 access_token: account.access_token,
+                 expires_at: account.expires_at,
+                 refresh_token: account.refresh_token,
+                 token_type: account.token_type,
+                 scope: account.scope,
+                 id_token: account.id_token,
+                 session_state: account.session_state,
+               },
+               create: account,
+             })
+           }
+         }
+         throw error
+       }
+     },
   }
 }
 
