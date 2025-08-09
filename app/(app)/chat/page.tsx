@@ -10,16 +10,16 @@ export const dynamic = "force-dynamic";
 
 interface Message {
   id: string;
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "tool";
   content: string;
-  timestamp: Date;
+  createdAt: string;
 }
 
-interface Conversation {
+interface ChatSession {
   id: string;
   title: string;
+  createdAt: string;
   messages: Message[];
-  lastUpdated: Date;
 }
 
 interface ToastMessage {
@@ -30,8 +30,8 @@ interface ToastMessage {
 
 export default function ChatPage() {
   const { data: session, status } = useSession();
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null);
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [currentSession, setCurrentSession] = useState<ChatSession | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -55,83 +55,72 @@ export default function ChatPage() {
     scrollToBottom();
   }, [messages]);
 
-  const createNewConversation = () => {
-    const newConversation: Conversation = {
-      id: Date.now().toString(),
-      title: "New Conversation",
-      messages: [],
-      lastUpdated: new Date()
-    };
-    setConversations(prev => [newConversation, ...prev]);
-    setCurrentConversation(newConversation);
-    setMessages([]);
-  };
-
-  const selectConversation = (conversation: Conversation) => {
-    setCurrentConversation(conversation);
-    setMessages(conversation.messages);
-  };
-
-  const updateConversationTitle = (conversationId: string, title: string) => {
-    setConversations(prev =>
-      prev.map(conv =>
-        conv.id === conversationId
-          ? { ...conv, title, lastUpdated: new Date() }
-          : conv
-      )
-    );
-  };
-
-  const extractEventDetails = (message: string) => {
-    // Simple event extraction - in a real app, you'd use AI
-    const eventRegex = /(?:schedule|book|meeting|appointment|call|meet).*?(?:with|to|for)\s+([^,]+?)(?:\s+on\s+([^,]+?))?(?:\s+at\s+([^,]+?))?/i;
-    const match = message.match(eventRegex);
-    if (match) {
-      return {
-        summary: match[0],
-        attendee: match[1]?.trim(),
-        date: match[2]?.trim(),
-        time: match[3]?.trim()
-      };
+  // Load chat sessions on mount
+  useEffect(() => {
+    if (session) {
+      loadSessions();
     }
-    return null;
+  }, [session]);
+
+  const loadSessions = async () => {
+    try {
+      const response = await fetch("/api/chat/sessions");
+      if (response.ok) {
+        const data = await response.json();
+        setSessions(data.sessions || []);
+      } else {
+        addToast("Failed to load chat sessions");
+      }
+    } catch (error) {
+      addToast("Network error loading sessions");
+    }
   };
 
-  const createCalendarEvent = async (eventDetails: any) => {
+  const createNewSession = async () => {
     try {
-      const response = await fetch("/api/calendar", {
+      const response = await fetch("/api/chat/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          summary: eventDetails.summary,
-          startISO: new Date().toISOString(),
-          endISO: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // 1 hour later
-          attendees: eventDetails.attendee ? [eventDetails.attendee] : []
-        })
+        body: JSON.stringify({ title: "New Chat" })
       });
 
       if (response.ok) {
-        addToast("Calendar event created successfully!", "success");
-        return true;
+        const data = await response.json();
+        const newSession = data.session;
+        setSessions(prev => [newSession, ...prev]);
+        setCurrentSession(newSession);
+        setMessages([]);
       } else {
-        addToast("Failed to create calendar event");
-        return false;
+        addToast("Failed to create new session");
       }
     } catch (error) {
-      addToast("Network error creating calendar event");
-      return false;
+      addToast("Network error creating session");
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputMessage.trim() || isLoading) return;
+  const selectSession = async (session: ChatSession) => {
+    try {
+      const response = await fetch(`/api/chat/sessions/${session.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setCurrentSession(data.session);
+        setMessages(data.session.messages || []);
+      } else {
+        addToast("Failed to load session");
+      }
+    } catch (error) {
+      addToast("Network error loading session");
+    }
+  };
+
+  const sendMessage = async () => {
+    if (!inputMessage.trim() || isLoading || !currentSession) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
       content: inputMessage,
-      timestamp: new Date()
+      createdAt: new Date().toISOString()
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -139,44 +128,21 @@ export default function ChatPage() {
     setIsLoading(true);
 
     try {
-      // Check if this is a calendar event request
-      const eventDetails = extractEventDetails(inputMessage);
-      if (eventDetails) {
-        const success = await createCalendarEvent(eventDetails);
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: success
-            ? `✅ Calendar event created: "${eventDetails.summary}"`
-            : "❌ Failed to create calendar event. Please try again.",
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, assistantMessage]);
-        setIsLoading(false);
-        return;
-      }
-
-      // Regular chat request - always send messages array
-      const response = await fetch("/api/chat", {
+      const response = await fetch(`/api/chat/sessions/${currentSession.id}/message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          messages: [...messages, userMessage].map(msg => ({
-            role: msg.role,
-            content: msg.content
-          }))
+        body: JSON.stringify({
+          role: "user",
+          content: inputMessage
         })
       });
 
       if (response.ok) {
         const data = await response.json();
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: data.message || data.reply || "Sorry, I couldn't process your request.",
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, assistantMessage]);
+        const assistantMessage = data.assistantMessage;
+        if (assistantMessage) {
+          setMessages(prev => [...prev, assistantMessage]);
+        }
       } else {
         const errorData = await response.json();
         addToast(errorData.error || "Failed to get response");
@@ -188,22 +154,10 @@ export default function ChatPage() {
     }
   };
 
-  // Update current conversation with new messages
-  useEffect(() => {
-    if (currentConversation && messages.length > 0) {
-      const updatedConversation = {
-        ...currentConversation,
-        messages,
-        lastUpdated: new Date()
-      };
-      setCurrentConversation(updatedConversation);
-      setConversations(prev =>
-        prev.map(conv =>
-          conv.id === currentConversation.id ? updatedConversation : conv
-        )
-      );
-    }
-  }, [messages, currentConversation]);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await sendMessage();
+  };
 
   if (status === "loading") {
     return (
@@ -224,14 +178,14 @@ export default function ChatPage() {
   return (
     <div className="max-w-7xl mx-auto h-full">
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full">
-        {/* Left Column: Conversation History */}
+        {/* Left Column: Session History */}
         <FadeIn delay={0.1}>
           <div className="lg:col-span-1">
             <div className="card h-full">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="h2">Conversations</h2>
+                <h2 className="h2">Chat Sessions</h2>
                 <motion.button 
-                  onClick={createNewConversation} 
+                  onClick={createNewSession} 
                   className="btn-primary text-sm"
                   whileTap={{ scale: 0.98 }}
                 >
@@ -241,12 +195,12 @@ export default function ChatPage() {
 
               <div className="space-y-2 max-h-96 lg:max-h-none overflow-y-auto">
                 <AnimatePresence>
-                  {conversations.map((conversation, index) => (
+                  {sessions.map((session, index) => (
                     <motion.button
-                      key={conversation.id}
-                      onClick={() => selectConversation(conversation)}
+                      key={session.id}
+                      onClick={() => selectSession(session)}
                       className={`w-full text-left p-3 rounded-lg transition-colors ${
-                        currentConversation?.id === conversation.id
+                        currentSession?.id === session.id
                           ? "bg-purple-600 text-white"
                           : "bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-800 dark:text-white"
                       }`}
@@ -257,17 +211,17 @@ export default function ChatPage() {
                       whileHover={{ scale: 1.01 }}
                       layout
                     >
-                      <div className="font-medium truncate">{conversation.title}</div>
+                      <div className="font-medium truncate">{session.title}</div>
                       <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                        {conversation.lastUpdated.toLocaleDateString()}
+                        {new Date(session.createdAt).toLocaleDateString()}
                       </div>
                     </motion.button>
                   ))}
                 </AnimatePresence>
 
-                {conversations.length === 0 && (
+                {sessions.length === 0 && (
                   <div className="text-center text-gray-600 dark:text-gray-400 py-8">
-                    <p>No conversations yet</p>
+                    <p>No chat sessions yet</p>
                     <p className="text-sm">Start a new chat to begin</p>
                   </div>
                 )}
@@ -337,7 +291,7 @@ export default function ChatPage() {
                           >
                             <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                             <p className="text-xs opacity-70 mt-1">
-                              {message.timestamp.toLocaleTimeString()}
+                              {new Date(message.createdAt).toLocaleTimeString()}
                             </p>
                           </motion.div>
                         </motion.div>
@@ -373,7 +327,7 @@ export default function ChatPage() {
                   />
                   <motion.button
                     type="submit"
-                    disabled={isLoading || !inputMessage.trim()}
+                    disabled={isLoading || !inputMessage.trim() || !currentSession}
                     className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     whileTap={{ scale: 0.98 }}
                   >

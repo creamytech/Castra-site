@@ -11,10 +11,12 @@ export const dynamic = "force-dynamic";
 interface CalEvent {
   id: string;
   summary: string;
-  start: string;
-  end: string;
+  startISO: string;
+  endISO: string;
   attendees?: string[];
   description?: string;
+  location?: string;
+  hangoutLink?: string;
 }
 
 interface ToastMessage {
@@ -73,7 +75,7 @@ export default function CalendarPage() {
     }
 
     try {
-      const response = await fetch("/api/calendar", {
+      const response = await fetch("/api/calendar/hold", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -89,7 +91,8 @@ export default function CalendarPage() {
         setNewEvent({ summary: "", startISO: "", endISO: "", attendees: "" });
         fetchUpcomingEvents(); // Refresh events
       } else {
-        addToast("Failed to create event");
+        const errorData = await response.json();
+        addToast(errorData.error || "Failed to create event");
       }
     } catch (error) {
       addToast("Network error. Please try again.");
@@ -102,10 +105,41 @@ export default function CalendarPage() {
     }
   }, [status]);
 
-  const formatRange = (start: string, end: string) => {
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-    return `${startDate.toLocaleDateString()} ${startDate.toLocaleTimeString()} - ${endDate.toLocaleTimeString()}`;
+  const formatDate = (dateISO: string) => {
+    if (!dateISO) return "Unknown date";
+    try {
+      const date = new Date(dateISO);
+      return date.toLocaleDateString([], { 
+        month: "short", 
+        day: "numeric", 
+        hour: "numeric", 
+        minute: "2-digit" 
+      });
+    } catch {
+      return "Invalid date";
+    }
+  };
+
+  const formatRange = (startISO: string, endISO: string) => {
+    try {
+      const startDate = new Date(startISO);
+      const endDate = new Date(endISO);
+      
+      const startFormatted = startDate.toLocaleDateString([], { 
+        month: "short", 
+        day: "numeric", 
+        hour: "numeric", 
+        minute: "2-digit" 
+      });
+      const endFormatted = endDate.toLocaleTimeString([], { 
+        hour: "numeric", 
+        minute: "2-digit" 
+      });
+      
+      return `${startFormatted} - ${endFormatted}`;
+    } catch {
+      return "Invalid date range";
+    }
   };
 
   if (status === "loading") {
@@ -198,7 +232,7 @@ export default function CalendarPage() {
 
               <motion.button
                 type="submit"
-                className="w-full btn-primary"
+                className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
                 whileTap={{ scale: 0.98 }}
               >
                 Create Event
@@ -212,27 +246,27 @@ export default function CalendarPage() {
           <div className="card">
             <div className="flex items-center justify-between mb-4">
               <h2 className="h2">Upcoming Events</h2>
-              <motion.button
-                onClick={fetchUpcomingEvents}
-                disabled={eventsLoading}
+              <motion.button 
+                onClick={fetchUpcomingEvents} 
                 className="btn-secondary text-sm"
                 whileTap={{ scale: 0.98 }}
               >
-                {eventsLoading ? "Loading..." : "Refresh"}
+                Refresh
               </motion.button>
             </div>
 
             {eventsLoading ? (
-              <div className="text-center py-8">
-                <div className="text-gray-600 dark:text-gray-400">Loading events...</div>
+              <div className="text-center text-gray-600 dark:text-gray-400 py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+                <p className="mt-2">Loading events...</p>
               </div>
             ) : eventsError ? (
-              <div className="text-center py-8">
-                <div className="text-red-600 dark:text-red-400">{eventsError}</div>
+              <div className="text-center text-red-600 dark:text-red-400 py-8">
+                <p>{eventsError}</p>
               </div>
             ) : events.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="text-gray-600 dark:text-gray-400">No upcoming events</div>
+              <div className="text-center text-gray-600 dark:text-gray-400 py-8">
+                <p>No upcoming events</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -240,25 +274,45 @@ export default function CalendarPage() {
                   {events.map((event, index) => (
                     <motion.div
                       key={event.id}
-                      className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg border-l-4 border-purple-500"
+                      className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg"
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
                       transition={{ delay: index * 0.05 }}
                       whileHover={{ scale: 1.01 }}
-                      layout
                     >
-                      <h3 className="font-medium text-gray-800 dark:text-white mb-1">
-                        {event.summary}
-                      </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                        {formatRange(event.start, event.end)}
-                      </p>
-                      {event.attendees && event.attendees.length > 0 && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          Attendees: {event.attendees.join(", ")}
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-800 dark:text-white">
+                            {event.summary}
+                          </h3>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                            {formatRange(event.startISO, event.endISO)}
+                          </p>
+                          {event.attendees && event.attendees.length > 0 && (
+                            <div className="mt-2">
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                Attendees: {event.attendees.join(", ")}
+                              </p>
+                            </div>
+                          )}
+                          {event.location && (
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              📍 {event.location}
+                            </p>
+                          )}
                         </div>
-                      )}
+                        {event.hangoutLink && (
+                          <a
+                            href={event.hangoutLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-purple-600 dark:text-purple-400 hover:underline text-sm"
+                          >
+                            Join
+                          </a>
+                        )}
+                      </div>
                     </motion.div>
                   ))}
                 </AnimatePresence>
