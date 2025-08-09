@@ -35,6 +35,10 @@ export interface DraftFollowUpEmailParams {
 }
 
 export async function findContacts(userId: string, { tag, email, name }: FindContactsParams) {
+  if (!prisma) {
+    throw new Error('Database not configured')
+  }
+
   const where: any = { userId }
 
   if (tag) {
@@ -57,6 +61,10 @@ export async function findContacts(userId: string, { tag, email, name }: FindCon
 }
 
 export async function findLeads(userId: string, { status, source, since }: FindLeadsParams) {
+  if (!prisma) {
+    throw new Error('Database not configured')
+  }
+
   const where: any = { userId }
 
   if (status) {
@@ -77,6 +85,10 @@ export async function findLeads(userId: string, { status, source, since }: FindL
 }
 
 export async function dealsClosing(userId: string, monthStartISO: string, monthEndISO: string) {
+  if (!prisma) {
+    throw new Error('Database not configured')
+  }
+
   return await prisma.deal.findMany({
     where: {
       userId,
