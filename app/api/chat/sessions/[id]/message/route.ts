@@ -48,8 +48,57 @@ export async function POST(
       }
     });
 
-    // If this is a user message, generate AI response
+    // If this is a user message, generate AI response and potentially update title
     if (role === "user") {
+      // Check if this is the first user message and session has no title
+      const messageCount = await prisma.chatMessage.count({
+        where: { sessionId: params.id }
+      });
+
+      // Generate contextual title if this is the first user message and no title exists
+      if (messageCount === 1 && !chatSession.title) {
+        let newTitle = "New Chat";
+        
+        if (content.length < 80) {
+          // Use first 60 chars as title
+          newTitle = content.substring(0, 60).trim();
+        } else {
+          // Generate contextual title with OpenAI
+          try {
+            const titleResponse = await openai.chat.completions.create({
+              model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+              messages: [
+                {
+                  role: "system",
+                  content: "You are a helpful assistant that creates short, descriptive titles for chat conversations. Respond with only the title, 3-6 words maximum."
+                },
+                {
+                  role: "user",
+                  content: `Name this chat conversation in 3-6 words: "${content.substring(0, 200)}..."`
+                }
+              ],
+              temperature: 0.7,
+              max_tokens: 20
+            });
+
+            const generatedTitle = titleResponse.choices[0]?.message?.content?.trim();
+            if (generatedTitle) {
+              newTitle = generatedTitle;
+            }
+          } catch (error) {
+            console.error("Failed to generate title:", error);
+            // Fallback to first 60 chars
+            newTitle = content.substring(0, 60).trim();
+          }
+        }
+
+        // Update session title
+        await prisma.chatSession.update({
+          where: { id: params.id },
+          data: { title: newTitle }
+        });
+      }
+
       // Get conversation history
       const messages = await prisma.chatMessage.findMany({
         where: { sessionId: params.id },
@@ -119,5 +168,41 @@ Always be helpful, professional, and concise. If asked to draft emails, create d
   } catch (error) {
     console.error("[chat-message]", error);
     return NextResponse.json({ error: "Failed to add message" }, { status: 500 });
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { title } = await request.json();
+
+    if (!title) {
+      return NextResponse.json({ error: "Title is required" }, { status: 400 });
+    }
+
+    // Verify session belongs to user and update title
+    const updatedSession = await prisma.chatSession.updateMany({
+      where: {
+        id: params.id,
+        userId: session.user.id
+      },
+      data: { title }
+    });
+
+    if (updatedSession.count === 0) {
+      return NextResponse.json({ error: "Session not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, title });
+  } catch (error) {
+    console.error("[chat-session-rename]", error);
+    return NextResponse.json({ error: "Failed to rename session" }, { status: 500 });
   }
 }

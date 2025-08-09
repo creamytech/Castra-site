@@ -9,8 +9,18 @@ export interface GmailThread {
     snippet: string;
     payload: {
       headers: Array<{ name: string; value: string }>;
+      parts?: Array<{
+        mimeType: string;
+        body: { data?: string };
+        parts?: Array<{
+          mimeType: string;
+          body: { data?: string };
+        }>;
+      }>;
+      body?: { data?: string };
     };
     internalDate?: string;
+    dateISO?: string | null;
   }>;
 }
 
@@ -21,14 +31,68 @@ export interface CalendarEvent {
   attendees?: Array<{ email: string }>;
 }
 
-// Helper function to convert dates to ISO strings
-function toISO(d?: string | null): string | null {
-  if (!d) return null;
-  try {
-    return new Date(d).toISOString();
-  } catch {
-    return null;
+// Helper function to extract plain text and HTML from Gmail message payload
+export function extractPlainAndHtml(payload: any): { text: string; html: string } {
+  let text = "";
+  let html = "";
+
+  function extractFromPart(part: any) {
+    if (part.mimeType === "text/plain" && part.body?.data) {
+      text = Buffer.from(part.body.data, 'base64').toString('utf-8');
+    } else if (part.mimeType === "text/html" && part.body?.data) {
+      html = Buffer.from(part.body.data, 'base64').toString('utf-8');
+    }
+
+    // Recursively check nested parts
+    if (part.parts) {
+      part.parts.forEach(extractFromPart);
+    }
   }
+
+  // Check main body first
+  if (payload.body?.data) {
+    if (payload.mimeType === "text/plain") {
+      text = Buffer.from(payload.body.data, 'base64').toString('utf-8');
+    } else if (payload.mimeType === "text/html") {
+      html = Buffer.from(payload.body.data, 'base64').toString('utf-8');
+    }
+  }
+
+  // Check parts
+  if (payload.parts) {
+    payload.parts.forEach(extractFromPart);
+  }
+
+  // If we only have HTML, create a simple text version
+  if (!text && html) {
+    text = html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+  }
+
+  return { text, html };
+}
+
+// Helper function to convert dates to ISO strings with RFC2822 header fallback
+function toISO(msg: any): string | null {
+  // Try internalDate first (Gmail's internal timestamp)
+  if (msg.internalDate) {
+    try {
+      return new Date(Number(msg.internalDate)).toISOString();
+    } catch {
+      // Continue to header fallback
+    }
+  }
+
+  // Try RFC2822 Date header
+  const dateHeader = msg.payload?.headers?.find((h: any) => h.name.toLowerCase() === "date")?.value;
+  if (dateHeader) {
+    try {
+      return new Date(dateHeader).toISOString();
+    } catch {
+      // Continue to null
+    }
+  }
+
+  return null;
 }
 
 async function getGoogleOAuth(userId: string, sessionTokens?: { accessToken?: string; refreshToken?: string }) {
@@ -92,7 +156,7 @@ export async function listRecentThreads(userId: string, maxResults: number = 10,
             ...thread,
             messages: threadDetail.messages.map(msg => ({
               ...msg,
-              dateISO: msg.internalDate ? new Date(Number(msg.internalDate)).toISOString() : null
+              dateISO: toISO(msg)
             }))
           };
         } catch (error) {
@@ -124,7 +188,7 @@ export async function getThreadDetail(userId: string, threadId: string, sessionT
     // Add date information to messages
     thread.messages = thread.messages.map(msg => ({
       ...msg,
-      dateISO: msg.internalDate ? new Date(Number(msg.internalDate)).toISOString() : null
+      dateISO: toISO(msg)
     }));
 
     return thread;

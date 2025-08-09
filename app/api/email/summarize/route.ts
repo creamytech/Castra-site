@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { getThreadDetail } from '@/lib/google'
+import { getThreadDetail, extractPlainAndHtml } from '@/lib/google'
 import { getCachedThreadSummary, setCachedThreadSummary } from '@/lib/cache'
 import OpenAI from 'openai'
 
@@ -11,42 +11,6 @@ export const dynamic = 'force-dynamic'
 const openai = process.env.OPENAI_API_KEY ? new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 }) : null
-
-// Helper function to extract plain text from MIME parts
-function extractTextFromMimePart(part: any): string {
-  if (part.mimeType === 'text/plain') {
-    return Buffer.from(part.body.data, 'base64').toString('utf-8')
-  }
-  
-  if (part.mimeType === 'text/html') {
-    // Strip HTML tags for plain text
-    const html = Buffer.from(part.body.data, 'base64').toString('utf-8')
-    return html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
-  }
-  
-  if (part.parts) {
-    // Recursively extract from sub-parts
-    return part.parts.map(extractTextFromMimePart).join('\n')
-  }
-  
-  return ''
-}
-
-// Helper function to extract text from email message
-function extractTextFromMessage(message: any): string {
-  if (!message.payload) {
-    return message.snippet || ''
-  }
-  
-  // Try to extract from payload
-  const text = extractTextFromMimePart(message.payload)
-  if (text) {
-    return text
-  }
-  
-  // Fallback to snippet
-  return message.snippet || ''
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -86,12 +50,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Extract and format messages
+    // Extract and format messages using the new helper
     const messages = thread.messages.map(msg => {
       const subject = msg.payload?.headers?.find(h => h.name === 'Subject')?.value || ''
       const from = msg.payload?.headers?.find(h => h.name === 'From')?.value || ''
       const date = msg.payload?.headers?.find(h => h.name === 'Date')?.value || ''
-      const content = extractTextFromMessage(msg)
+      
+      // Use the new content extraction helper
+      const { text } = extractPlainAndHtml(msg.payload)
+      const content = text || msg.snippet || ''
       
       return `From: ${from}\nSubject: ${subject}\nDate: ${date}\nContent: ${content}`
     }).join('\n\n')

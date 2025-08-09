@@ -36,6 +36,8 @@ export default function ChatPage() {
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [editingTitle, setEditingTitle] = useState<string | null>(null);
+  const [editingValue, setEditingValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const addToast = (message: string, type: "error" | "success" | "info" = "error") => {
@@ -113,6 +115,55 @@ export default function ChatPage() {
     }
   };
 
+  const renameSession = async (sessionId: string, newTitle: string) => {
+    try {
+      const response = await fetch(`/api/chat/sessions/${sessionId}/message`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: newTitle })
+      });
+
+      if (response.ok) {
+        setSessions(prev => 
+          prev.map(session => 
+            session.id === sessionId 
+              ? { ...session, title: newTitle }
+              : session
+          )
+        );
+        
+        if (currentSession?.id === sessionId) {
+          setCurrentSession(prev => prev ? { ...prev, title: newTitle } : null);
+        }
+        
+        setEditingTitle(null);
+        setEditingValue("");
+        addToast("Session renamed successfully", "success");
+      } else {
+        addToast("Failed to rename session");
+      }
+    } catch (error) {
+      addToast("Network error renaming session");
+    }
+  };
+
+  const startEditing = (session: ChatSession) => {
+    setEditingTitle(session.id);
+    setEditingValue(session.title);
+  };
+
+  const handleRenameSubmit = (e: React.FormEvent, sessionId: string) => {
+    e.preventDefault();
+    if (editingValue.trim()) {
+      renameSession(sessionId, editingValue.trim());
+    }
+  };
+
+  const cancelEditing = () => {
+    setEditingTitle(null);
+    setEditingValue("");
+  };
+
   const sendMessage = async () => {
     if (!inputMessage.trim() || isLoading || !currentSession) return;
 
@@ -143,6 +194,9 @@ export default function ChatPage() {
         if (assistantMessage) {
           setMessages(prev => [...prev, assistantMessage]);
         }
+        
+        // Refresh sessions to get updated titles
+        loadSessions();
       } else {
         const errorData = await response.json();
         addToast(errorData.error || "Failed to get response");
@@ -196,10 +250,9 @@ export default function ChatPage() {
               <div className="space-y-2 max-h-96 lg:max-h-none overflow-y-auto">
                 <AnimatePresence>
                   {sessions.map((session, index) => (
-                    <motion.button
+                    <motion.div
                       key={session.id}
-                      onClick={() => selectSession(session)}
-                      className={`w-full text-left p-3 rounded-lg transition-colors ${
+                      className={`w-full p-3 rounded-lg transition-colors ${
                         currentSession?.id === session.id
                           ? "bg-purple-600 text-white"
                           : "bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-800 dark:text-white"
@@ -211,11 +264,52 @@ export default function ChatPage() {
                       whileHover={{ scale: 1.01 }}
                       layout
                     >
-                      <div className="font-medium truncate">{session.title}</div>
-                      <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                        {new Date(session.createdAt).toLocaleDateString()}
-                      </div>
-                    </motion.button>
+                      {editingTitle === session.id ? (
+                        <form onSubmit={(e) => handleRenameSubmit(e, session.id)} className="space-y-2">
+                          <input
+                            type="text"
+                            value={editingValue}
+                            onChange={(e) => setEditingValue(e.target.value)}
+                            className="w-full px-2 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            autoFocus
+                          />
+                          <div className="flex space-x-1">
+                            <button
+                              type="submit"
+                              className="px-2 py-1 text-xs bg-green-500 hover:bg-green-600 text-white rounded"
+                            >
+                              Save
+                            </button>
+                            <button
+                              type="button"
+                              onClick={cancelEditing}
+                              className="px-2 py-1 text-xs bg-gray-500 hover:bg-gray-600 text-white rounded"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </form>
+                      ) : (
+                        <div className="flex items-center justify-between">
+                          <button
+                            onClick={() => selectSession(session)}
+                            className="flex-1 text-left"
+                          >
+                            <div className="font-medium truncate">{session.title}</div>
+                            <div className="text-xs opacity-70 mt-1">
+                              {new Date(session.createdAt).toLocaleDateString()}
+                            </div>
+                          </button>
+                          <button
+                            onClick={() => startEditing(session)}
+                            className="ml-2 p-1 text-xs opacity-70 hover:opacity-100 transition-opacity"
+                            title="Rename session"
+                          >
+                            ✎
+                          </button>
+                        </div>
+                      )}
+                    </motion.div>
                   ))}
                 </AnimatePresence>
 

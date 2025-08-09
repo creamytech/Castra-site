@@ -1,10 +1,11 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Toast from "@/components/Toast";
 import FadeIn from "@/components/ui/FadeIn";
 import { motion, AnimatePresence } from "framer-motion";
+import { formatRelativeDate } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -19,10 +20,39 @@ interface Email {
   isRead?: boolean;
 }
 
+interface EmailDetail {
+  threadId: string;
+  subject: string;
+  from: string;
+  to: string;
+  dateISO: string | null;
+  text: string;
+  html: string;
+  snippet: string;
+  messageCount: number;
+}
+
 interface ToastMessage {
   id: string;
   message: string;
   type: "error" | "success" | "info";
+}
+
+// Debounce hook for search
+function useDebounce(value: string, delay: number) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
 }
 
 export default function InboxPage() {
@@ -30,6 +60,7 @@ export default function InboxPage() {
   const [emails, setEmails] = useState<Email[]>([]);
   const [filteredEmails, setFilteredEmails] = useState<Email[]>([]);
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
+  const [emailDetail, setEmailDetail] = useState<EmailDetail | null>(null);
   const [summary, setSummary] = useState("");
   const [draftHtml, setDraftHtml] = useState("");
   const [loading, setLoading] = useState(false);
@@ -38,6 +69,9 @@ export default function InboxPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchFilter, setSearchFilter] = useState<"all" | "sender" | "subject" | "content">("all");
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
+
+  // Debounce search term
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   const addToast = (message: string, type: "error" | "success" | "info" = "error") => {
     const id = Date.now().toString();
@@ -48,10 +82,20 @@ export default function InboxPage() {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   };
 
-  const fetchEmails = async () => {
+  const fetchEmails = useCallback(async (searchQuery?: string) => {
+    if (!session?.user?.id) return;
+    
     setLoadingEmails(true);
     try {
-      const response = await fetch("/api/inbox?maxResults=50");
+      const params = new URLSearchParams({
+        max: "50"
+      });
+      
+      if (searchQuery) {
+        params.append("q", searchQuery);
+      }
+      
+      const response = await fetch(`/api/email/threads?${params}`);
       if (response.ok) {
         const data = await response.json();
         const emailsWithLabels = (data.threads || []).map((email: any) => ({
@@ -63,44 +107,27 @@ export default function InboxPage() {
         setEmails(emailsWithLabels);
         setFilteredEmails(emailsWithLabels);
       } else {
-        addToast("Failed to fetch emails");
+        const errorData = await response.json().catch(() => ({}));
+        addToast(errorData.error || "Failed to fetch emails");
       }
     } catch (error) {
+      console.error("Email fetch error:", error);
       addToast("Network error. Please try again.");
     } finally {
       setLoadingEmails(false);
     }
-  };
+  }, [session?.user?.id, addToast]);
 
+  // Fetch emails when search term changes (debounced)
   useEffect(() => {
     if (status === "authenticated") {
-      fetchEmails();
+      fetchEmails(debouncedSearchTerm);
     }
-  }, [status]);
+  }, [status, debouncedSearchTerm, fetchEmails]);
 
-  // Filter emails based on search term and filters
+  // Filter emails based on labels (client-side filtering)
   useEffect(() => {
     let filtered = emails;
-
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(email => {
-        switch (searchFilter) {
-          case "sender":
-            return email.sender.toLowerCase().includes(term);
-          case "subject":
-            return email.subject.toLowerCase().includes(term);
-          case "content":
-            return email.snippet.toLowerCase().includes(term);
-          default:
-            return (
-              email.sender.toLowerCase().includes(term) ||
-              email.subject.toLowerCase().includes(term) ||
-              email.snippet.toLowerCase().includes(term)
-            );
-        }
-      });
-    }
 
     if (selectedLabels.length > 0) {
       filtered = filtered.filter(email => 
@@ -109,35 +136,48 @@ export default function InboxPage() {
     }
 
     setFilteredEmails(filtered);
-  }, [emails, searchTerm, searchFilter, selectedLabels]);
+  }, [emails, selectedLabels]);
 
   const handleEmailSelect = async (email: Email) => {
+    if (!session?.user?.id) return;
+    
     setSelectedEmail(email);
     setLoading(true);
-    setSummary(""); // Clear previous summary
+    setSummary("");
+    setEmailDetail(null);
     
     try {
-      // Call the correct summarize API endpoint
-      const response = await fetch("/api/email/summarize", {
+      // Fetch email detail
+      const detailResponse = await fetch(`/api/email/thread/${email.threadId}`);
+      if (detailResponse.ok) {
+        const detailData = await detailResponse.json();
+        setEmailDetail(detailData);
+      } else {
+        const errorData = await detailResponse.json().catch(() => ({}));
+        addToast(errorData.error || "Failed to fetch email details");
+      }
+
+      // Fetch summary
+      const summaryResponse = await fetch("/api/email/summarize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ threadId: email.threadId })
       });
       
-      if (response.ok) {
-        const data = await response.json();
-        setSummary(data.summary || "No summary available");
+      if (summaryResponse.ok) {
+        const summaryData = await summaryResponse.json();
+        setSummary(summaryData.summary || "No summary available");
         
-        if (data.cached) {
+        if (summaryData.cached) {
           addToast("Summary loaded from cache", "info");
         }
       } else {
-        const errorData = await response.json();
+        const errorData = await summaryResponse.json().catch(() => ({}));
         addToast(errorData.error || "Failed to fetch email summary");
         setSummary("Summary unavailable");
       }
     } catch (error) {
-      console.error("Email summarize error:", error);
+      console.error("Email detail error:", error);
       addToast("Network error. Please try again.");
       setSummary("Summary unavailable");
     } finally {
@@ -146,7 +186,7 @@ export default function InboxPage() {
   };
 
   const handleCreateDraft = async () => {
-    if (!selectedEmail) return;
+    if (!selectedEmail || !emailDetail) return;
     
     setLoading(true);
     try {
@@ -157,7 +197,7 @@ export default function InboxPage() {
           threadId: selectedEmail.threadId,
           subject: selectedEmail.subject,
           sender: selectedEmail.sender,
-          content: selectedEmail.snippet
+          content: emailDetail.text || emailDetail.snippet
         })
       });
       
@@ -166,45 +206,14 @@ export default function InboxPage() {
         setDraftHtml(data.draftHtml || "");
         addToast("Draft created successfully!", "success");
       } else {
-        addToast("Failed to create draft");
+        const errorData = await response.json().catch(() => ({}));
+        addToast(errorData.error || "Failed to create draft");
       }
     } catch (error) {
+      console.error("Draft creation error:", error);
       addToast("Network error. Please try again.");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const formatDate = (dateISO: string | null) => {
-    if (!dateISO) return "Unknown date";
-    try {
-      const date = new Date(dateISO);
-      const now = new Date();
-      const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-      
-      if (diffInHours < 24) {
-        // Today - show time
-        return date.toLocaleTimeString([], { 
-          hour: "numeric", 
-          minute: "2-digit" 
-        });
-      } else if (diffInHours < 48) {
-        // Yesterday
-        return "Yesterday";
-      } else if (diffInHours < 168) {
-        // Within a week - show day
-        return date.toLocaleDateString([], { 
-          weekday: "short" 
-        });
-      } else {
-        // Older - show full date
-        return date.toLocaleDateString([], { 
-          month: "short", 
-          day: "numeric" 
-        });
-      }
-    } catch {
-      return "Invalid date";
     }
   };
 
@@ -242,7 +251,7 @@ export default function InboxPage() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="h2">Inbox</h2>
                 <motion.button 
-                  onClick={fetchEmails} 
+                  onClick={() => fetchEmails()} 
                   className="btn-secondary text-sm"
                   whileTap={{ scale: 0.98 }}
                 >
@@ -250,8 +259,8 @@ export default function InboxPage() {
                 </motion.button>
               </div>
 
-              {/* Search and Filters */}
-              <div className="mb-4 space-y-2">
+              {/* Search */}
+              <div className="mb-4">
                 <input
                   type="text"
                   placeholder="Search emails..."
@@ -259,17 +268,6 @@ export default function InboxPage() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full px-3 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder-gray-600 dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
-                
-                <select
-                  value={searchFilter}
-                  onChange={(e) => setSearchFilter(e.target.value as any)}
-                  className="w-full px-3 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="all">All</option>
-                  <option value="sender">Sender</option>
-                  <option value="subject">Subject</option>
-                  <option value="content">Content</option>
-                </select>
               </div>
 
               {/* Email List */}
@@ -281,7 +279,7 @@ export default function InboxPage() {
                   </div>
                 ) : filteredEmails.length === 0 ? (
                   <div className="text-center text-gray-600 dark:text-gray-400 py-8">
-                    <p>No emails found</p>
+                    <p>{searchTerm ? "No emails found" : "No emails"}</p>
                   </div>
                 ) : (
                   <AnimatePresence>
@@ -304,7 +302,7 @@ export default function InboxPage() {
                         <div className="flex items-center justify-between mb-1">
                           <span className="font-medium truncate">{email.sender}</span>
                           <span className="text-xs opacity-70">
-                            {formatDate(email.dateISO)}
+                            {formatRelativeDate(email.dateISO)}
                           </span>
                         </div>
                         <div className="font-semibold truncate text-sm">{email.subject}</div>
@@ -322,23 +320,33 @@ export default function InboxPage() {
         <FadeIn delay={0.2}>
           <div className="lg:col-span-2">
             <div className="card h-full">
-              {selectedEmail ? (
+              {selectedEmail && emailDetail ? (
                 <div className="h-full flex flex-col">
                   {/* Email Header */}
                   <div className="border-b border-gray-200 dark:border-gray-700 p-4">
                     <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-lg font-semibold">{selectedEmail.subject}</h3>
+                      <h3 className="text-lg font-semibold">{emailDetail.subject}</h3>
                       <span className="text-sm text-gray-600 dark:text-gray-400">
-                        {formatDate(selectedEmail.dateISO)}
+                        {formatRelativeDate(emailDetail.dateISO)}
                       </span>
                     </div>
-                    <p className="text-gray-600 dark:text-gray-400">From: {selectedEmail.sender}</p>
+                    <p className="text-gray-600 dark:text-gray-400">From: {emailDetail.from}</p>
+                    <p className="text-gray-600 dark:text-gray-400">To: {emailDetail.to}</p>
                   </div>
 
                   {/* Email Content */}
                   <div className="flex-1 overflow-y-auto p-4">
                     <div className="prose dark:prose-invert max-w-none">
-                      <p className="text-gray-800 dark:text-gray-200">{selectedEmail.snippet}</p>
+                      {emailDetail.html ? (
+                        <div 
+                          dangerouslySetInnerHTML={{ __html: emailDetail.html }}
+                          className="text-gray-800 dark:text-gray-200"
+                        />
+                      ) : (
+                        <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+                          {emailDetail.text || emailDetail.snippet}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -352,10 +360,10 @@ export default function InboxPage() {
                       </div>
                     ) : summary ? (
                       <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
-                        <p className="text-sm text-gray-800 dark:text-gray-200">{summary}</p>
+                        <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{summary}</p>
                       </div>
                     ) : (
-                      <p className="text-gray-600 dark:text-gray-400 text-sm">Click to generate summary</p>
+                      <p className="text-gray-600 dark:text-gray-400 text-sm">Loading summary...</p>
                     )}
                   </div>
 
