@@ -5,6 +5,9 @@ import { getThreadDetail } from '@/lib/google'
 import { getCachedThreadSummary, setCachedThreadSummary } from '@/lib/cache'
 import OpenAI from 'openai'
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic'
+
 const openai = process.env.OPENAI_API_KEY ? new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 }) : null

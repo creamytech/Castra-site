@@ -4,6 +4,9 @@ import { authOptions } from '@/lib/auth'
 import { createDraft } from '@/lib/google'
 import OpenAI from 'openai'
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic'
+
 const openai = process.env.OPENAI_API_KEY ? new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 }) : null
