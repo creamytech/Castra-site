@@ -67,14 +67,14 @@ const createCustomAdapter = () => {
          linkAccount: async (account: any) => {
        try {
          // Try to link the account normally
-         return await prismaAdapter.linkAccount!(account)
+         await prismaAdapter.linkAccount!(account)
        } catch (error: any) {
          // If linking fails due to existing account, try to update it
          if (error.code === 'P2002' || error.message?.includes('Unique constraint')) {
            console.log('Account already exists, updating instead of linking')
            // Update existing account instead of creating new one
            if (prisma) {
-             return await prisma.account.upsert({
+             await prisma.account.upsert({
                where: {
                  provider_providerAccountId: {
                    provider: account.provider,
@@ -93,8 +93,9 @@ const createCustomAdapter = () => {
                create: account,
              })
            }
+         } else {
+           throw error
          }
-         throw error
        }
      },
   }
