@@ -17,18 +17,38 @@ interface Account {
 }
 
 export default function DashboardPage() {
-  const { data: session, status } = useSession()
-  const [loading, setLoading] = useState(true)
-  const [accounts, setAccounts] = useState<Account[]>([])
+  const [session, setSession] = useState<any>(null)
+  const [status, setStatus] = useState<string>('loading')
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Only use useSession on the client side
+  const { data: sessionData, status: sessionStatus } = useSession()
+
+  useEffect(() => {
+    if (mounted) {
+      setSession(sessionData)
+      setStatus(sessionStatus)
+    }
+  }, [sessionData, sessionStatus, mounted])
+
   const router = useRouter()
 
   useEffect(() => {
-    if (status === 'authenticated') {
-      setLoading(false)
-    } else if (status === 'unauthenticated') {
-      router.push('/auth/signin')
+    if (mounted) {
+      if (sessionStatus === 'authenticated') {
+        setLoading(false)
+      } else if (sessionStatus === 'unauthenticated') {
+        router.push('/auth/signin')
+      }
     }
-  }, [status, router])
+  }, [sessionStatus, router, mounted])
+
+  const [loading, setLoading] = useState(true)
+  const [accounts, setAccounts] = useState<Account[]>([])
 
   const handleConnect = (provider: string) => {
     if (provider === 'google') {
@@ -55,7 +75,17 @@ export default function DashboardPage() {
     return true
   }
 
-  if (status === 'loading' || loading) {
+  if (!mounted) {
+    return (
+      <MainLayout showSidebar={false}>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-gray-800 dark:text-white">Loading...</div>
+        </div>
+      </MainLayout>
+    )
+  }
+
+  if (status === 'loading') {
     return (
       <MainLayout showSidebar={false}>
         <div className="flex items-center justify-center min-h-screen">

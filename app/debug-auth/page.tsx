@@ -6,8 +6,24 @@ import { useState, useEffect } from 'react'
 export const dynamic = 'force-dynamic'
 
 export default function DebugAuthPage() {
-  const { data: session, status } = useSession()
+  const [session, setSession] = useState<any>(null)
+  const [status, setStatus] = useState<string>('loading')
+  const [mounted, setMounted] = useState(false)
   const [debugInfo, setDebugInfo] = useState<string>('')
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Only use useSession on the client side
+  const { data: sessionData, status: sessionStatus } = useSession()
+
+  useEffect(() => {
+    if (mounted) {
+      setSession(sessionData)
+      setStatus(sessionStatus)
+    }
+  }, [sessionData, sessionStatus, mounted])
 
   const testGoogleSignIn = () => {
     signIn('google', { callbackUrl: '/debug-auth' })
@@ -23,6 +39,26 @@ export default function DebugAuthPage() {
         expiresAt: (session as any).expiresAt
       } : null
     }, null, 2))
+  }
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+        <div className="max-w-4xl mx-auto px-4 py-8">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+              Auth Debug Page
+            </h1>
+            <p className="text-xl text-gray-300">
+              Debug authentication flow and session state
+            </p>
+          </div>
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="text-white">Loading...</div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

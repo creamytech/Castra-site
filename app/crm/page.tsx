@@ -12,15 +12,11 @@ interface Contact {
   name: string
   email: string
   phone?: string
-  source: string
-  tags: string[]
-  lastContact: string
-  emailCount: number
-  meetingCount: number
+  status: 'new' | 'contacted' | 'qualified' | 'proposal' | 'closing' | 'closed'
   leadScore: number
-  status: 'new' | 'contacted' | 'showing' | 'offer' | 'closed'
+  tags: string[]
   notes?: string
-  createdAt: string
+  lastContact?: string
 }
 
 interface ToastMessage {
@@ -29,27 +25,29 @@ interface ToastMessage {
   type: 'error' | 'success' | 'info'
 }
 
-type PipelineStage = 'new' | 'contacted' | 'showing' | 'offer' | 'closed'
-
-const STAGE_CONFIG = {
-  new: { label: 'New Leads', color: 'bg-blue-500', count: 0 },
-  contacted: { label: 'Contacted', color: 'bg-yellow-500', count: 0 },
-  showing: { label: 'Showing', color: 'bg-purple-500', count: 0 },
-  offer: { label: 'Offer', color: 'bg-orange-500', count: 0 },
-  closed: { label: 'Closed', color: 'bg-green-500', count: 0 },
-}
-
 export default function CRMPage() {
-  const { data: session, status } = useSession()
+  const [session, setSession] = useState<any>(null)
+  const [status, setStatus] = useState<string>('loading')
+  const [mounted, setMounted] = useState(false)
   const [contacts, setContacts] = useState<Contact[]>([])
-  const [filteredContacts, setFilteredContacts] = useState<Contact[]>([])
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(null)
-  const [showAddForm, setShowAddForm] = useState(false)
   const [loading, setLoading] = useState(false)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedTags, setSelectedTags] = useState<string[]>([])
-  const [selectedSources, setSelectedSources] = useState<string[]>([])
+  const [selectedStatus, setSelectedStatus] = useState<string>('all')
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Only use useSession on the client side
+  const { data: sessionData, status: sessionStatus } = useSession()
+
+  useEffect(() => {
+    if (mounted) {
+      setSession(sessionData)
+      setStatus(sessionStatus)
+    }
+  }, [sessionData, sessionStatus, mounted])
 
   const addToast = (message: string, type: 'error' | 'success' | 'info' = 'error') => {
     const id = Date.now().toString()
@@ -67,7 +65,6 @@ export default function CRMPage() {
       if (response.ok) {
         const data = await response.json()
         setContacts(data.contacts || [])
-        setFilteredContacts(data.contacts || [])
       } else {
         addToast('Failed to fetch contacts')
       }
@@ -84,8 +81,8 @@ export default function CRMPage() {
       const response = await fetch('/api/crm/sync-email', { method: 'POST' })
       if (response.ok) {
         const data = await response.json()
-        addToast(`Synced ${data.syncedCount} contacts from email`, 'success')
-        fetchContacts() // Refresh the list
+        setContacts(prev => [...prev, ...data.contacts])
+        addToast(`Synced ${data.contacts.length} contacts from email`, 'success')
       } else {
         addToast('Failed to sync from email')
       }
@@ -102,8 +99,8 @@ export default function CRMPage() {
       const response = await fetch('/api/crm/sync-calendar', { method: 'POST' })
       if (response.ok) {
         const data = await response.json()
-        addToast(`Synced ${data.syncedCount} contacts from calendar`, 'success')
-        fetchContacts() // Refresh the list
+        setContacts(prev => [...prev, ...data.contacts])
+        addToast(`Synced ${data.contacts.length} contacts from calendar`, 'success')
       } else {
         addToast('Failed to sync from calendar')
       }
@@ -114,66 +111,22 @@ export default function CRMPage() {
     }
   }
 
-  useEffect(() => {
-    if (status === 'authenticated') {
-      fetchContacts()
-    }
-  }, [status])
-
-  // Filter contacts based on search and filters
-  useEffect(() => {
-    let filtered = contacts
-
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase()
-      filtered = filtered.filter(contact => 
-        contact.name.toLowerCase().includes(term) ||
-        contact.email.toLowerCase().includes(term) ||
-        contact.phone?.toLowerCase().includes(term) ||
-        contact.notes?.toLowerCase().includes(term)
-      )
-    }
-
-    if (selectedTags.length > 0) {
-      filtered = filtered.filter(contact => 
-        contact.tags.some(tag => selectedTags.includes(tag))
-      )
-    }
-
-    if (selectedSources.length > 0) {
-      filtered = filtered.filter(contact => 
-        selectedSources.includes(contact.source)
-      )
-    }
-
-    setFilteredContacts(filtered)
-  }, [contacts, searchTerm, selectedTags, selectedSources])
-
-  const handleDragStart = (e: React.DragEvent, contactId: string) => {
-    e.dataTransfer.setData('contactId', contactId)
-  }
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-  }
-
-  const handleDrop = async (e: React.DragEvent, newStatus: PipelineStage) => {
-    e.preventDefault()
-    const contactId = e.dataTransfer.getData('contactId')
-    
+  const updateContactStatus = async (contactId: string, newStatus: string) => {
     try {
       const response = await fetch(`/api/crm/contacts/${contactId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status: newStatus })
       })
-
+      
       if (response.ok) {
-        setContacts(prev => prev.map(contact => 
-          contact.id === contactId 
-            ? { ...contact, status: newStatus }
-            : contact
-        ))
+        setContacts(prev => 
+          prev.map(contact => 
+            contact.id === contactId 
+              ? { ...contact, status: newStatus as any }
+              : contact
+          )
+        )
         addToast('Contact status updated', 'success')
       } else {
         addToast('Failed to update contact status')
@@ -183,36 +136,45 @@ export default function CRMPage() {
     }
   }
 
+  useEffect(() => {
+    if (mounted && status === 'authenticated') {
+      fetchContacts()
+    }
+  }, [status, mounted])
+
+  const filteredContacts = contacts.filter(contact => {
+    const matchesSearch = contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         contact.email.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesStatus = selectedStatus === 'all' || contact.status === selectedStatus
+    return matchesSearch && matchesStatus
+  })
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'new': return 'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-200'
+      case 'contacted': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-200'
+      case 'qualified': return 'bg-purple-100 text-purple-800 dark:bg-purple-800 dark:text-purple-200'
+      case 'proposal': return 'bg-orange-100 text-orange-800 dark:bg-orange-800 dark:text-orange-200'
+      case 'closing': return 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-200'
+      case 'closed': return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+    }
+  }
+
   const getLeadScoreColor = (score: number) => {
-    if (score >= 80) return 'bg-red-500'
-    if (score >= 60) return 'bg-orange-500'
-    if (score >= 40) return 'bg-yellow-500'
-    return 'bg-gray-500'
+    if (score >= 80) return 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-200'
+    if (score >= 60) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-200'
+    return 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-200'
   }
 
-  const getLeadScoreLabel = (score: number) => {
-    if (score >= 80) return 'Hot Lead'
-    if (score >= 60) return 'Warm Lead'
-    if (score >= 40) return 'Cool Lead'
-    return 'Cold Lead'
-  }
-
-  const getUniqueTags = () => {
-    const tags = new Set<string>()
-    contacts.forEach(contact => {
-      contact.tags.forEach(tag => tags.add(tag))
-    })
-    return Array.from(tags)
-  }
-
-  const getUniqueSources = () => {
-    const sources = new Set<string>()
-    contacts.forEach(contact => sources.add(contact.source))
-    return Array.from(sources)
-  }
-
-  const getContactsByStage = (stage: PipelineStage) => {
-    return filteredContacts.filter(contact => contact.status === stage)
+  if (!mounted) {
+    return (
+      <MainLayout showSidebar={false}>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-gray-800 dark:text-white">Loading...</div>
+        </div>
+      </MainLayout>
+    )
   }
 
   if (status === 'loading') {
@@ -238,24 +200,39 @@ export default function CRMPage() {
   return (
     <MainLayout>
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="mb-4">Castra CRM</h1>
+          <h1 className="h1">CRM</h1>
           <p className="text-xl text-gray-700 dark:text-gray-300">
-            Pipeline management & lead scoring
+            Manage your leads and contacts
           </p>
         </div>
 
-        {/* Actions Bar */}
+        {/* Controls */}
         <div className="card mb-6">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => setShowAddForm(true)}
-                className="btn-primary"
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="flex flex-col sm:flex-row gap-4 flex-1">
+              <input
+                type="text"
+                placeholder="Search contacts..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="px-3 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder-gray-600 dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className="px-3 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
               >
-                + Add Contact
-              </button>
+                <option value="all">All Status</option>
+                <option value="new">New</option>
+                <option value="contacted">Contacted</option>
+                <option value="qualified">Qualified</option>
+                <option value="proposal">Proposal</option>
+                <option value="closing">Closing</option>
+                <option value="closed">Closed</option>
+              </select>
+            </div>
+            <div className="flex gap-2">
               <button
                 onClick={syncFromEmail}
                 disabled={loading}
@@ -271,128 +248,37 @@ export default function CRMPage() {
                 {loading ? 'Syncing...' : 'Sync from Calendar'}
               </button>
             </div>
-
-            <div className="flex items-center space-x-4">
-              <input
-                type="text"
-                placeholder="Search contacts..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="px-3 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder-gray-600 dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
-            </div>
-          </div>
-
-          {/* Filters */}
-          <div className="mt-4 space-y-3">
-            {/* Tags Filter */}
-            <div className="flex flex-wrap gap-2">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Tags:</span>
-              {getUniqueTags().map(tag => (
-                <button
-                  key={tag}
-                  onClick={() => {
-                    setSelectedTags(prev => 
-                      prev.includes(tag) 
-                        ? prev.filter(t => t !== tag)
-                        : [...prev, tag]
-                    )
-                  }}
-                  className={`px-2 py-1 text-xs rounded-full transition-colors ${
-                    selectedTags.includes(tag)
-                      ? 'bg-purple-600 text-white'
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  {tag}
-                </button>
-              ))}
-            </div>
-
-            {/* Sources Filter */}
-            <div className="flex flex-wrap gap-2">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Sources:</span>
-              {getUniqueSources().map(source => (
-                <button
-                  key={source}
-                  onClick={() => {
-                    setSelectedSources(prev => 
-                      prev.includes(source) 
-                        ? prev.filter(s => s !== source)
-                        : [...prev, source]
-                    )
-                  }}
-                  className={`px-2 py-1 text-xs rounded-full transition-colors ${
-                    selectedSources.includes(source)
-                      ? 'bg-purple-600 text-white'
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  {source}
-                </button>
-              ))}
-            </div>
           </div>
         </div>
 
         {/* Kanban Board */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          {Object.entries(STAGE_CONFIG).map(([stage, config]) => {
-            const stageContacts = getContactsByStage(stage as PipelineStage)
-            const stageCount = stageContacts.length
-            
-            return (
-              <div
-                key={stage}
-                className="card"
-                onDragOver={handleDragOver}
-                onDrop={(e) => handleDrop(e, stage as PipelineStage)}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-2">
-                    <div className={`w-3 h-3 rounded-full ${config.color}`}></div>
-                    <h3 className="font-semibold text-gray-800 dark:text-white">
-                      {config.label}
-                    </h3>
-                  </div>
-                  <span className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full">
-                    {stageCount}
-                  </span>
-                </div>
-
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {stageContacts.map((contact) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+          {['new', 'contacted', 'qualified', 'proposal', 'closing', 'closed'].map(status => (
+            <div key={status} className="card">
+              <h3 className="font-medium text-gray-800 dark:text-white mb-4 capitalize">
+                {status} ({filteredContacts.filter(c => c.status === status).length})
+              </h3>
+              <div className="space-y-3">
+                {filteredContacts
+                  .filter(contact => contact.status === status)
+                  .map(contact => (
                     <div
                       key={contact.id}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, contact.id)}
-                      className="p-3 bg-gray-200 dark:bg-gray-700 rounded-lg cursor-move hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-                      onClick={() => setSelectedContact(contact)}
+                      className="p-3 bg-gray-100 dark:bg-gray-800 rounded-lg border-l-4 border-purple-500"
                     >
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-gray-800 dark:text-white truncate">
-                            {contact.name}
-                          </div>
-                          <div className="text-sm text-gray-600 dark:text-gray-400 truncate">
-                            {contact.email}
-                          </div>
-                        </div>
-                        
-                        {/* Lead Score Badge */}
-                        <div className={`px-2 py-1 text-xs text-white rounded-full ${getLeadScoreColor(contact.leadScore)}`}>
-                          {getLeadScoreLabel(contact.leadScore)}
-                        </div>
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium text-sm text-gray-800 dark:text-white">
+                          {contact.name}
+                        </h4>
+                        <span className={`px-2 py-1 text-xs rounded-full ${getLeadScoreColor(contact.leadScore)}`}>
+                          {contact.leadScore}
+                        </span>
                       </div>
-
-                      <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
-                        <span>{contact.source}</span>
-                        <span>{new Date(contact.lastContact).toLocaleDateString()}</span>
-                      </div>
-
-                      {/* Tags */}
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                        {contact.email}
+                      </p>
                       {contact.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2">
+                        <div className="flex flex-wrap gap-1 mb-2">
                           {contact.tags.slice(0, 2).map(tag => (
                             <span
                               key={tag}
@@ -408,215 +294,34 @@ export default function CRMPage() {
                           )}
                         </div>
                       )}
-
-                      {/* Activity Indicators */}
-                      <div className="flex items-center space-x-3 mt-2 text-xs text-gray-600 dark:text-gray-400">
-                        <span>📧 {contact.emailCount}</span>
-                        <span>📅 {contact.meetingCount}</span>
-                        <span>⭐ {contact.leadScore}</span>
+                      <div className="flex justify-between items-center">
+                        <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(contact.status)}`}>
+                          {contact.status}
+                        </span>
+                        <select
+                          value={contact.status}
+                          onChange={(e) => updateContactStatus(contact.id, e.target.value)}
+                          className="text-xs bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white rounded px-1 py-0.5"
+                        >
+                          <option value="new">New</option>
+                          <option value="contacted">Contacted</option>
+                          <option value="qualified">Qualified</option>
+                          <option value="proposal">Proposal</option>
+                          <option value="closing">Closing</option>
+                          <option value="closed">Closed</option>
+                        </select>
                       </div>
                     </div>
                   ))}
-
-                  {stageContacts.length === 0 && (
-                    <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-                      <p className="text-sm">No contacts</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Contact Details Modal */}
-        {selectedContact && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 max-h-96 overflow-y-auto">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
-                  Contact Details
-                </h3>
-                <button
-                  onClick={() => setSelectedContact(null)}
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Name
-                  </label>
-                  <div className="text-gray-800 dark:text-white">{selectedContact.name}</div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Email
-                  </label>
-                  <div className="text-gray-800 dark:text-white">{selectedContact.email}</div>
-                </div>
-
-                {selectedContact.phone && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Phone
-                    </label>
-                    <div className="text-gray-800 dark:text-white">{selectedContact.phone}</div>
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Source
-                  </label>
-                  <div className="text-gray-800 dark:text-white">{selectedContact.source}</div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Status
-                  </label>
-                  <div className="text-gray-800 dark:text-white capitalize">{selectedContact.status}</div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Lead Score
-                  </label>
-                  <div className="flex items-center space-x-2">
-                    <span className={`px-2 py-1 text-xs text-white rounded-full ${getLeadScoreColor(selectedContact.leadScore)}`}>
-                      {getLeadScoreLabel(selectedContact.leadScore)}
-                    </span>
-                    <span className="text-gray-600 dark:text-gray-400">({selectedContact.leadScore}/100)</span>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Activity
-                  </label>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    <div>📧 {selectedContact.emailCount} emails</div>
-                    <div>📅 {selectedContact.meetingCount} meetings</div>
-                    <div>📅 Last contact: {new Date(selectedContact.lastContact).toLocaleDateString()}</div>
-                  </div>
-                </div>
-
-                {selectedContact.tags.length > 0 && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Tags
-                    </label>
-                    <div className="flex flex-wrap gap-1">
-                      {selectedContact.tags.map(tag => (
-                        <span
-                          key={tag}
-                          className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {selectedContact.notes && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Notes
-                    </label>
-                    <div className="text-gray-800 dark:text-white text-sm">{selectedContact.notes}</div>
-                  </div>
-                )}
               </div>
             </div>
-          </div>
-        )}
+          ))}
+        </div>
 
-        {/* Add Contact Modal */}
-        {showAddForm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
-                  Add New Contact
-                </h3>
-                <button
-                  onClick={() => setShowAddForm(false)}
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <form className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Name *
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    placeholder="Full name"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Email *
-                  </label>
-                  <input
-                    type="email"
-                    className="w-full px-3 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    placeholder="email@example.com"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Phone
-                  </label>
-                  <input
-                    type="tel"
-                    className="w-full px-3 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    placeholder="(555) 123-4567"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Source
-                  </label>
-                  <select className="w-full px-3 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
-                    <option value="website">Website</option>
-                    <option value="referral">Referral</option>
-                    <option value="social">Social Media</option>
-                    <option value="email">Email</option>
-                    <option value="calendar">Calendar</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-
-                <div className="flex space-x-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddForm(false)}
-                    className="flex-1 btn-secondary"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 btn-primary"
-                  >
-                    Add Contact
-                  </button>
-                </div>
-              </form>
+        {filteredContacts.length === 0 && !loading && (
+          <div className="text-center py-8">
+            <div className="text-gray-600 dark:text-gray-400">
+              {contacts.length === 0 ? 'No contacts found. Try syncing from email or calendar.' : 'No contacts match your filters.'}
             </div>
           </div>
         )}
