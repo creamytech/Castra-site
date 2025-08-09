@@ -1,37 +1,38 @@
 "use client";
-import { AnimatePresence, motion } from "framer-motion";
+
+import { motion, AnimatePresence } from "framer-motion";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { ReactNode } from "react";
 
-export default function TransitionProvider({ children }: { children: React.ReactNode }) {
+interface TransitionProviderProps {
+  children: ReactNode;
+}
+
+export default function TransitionProvider({ children }: TransitionProviderProps) {
   const pathname = usePathname();
-  const [reduced, setReduced] = useState(false);
 
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReduced(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setReduced(e.matches);
-    mq.addEventListener?.("change", handler);
-    return () => mq.removeEventListener?.("change", handler);
-  }, []);
+  // Check for reduced motion preference
+  const prefersReducedMotion = typeof window !== "undefined" 
+    ? window.matchMedia("(prefers-reduced-motion: reduce)").matches 
+    : false;
 
-  if (reduced) return <>{children}</>;
-
-  const variants = { 
-    initial: { opacity: 0, y: 8 }, 
-    animate: { opacity: 1, y: 0 }, 
-    exit: { opacity: 0, y: -8 } 
-  };
+  // Disable animations if user prefers reduced motion
+  if (prefersReducedMotion) {
+    return <>{children}</>;
+  }
 
   return (
-    <AnimatePresence mode="wait">
-      <motion.div 
-        key={pathname} 
-        initial="initial" 
-        animate="animate" 
-        exit="exit" 
-        variants={variants} 
-        transition={{ duration: 0.18, ease: "easeOut" }}
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={pathname}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        transition={{
+          duration: 0.2,
+          ease: [0.4, 0, 0.2, 1],
+        }}
+        className="w-full"
       >
         {children}
       </motion.div>
