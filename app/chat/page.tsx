@@ -1,26 +1,24 @@
 'use client'
 
 import { useSession } from 'next-auth/react'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import MainLayout from '@/components/MainLayout'
 import Toast from '@/components/Toast'
 
 export const dynamic = 'force-dynamic'
 
 interface Message {
+  id: string
   role: 'user' | 'assistant'
   content: string
-  timeSlots?: string[]
-  schedulingRequest?: boolean
-  htmlPreview?: string
-  isEmailPreview?: boolean
+  timestamp: Date
 }
 
 interface Conversation {
   id: string
   title: string
-  timestamp: Date
   messages: Message[]
+  lastUpdated: Date
 }
 
 interface ToastMessage {
@@ -30,18 +28,30 @@ interface ToastMessage {
 }
 
 export default function ChatPage() {
-  const { data: session, status } = useSession()
+  const [session, setSession] = useState<any>(null)
+  const [status, setStatus] = useState<string>('loading')
+  const [mounted, setMounted] = useState(false)
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
-  const [input, setInput] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [inputMessage, setInputMessage] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Only use useSession on the client side
+  const { data: sessionData, status: sessionStatus } = useSession()
+
+  useEffect(() => {
+    if (mounted) {
+      setSession(sessionData)
+      setStatus(sessionStatus)
+    }
+  }, [sessionData, sessionStatus, mounted])
 
   const addToast = (message: string, type: 'error' | 'success' | 'info' = 'error') => {
     const id = Date.now().toString()
@@ -52,16 +62,20 @@ export default function ChatPage() {
     setToasts(prev => prev.filter(toast => toast.id !== id))
   }
 
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
   useEffect(() => {
     scrollToBottom()
   }, [messages])
 
-  const startNewConversation = () => {
+  const createNewConversation = () => {
     const newConversation: Conversation = {
       id: Date.now().toString(),
       title: 'New Conversation',
-      timestamp: new Date(),
-      messages: []
+      messages: [],
+      lastUpdated: new Date()
     }
     setConversations(prev => [newConversation, ...prev])
     setCurrentConversation(newConversation)
@@ -74,292 +88,141 @@ export default function ChatPage() {
   }
 
   const updateConversationTitle = (conversationId: string, title: string) => {
-    setConversations(prev => prev.map(conv => 
-      conv.id === conversationId ? { ...conv, title } : conv
-    ))
+    setConversations(prev => 
+      prev.map(conv => 
+        conv.id === conversationId 
+          ? { ...conv, title, lastUpdated: new Date() }
+          : conv
+      )
+    )
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!input.trim() || loading) return
-
-    const userMessage = input.trim()
-    setInput('')
-    setLoading(true)
-
-    // Add user message
-    const newMessages: Message[] = [...messages, { role: 'user', content: userMessage }]
-    setMessages(newMessages)
-
-    // Update conversation title if it's the first message
-    if (currentConversation && currentConversation.messages.length === 0) {
-      const title = userMessage.length > 30 ? userMessage.substring(0, 30) + '...' : userMessage
-      updateConversationTitle(currentConversation.id, title)
-    }
-
-    try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ messages: newMessages }),
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        
-        // Check if this is a scheduling request
-        const isSchedulingRequest = userMessage.toLowerCase().includes('schedule') || 
-                                  userMessage.toLowerCase().includes('meeting') ||
-                                  userMessage.toLowerCase().includes('appointment') ||
-                                  userMessage.toLowerCase().includes('time') ||
-                                  userMessage.toLowerCase().includes('book') ||
-                                  userMessage.toLowerCase().includes('showing') ||
-                                  userMessage.toLowerCase().includes('call')
-
-        // Check if this is a listing cover email request
-        const isListingCoverRequest = userMessage.toLowerCase().includes('prepare listing cover email') ||
-                                    userMessage.toLowerCase().includes('listing cover') ||
-                                    userMessage.toLowerCase().includes('cover email')
-
-        // Check if this is a direct calendar event creation
-        const isDirectCalendarCreation = userMessage.toLowerCase().includes('book a showing') ||
-                                       userMessage.toLowerCase().includes('schedule a meeting') ||
-                                       userMessage.toLowerCase().includes('create event') ||
-                                       userMessage.toLowerCase().includes('add to calendar')
-
-        let assistantMessage: Message
-
-        if (isDirectCalendarCreation) {
-          // Try to extract event details and create directly
-          try {
-            const eventDetails = await extractEventDetails(userMessage)
-            if (eventDetails) {
-              const eventResponse = await createCalendarEvent(eventDetails)
-              assistantMessage = {
-                role: 'assistant',
-                content: `✅ Calendar event created successfully!\n\n**Event Details:**\n- Summary: ${eventDetails.summary}\n- Date: ${eventDetails.startTime}\n- Duration: ${eventDetails.duration} minutes\n- Attendees: ${eventDetails.attendees.join(', ') || 'None'}\n\nEvent ID: ${eventResponse.id}`
-              }
-            } else {
-              // Fall back to AI suggestions
-              const slotsResponse = await fetch('/api/calendar/suggest', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  window: userMessage,
-                  constraints: '',
-                }),
-              })
-
-              if (slotsResponse.ok) {
-                const slotsData = await slotsResponse.json()
-                assistantMessage = {
-                  role: 'assistant',
-                  content: data.message,
-                  timeSlots: slotsData.slots,
-                  schedulingRequest: true
-                }
-              } else {
-                assistantMessage = { role: 'assistant', content: data.message }
-                addToast('Failed to get time slots', 'error')
-              }
-            }
-          } catch (error) {
-            assistantMessage = { role: 'assistant', content: 'Sorry, I couldn\'t create the calendar event. Please try again with more specific details.' }
-            addToast('Failed to create calendar event', 'error')
-          }
-        } else if (isSchedulingRequest) {
-          // Get time slots
-          const slotsResponse = await fetch('/api/calendar/suggest', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              window: userMessage,
-              constraints: '',
-            }),
-          })
-
-          if (slotsResponse.ok) {
-            const slotsData = await slotsResponse.json()
-            assistantMessage = {
-              role: 'assistant',
-              content: data.message,
-              timeSlots: slotsData.slots,
-              schedulingRequest: true
-            }
-          } else {
-            assistantMessage = { role: 'assistant', content: data.message }
-            addToast('Failed to get time slots', 'error')
-          }
-        } else if (isListingCoverRequest) {
-          // Check if the response contains HTML preview
-          const assistantMessageContent = data.message
-          const htmlMatch = assistantMessageContent.match(/```html\n([\s\S]*?)\n```/)
-          
-          if (htmlMatch) {
-            const htmlContent = htmlMatch[1]
-            assistantMessage = {
-              role: 'assistant',
-              content: assistantMessageContent.replace(/```html\n[\s\S]*?\n```/, ''),
-              htmlPreview: htmlContent,
-              isEmailPreview: true
-            }
-          } else {
-            assistantMessage = { role: 'assistant', content: data.message }
-          }
-        } else {
-          assistantMessage = { role: 'assistant', content: data.message }
-        }
-
-        const finalMessages = [...newMessages, assistantMessage]
-        setMessages(finalMessages)
-
-        // Update conversation
-        if (currentConversation) {
-          const updatedConversation = { ...currentConversation, messages: finalMessages }
-          setConversations(prev => prev.map(conv => 
-            conv.id === currentConversation.id ? updatedConversation : conv
-          ))
-        }
-      } else {
-        const errorData = await response.json()
-        const errorMessage: Message = { 
-          role: 'assistant', 
-          content: errorData.error || 'Sorry, I encountered an error. Please try again.' 
-        }
-        setMessages([...newMessages, errorMessage])
-        addToast(errorData.error || 'Chat request failed', 'error')
+  const extractEventDetails = (message: string) => {
+    // Simple event extraction - in a real app, you'd use AI
+    const eventRegex = /(?:schedule|book|meeting|appointment|call|meet).*?(?:with|to|for)\s+([^,]+?)(?:\s+on\s+([^,]+?))?(?:\s+at\s+([^,]+?))?/i
+    const match = message.match(eventRegex)
+    if (match) {
+      return {
+        summary: match[0],
+        attendee: match[1]?.trim(),
+        date: match[2]?.trim(),
+        time: match[3]?.trim()
       }
-    } catch (error) {
-      const errorMessage: Message = { 
-        role: 'assistant', 
-        content: 'Sorry, I encountered an error. Please try again.' 
-      }
-      setMessages([...newMessages, errorMessage])
-      addToast('Network error. Please try again.', 'error')
-    } finally {
-      setLoading(false)
     }
-  }
-
-  const extractEventDetails = async (message: string): Promise<any> => {
-    try {
-      const response = await fetch('/api/calendar/extract', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ message }),
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        return data.eventDetails
-      }
-      return null
-    } catch (error) {
-      console.error('Failed to extract event details:', error)
-      return null
-    }
+    return null
   }
 
   const createCalendarEvent = async (eventDetails: any) => {
     try {
       const response = await fetch('/api/calendar', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           summary: eventDetails.summary,
-          startISO: eventDetails.startTime,
-          endISO: eventDetails.endTime,
-          attendees: eventDetails.attendees || [],
-        }),
+          startISO: new Date().toISOString(),
+          endISO: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // 1 hour later
+          attendees: eventDetails.attendee ? [eventDetails.attendee] : []
+        })
       })
-
+      
       if (response.ok) {
-        const data = await response.json()
-        return data.event
+        addToast('Calendar event created successfully!', 'success')
+        return true
       } else {
-        throw new Error('Failed to create calendar event')
+        addToast('Failed to create calendar event')
+        return false
       }
     } catch (error) {
-      console.error('Failed to create calendar event:', error)
-      throw error
+      addToast('Network error creating calendar event')
+      return false
     }
   }
 
-  const handleTimeSlotSelect = async (slot: string, index: number) => {
-    try {
-      const endTime = new Date(slot)
-      endTime.setMinutes(endTime.getMinutes() + 45) // 45-minute meeting
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!inputMessage.trim() || isLoading) return
 
-      const response = await fetch('/api/calendar/hold', {
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: inputMessage,
+      timestamp: new Date()
+    }
+
+    setMessages(prev => [...prev, userMessage])
+    setInputMessage('')
+    setIsLoading(true)
+
+    try {
+      // Check if this is a calendar event request
+      const eventDetails = extractEventDetails(inputMessage)
+      if (eventDetails) {
+        const success = await createCalendarEvent(eventDetails)
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: success 
+            ? `✅ Calendar event created: "${eventDetails.summary}"`
+            : '❌ Failed to create calendar event. Please try again.',
+          timestamp: new Date()
+        }
+        setMessages(prev => [...prev, assistantMessage])
+        setIsLoading(false)
+        return
+      }
+
+      // Regular chat request
+      const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          summary: 'Property Meeting',
-          startISO: slot,
-          endISO: endTime.toISOString(),
-          attendees: [],
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: inputMessage })
       })
 
       if (response.ok) {
         const data = await response.json()
-        const successMessage: Message = {
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
           role: 'assistant',
-          content: `✅ Calendar event created for ${new Date(slot).toLocaleString()}! Event ID: ${data.eventId}`
+          content: data.reply,
+          timestamp: new Date()
         }
-        setMessages(prev => [...prev, successMessage])
-        addToast('Calendar event created successfully', 'success')
+        setMessages(prev => [...prev, assistantMessage])
       } else {
         const errorData = await response.json()
-        const errorMessage: Message = {
-          role: 'assistant',
-          content: '❌ Failed to create calendar event. Please try again.'
-        }
-        setMessages(prev => [...prev, errorMessage])
-        addToast(errorData.error || 'Failed to create calendar event', 'error')
+        addToast(errorData.error || 'Failed to get response')
       }
     } catch (error) {
-      const errorMessage: Message = {
-        role: 'assistant',
-        content: '❌ Failed to create calendar event. Please try again.'
-      }
-      setMessages(prev => [...prev, errorMessage])
-      addToast('Network error. Please try again.', 'error')
+      addToast('Network error. Please try again.')
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  const formatTimeSlot = (slot: string) => {
-    const date = new Date(slot)
-    return date.toLocaleString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    })
-  }
+  // Update current conversation with new messages
+  useEffect(() => {
+    if (currentConversation && messages.length > 0) {
+      const updatedConversation = {
+        ...currentConversation,
+        messages,
+        lastUpdated: new Date()
+      }
+      setCurrentConversation(updatedConversation)
+      setConversations(prev => 
+        prev.map(conv => 
+          conv.id === currentConversation.id ? updatedConversation : conv
+        )
+      )
+    }
+  }, [messages, currentConversation])
 
-  const formatTimestamp = (timestamp: Date) => {
-    return timestamp.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    })
+  if (!mounted) {
+    return (
+      <MainLayout showSidebar={false}>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-gray-800 dark:text-white">Loading...</div>
+        </div>
+      </MainLayout>
+    )
   }
 
   if (status === 'loading') {
@@ -383,155 +246,138 @@ export default function ChatPage() {
   }
 
   return (
-    <MainLayout showSidebar={false}>
-      <div className="flex h-screen">
-        {/* Left Column - Conversation History */}
-        <div className="w-80 bg-gray-100 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
-          {/* Header */}
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">Conversations</h2>
-            <button
-              onClick={startNewConversation}
-              className="btn-primary w-full"
-            >
-              + New Chat
-            </button>
-          </div>
-
-          {/* Conversation List */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-2">
-            {conversations.map((conversation) => (
-              <button
-                key={conversation.id}
-                onClick={() => selectConversation(conversation)}
-                className={`w-full text-left p-3 rounded-lg transition-colors ${
-                  currentConversation?.id === conversation.id
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-white'
-                }`}
-              >
-                <div className="font-medium truncate">{conversation.title}</div>
-                <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                  {formatTimestamp(conversation.timestamp)}
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Right Column - Active Chat */}
-        <div className="flex-1 flex flex-col">
-          {/* Chat Header */}
-          <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-            <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
-              {currentConversation ? currentConversation.title : 'Castra Chat'}
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400">
-              AI-powered realtor assistant
-            </p>
-          </div>
-
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            {messages.length === 0 && (
-              <div className="text-center text-gray-600 dark:text-gray-400 py-8">
-                <p className="mb-4">Try these example queries:</p>
-                <div className="space-y-2 text-sm">
-                  <div className="bg-gray-200 dark:bg-gray-700 rounded-lg p-3 cursor-pointer hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
-                    "Show hot buyer leads last 30 days (table)."
-                  </div>
-                  <div className="bg-gray-200 dark:bg-gray-700 rounded-lg p-3 cursor-pointer hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
-                    "Draft follow-up to jane@buyer.com about 123 Elm St, subject 'Next steps'."
-                  </div>
-                  <div className="bg-gray-200 dark:bg-gray-700 rounded-lg p-3 cursor-pointer hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
-                    "Schedule a meeting for tomorrow afternoon."
-                  </div>
-                  <div className="bg-gray-200 dark:bg-gray-700 rounded-lg p-3 cursor-pointer hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
-                    "Prepare listing cover email for John re: 123 Elm St"
-                  </div>
-                </div>
+    <MainLayout>
+      <div className="max-w-7xl mx-auto h-full">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full">
+          {/* Left Column: Conversation History */}
+          <div className="lg:col-span-1">
+            <div className="card h-full">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="h2">Conversations</h2>
+                <button onClick={createNewConversation} className="btn-primary text-sm">
+                  New Chat
+                </button>
               </div>
-            )}
-            
-            {messages.map((message, index) => (
-              <div
-                key={index}
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`message-bubble ${
-                    message.role === 'user' ? 'message-user' : 'message-ai'
-                  }`}
-                >
-                  {message.role === 'assistant' ? (
-                    <div>
-                      <div dangerouslySetInnerHTML={{ __html: message.content }} />
-                      {message.timeSlots && message.schedulingRequest && (
-                        <div className="mt-3 space-y-2">
-                          <p className="text-sm font-medium">Available times:</p>
-                          <div className="flex flex-wrap gap-2">
-                            {message.timeSlots.map((slot, slotIndex) => (
-                              <button
-                                key={slotIndex}
-                                onClick={() => handleTimeSlotSelect(slot, slotIndex)}
-                                className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-white text-sm transition-colors"
-                              >
-                                {formatTimeSlot(slot)}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {message.htmlPreview && message.isEmailPreview && (
-                        <div className="mt-4">
-                          <p className="text-sm font-medium">Email Preview:</p>
-                          <div className="bg-white rounded-lg p-4 max-h-96 overflow-y-auto">
-                            <div dangerouslySetInnerHTML={{ __html: message.htmlPreview }} />
-                          </div>
-                        </div>
-                      )}
+              
+              <div className="space-y-2 max-h-96 lg:max-h-none overflow-y-auto">
+                {conversations.map((conversation) => (
+                  <button
+                    key={conversation.id}
+                    onClick={() => selectConversation(conversation)}
+                    className={`w-full text-left p-3 rounded-lg transition-colors ${
+                      currentConversation?.id === conversation.id
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-800 dark:text-white'
+                    }`}
+                  >
+                    <div className="font-medium truncate">{conversation.title}</div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                      {conversation.lastUpdated.toLocaleDateString()}
                     </div>
-                  ) : (
-                    <div>{message.content}</div>
-                  )}
-                </div>
-              </div>
-            ))}
-            
-            {loading && (
-              <div className="flex justify-start">
-                <div className="message-bubble message-ai">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  </button>
+                ))}
+                
+                {conversations.length === 0 && (
+                  <div className="text-center text-gray-600 dark:text-gray-400 py-8">
+                    <p>No conversations yet</p>
+                    <p className="text-sm">Start a new chat to begin</p>
                   </div>
-                </div>
+                )}
               </div>
-            )}
-            
-            <div ref={messagesEndRef} />
+            </div>
           </div>
 
-          {/* Input */}
-          <div className="p-6 border-t border-gray-200 dark:border-gray-700">
-            <form onSubmit={handleSubmit} className="flex gap-2">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask Castra anything..."
-                disabled={loading}
-                className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder-gray-600 dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
-              />
-              <button
-                type="submit"
-                disabled={loading || !input.trim()}
-                className="btn-primary"
-              >
-                Send
-              </button>
-            </form>
+          {/* Right Column: Chat Interface */}
+          <div className="lg:col-span-3">
+            <div className="card h-full flex flex-col">
+              <div className="flex-1 overflow-y-auto p-6">
+                {messages.length === 0 ? (
+                  <div className="text-center text-gray-600 dark:text-gray-400 py-8">
+                    <div className="text-4xl mb-4">💬</div>
+                    <h3 className="mb-2">Start a conversation</h3>
+                    <p>Ask me anything about your real estate workflow</p>
+                    
+                    {/* Example queries */}
+                    <div className="mt-6 space-y-2">
+                      <button
+                        onClick={() => setInputMessage("Draft a follow-up email for a client who viewed a property yesterday")}
+                        className="block w-full p-3 text-left bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                      >
+                        💌 Draft a follow-up email
+                      </button>
+                      <button
+                        onClick={() => setInputMessage("Schedule a showing with John Smith for tomorrow at 2pm")}
+                        className="block w-full p-3 text-left bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                      >
+                        📅 Schedule a showing
+                      </button>
+                      <button
+                        onClick={() => setInputMessage("Update my CRM with a new lead from today's open house")}
+                        className="block w-full p-3 text-left bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                      >
+                        👥 Update CRM lead
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {messages.map((message) => (
+                      <div
+                        key={message.id}
+                        className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div
+                          className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                            message.role === 'user'
+                              ? 'bg-purple-600 text-white'
+                              : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white'
+                          }`}
+                        >
+                          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                          <p className="text-xs opacity-70 mt-1">
+                            {message.timestamp.toLocaleTimeString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {isLoading && (
+                      <div className="flex justify-start">
+                        <div className="bg-gray-200 dark:bg-gray-700 px-4 py-2 rounded-lg">
+                          <div className="flex space-x-1">
+                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Input Form */}
+              <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+                <form onSubmit={handleSubmit} className="flex space-x-2">
+                  <input
+                    type="text"
+                    value={inputMessage}
+                    onChange={(e) => setInputMessage(e.target.value)}
+                    placeholder="Type your message..."
+                    disabled={isLoading}
+                    className="flex-1 px-3 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder-gray-600 dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isLoading || !inputMessage.trim()}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {isLoading ? 'Sending...' : 'Send'}
+                  </button>
+                </form>
+              </div>
+            </div>
           </div>
         </div>
       </div>
