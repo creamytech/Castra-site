@@ -22,10 +22,17 @@ export default function DashboardPage() {
   const router = useRouter()
 
   useEffect(() => {
-    if (session?.user?.id) {
-      fetchAccounts()
+    if (status === 'authenticated') {
+      if (session?.user?.id) {
+        fetchAccounts()
+      } else {
+        // If session exists but no user.id (JWT strategy), just stop loading
+        setLoading(false)
+      }
+    } else if (status === 'unauthenticated') {
+      setLoading(false)
     }
-  }, [session?.user?.id])
+  }, [session?.user?.id, status])
 
   const fetchAccounts = async () => {
     try {
@@ -36,6 +43,7 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error('Failed to fetch accounts:', error)
+      // Don't fail the page if accounts API fails
     } finally {
       setLoading(false)
     }
@@ -46,7 +54,16 @@ export default function DashboardPage() {
   }
 
   const isConnected = (provider: string) => {
-    return accounts.some(account => account.provider === provider && account.access_token)
+    // Check database accounts first
+    const hasDatabaseAccount = accounts.some(account => account.provider === provider && account.access_token)
+    
+    // Also check session tokens for Google (since we're using JWT strategy)
+    if (provider === 'google' && session) {
+      const hasSessionTokens = !!(session as any).accessToken || !!(session as any).refreshToken
+      return hasDatabaseAccount || hasSessionTokens
+    }
+    
+    return hasDatabaseAccount
   }
 
   const handleTabClick = (tab: string) => {

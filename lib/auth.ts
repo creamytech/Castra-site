@@ -57,8 +57,7 @@ if (config.azure.clientId && config.azure.clientSecret && config.azure.tenantId)
 }
 
 export const authOptions: NextAuthOptions = {
-  // Temporarily disable adapter to avoid account linking issues
-  // adapter: config.database.url && prisma ? PrismaAdapter(prisma) : undefined,
+  adapter: config.database.url && prisma ? PrismaAdapter(prisma) : undefined,
   debug: process.env.NODE_ENV === 'development',
   providers: providers.length > 0 ? providers : [
     // Fallback provider for when no OAuth providers are configured
