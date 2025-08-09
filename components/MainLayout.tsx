@@ -1,7 +1,7 @@
 'use client'
 
-import { useSession } from 'next-auth/react'
-import { signOut } from 'next-auth/react'
+import { useSession, signOut } from 'next-auth/react'
+import { useState, useEffect } from 'react'
 import Sidebar from './Sidebar'
 import QuickActions from './QuickActions'
 
@@ -11,12 +11,39 @@ interface MainLayoutProps {
 }
 
 export default function MainLayout({ children, showSidebar = true }: MainLayoutProps) {
-  const { data: session } = useSession()
+  const [session, setSession] = useState<any>(null)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Only use useSession on the client side
+  const { data: sessionData } = useSession()
+
+  useEffect(() => {
+    if (mounted) {
+      setSession(sessionData)
+    }
+  }, [sessionData, mounted])
+
+  // If not mounted yet, show a loading state
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-gray-800 dark:text-white">Loading...</div>
+        </div>
+      </div>
+    )
+  }
 
   if (!session) {
-    return <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      {children}
-    </div>
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        {children}
+      </div>
+    )
   }
 
   return (
