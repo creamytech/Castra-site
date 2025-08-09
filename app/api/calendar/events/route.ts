@@ -29,8 +29,6 @@ export async function POST(request: NextRequest) {
     // Create event with proper Google Calendar format
     const event = await createCalendarEvent(session.user.id, {
       summary,
-      description,
-      location,
       startISO: start,
       endISO: end,
       timeZone,

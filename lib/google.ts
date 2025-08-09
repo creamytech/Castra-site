@@ -95,7 +95,7 @@ function toISO(msg: any): string | null {
   return null;
 }
 
-async function getGoogleOAuth(userId: string) {
+export async function getGoogleOAuth(userId: string) {
   if (!isFeatureEnabled("gmail")) {
     throw new Error("Google integration not configured");
   }
@@ -244,7 +244,7 @@ export async function createDraft(
 export async function createCalendarEvent(
   userId: string,
   { summary, startISO, endISO, attendees = [], timeZone = "UTC" }:
-  { summary: string; startISO: string; endISO: string; attendees?: string[]; timeZone?: string }
+  { summary: string; startISO: string; endISO: string; attendees?: Array<{ email: string }> | string[]; timeZone?: string }
 ) {
   try {
     const auth = await getGoogleOAuth(userId);
@@ -262,11 +262,16 @@ export async function createCalendarEvent(
       throw new Error("Start time must be before end time");
     }
 
+    // Convert attendees to proper format
+    const formattedAttendees = attendees.map(attendee => 
+      typeof attendee === 'string' ? { email: attendee } : attendee
+    );
+
     const event = {
       summary,
       start: { dateTime: startISO, timeZone },
       end: { dateTime: endISO, timeZone },
-      attendees: attendees.map(email => ({ email })),
+      attendees: formattedAttendees,
     };
 
     const { data } = await calendar.events.insert({ 
