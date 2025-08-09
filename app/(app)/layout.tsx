@@ -37,7 +37,7 @@ export default function AppLayout({
             break;
           case 'n':
             e.preventDefault();
-            window.open('/app/chat', '_blank');
+            window.open('/chat', '_blank');
             break;
         }
       }
@@ -50,13 +50,13 @@ export default function AppLayout({
           document.removeEventListener('keydown', handleNextKey);
           switch (e2.key) {
             case 'i':
-              window.open('/app/inbox', '_blank');
+              window.open('/inbox', '_blank');
               break;
             case 'c':
-              window.open('/app/calendar', '_blank');
+              window.open('/calendar', '_blank');
               break;
             case 'd':
-              window.open('/app/dashboard', '_blank');
+              window.open('/dashboard', '_blank');
               break;
           }
         };
@@ -116,21 +116,21 @@ export default function AppLayout({
                 {/* Quick Actions */}
                 <div className="flex items-center space-x-2">
                   <button
-                    onClick={() => window.open('/app/chat', '_blank')}
+                    onClick={() => window.open('/chat', '_blank')}
                     className="btn-ghost text-sm"
                     title="New Chat (⌘N)"
                   >
                     💬 New Chat
                   </button>
                   <button
-                    onClick={() => window.open('/app/inbox', '_blank')}
+                    onClick={() => window.open('/inbox', '_blank')}
                     className="btn-ghost text-sm"
                     title="Inbox (⌘G I)"
                   >
                     📧 Inbox
                   </button>
                   <button
-                    onClick={() => window.open('/app/calendar', '_blank')}
+                    onClick={() => window.open('/calendar', '_blank')}
                     className="btn-ghost text-sm"
                     title="Calendar (⌘G C)"
                   >

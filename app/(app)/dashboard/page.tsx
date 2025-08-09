@@ -59,7 +59,7 @@ export default function DashboardPage() {
         
         // If Google is connected, we can stay here. If not, redirect to connect
         if (!googleConnected) {
-          router.push("/app/connect");
+          router.push("/dashboard/connect");
         }
       }
     } catch (error) {
@@ -70,7 +70,7 @@ export default function DashboardPage() {
   if (status === "loading" || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-gray-800 dark:text-white">Loading...</div>
+        <div className="text-foreground">Loading...</div>
       </div>
     );
   }
@@ -78,7 +78,7 @@ export default function DashboardPage() {
   if (!session) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-gray-800 dark:text-white">You need to sign in.</div>
+        <div className="text-foreground">You need to sign in.</div>
       </div>
     );
   }
@@ -86,85 +86,85 @@ export default function DashboardPage() {
   return (
     <div className="max-w-6xl mx-auto">
       <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold mb-2">Dashboard</h1>
-        <p className="text-xl text-gray-700 dark:text-gray-300">
+        <h1 className="text-4xl font-bold mb-2 text-foreground">Dashboard</h1>
+        <p className="text-xl text-muted-foreground">
           Welcome to your Castra dashboard
         </p>
       </div>
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
-          <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">{stats.leadsNew}</div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">New Leads (30d)</div>
+        <div className="card">
+          <div className="text-3xl font-bold text-primary">{stats.leadsNew}</div>
+          <div className="text-sm text-muted-foreground">New Leads (30d)</div>
         </div>
-        <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
-          <div className="text-3xl font-bold text-green-600 dark:text-green-400">{stats.emailsToday}</div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">Emails Today</div>
+        <div className="card">
+          <div className="text-3xl font-bold text-success">{stats.emailsToday}</div>
+          <div className="text-sm text-muted-foreground">Emails Today</div>
         </div>
-        <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
-          <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">{stats.eventsUpcoming}</div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">Upcoming Events</div>
+        <div className="card">
+          <div className="text-3xl font-bold text-primary">{stats.eventsUpcoming}</div>
+          <div className="text-sm text-muted-foreground">Upcoming Events</div>
         </div>
-        <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
-          <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">{stats.draftsPending}</div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">Pending Drafts</div>
+        <div className="card">
+          <div className="text-3xl font-bold text-warning">{stats.draftsPending}</div>
+          <div className="text-sm text-muted-foreground">Pending Drafts</div>
         </div>
       </div>
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
-          <h2 className="text-2xl font-bold mb-4">Quick Actions</h2>
+        <div className="card">
+          <h2 className="text-2xl font-bold mb-4 text-foreground">Quick Actions</h2>
           <div className="space-y-3">
             <Link
-              href="/app/chat"
-              className="block w-full p-4 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors text-left"
+              href="/chat"
+              className="block w-full p-4 bg-muted hover:bg-accent hover:text-accent-foreground rounded-lg transition-colors text-left"
             >
               <div className="flex items-center space-x-3">
                 <div className="text-2xl">💬</div>
                 <div>
-                  <div className="font-medium">Start AI Chat</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">Ask Castra anything</div>
+                  <div className="font-medium text-foreground">Start AI Chat</div>
+                  <div className="text-sm text-muted-foreground">Ask Castra anything</div>
                 </div>
               </div>
             </Link>
 
             <Link
-              href="/app/inbox"
-              className="block w-full p-4 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors text-left"
+              href="/inbox"
+              className="block w-full p-4 bg-muted hover:bg-accent hover:text-accent-foreground rounded-lg transition-colors text-left"
             >
               <div className="flex items-center space-x-3">
                 <div className="text-2xl">📧</div>
                 <div>
-                  <div className="font-medium">Check Inbox</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">Review emails</div>
+                  <div className="font-medium text-foreground">Check Inbox</div>
+                  <div className="text-sm text-muted-foreground">Review emails</div>
                 </div>
               </div>
             </Link>
 
             <Link
-              href="/app/calendar"
-              className="block w-full p-4 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors text-left"
+              href="/calendar"
+              className="block w-full p-4 bg-muted hover:bg-accent hover:text-accent-foreground rounded-lg transition-colors text-left"
             >
               <div className="flex items-center space-x-3">
                 <div className="text-2xl">📅</div>
                 <div>
-                  <div className="font-medium">Schedule Meeting</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">Book appointments</div>
+                  <div className="font-medium text-foreground">Schedule Meeting</div>
+                  <div className="text-sm text-muted-foreground">Book appointments</div>
                 </div>
               </div>
             </Link>
 
             <Link
-              href="/app/crm"
-              className="block w-full p-4 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors text-left"
+              href="/crm"
+              className="block w-full p-4 bg-muted hover:bg-accent hover:text-accent-foreground rounded-lg transition-colors text-left"
             >
               <div className="flex items-center space-x-3">
                 <div className="text-2xl">👥</div>
                 <div>
-                  <div className="font-medium">Add Lead</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">Create new contact</div>
+                  <div className="font-medium text-foreground">Add Lead</div>
+                  <div className="text-sm text-muted-foreground">Create new contact</div>
                 </div>
               </div>
             </Link>
@@ -172,28 +172,28 @@ export default function DashboardPage() {
         </div>
 
         {/* Recent Activity */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
-          <h2 className="text-2xl font-bold mb-4">Recent Activity</h2>
+        <div className="card">
+          <h2 className="text-2xl font-bold mb-4 text-foreground">Recent Activity</h2>
           <div className="space-y-4">
-            <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+            <div className="flex items-center space-x-3 p-3 bg-muted rounded-lg">
+              <div className="w-2 h-2 bg-success rounded-full"></div>
               <div>
-                <div className="font-medium">New lead added</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">2 hours ago</div>
+                <div className="font-medium text-foreground">New lead added</div>
+                <div className="text-sm text-muted-foreground">2 hours ago</div>
               </div>
             </div>
-            <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+            <div className="flex items-center space-x-3 p-3 bg-muted rounded-lg">
+              <div className="w-2 h-2 bg-primary rounded-full"></div>
               <div>
-                <div className="font-medium">Email draft created</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">4 hours ago</div>
+                <div className="font-medium text-foreground">Email draft created</div>
+                <div className="text-sm text-muted-foreground">4 hours ago</div>
               </div>
             </div>
-            <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+            <div className="flex items-center space-x-3 p-3 bg-muted rounded-lg">
+              <div className="w-2 h-2 bg-primary rounded-full"></div>
               <div>
-                <div className="font-medium">Meeting scheduled</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">1 day ago</div>
+                <div className="font-medium text-foreground">Meeting scheduled</div>
+                <div className="text-sm text-muted-foreground">1 day ago</div>
               </div>
             </div>
           </div>
