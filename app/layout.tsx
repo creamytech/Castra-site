@@ -1,8 +1,6 @@
 import { Inter } from 'next/font/google'
 import './globals.css'
 import Providers from '@/components/Providers'
-import Header from '@/components/Header'
-import Footer from '@/components/Footer'
 import { Metadata } from 'next'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -43,13 +41,7 @@ export default function RootLayout({
       </head>
       <body className={`${inter.className} bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-300`}>
         <Providers>
-          <div className="min-h-screen flex flex-col">
-            <Header />
-            <main className="flex-1">
-              {children}
-            </main>
-            <Footer />
-          </div>
+          {children}
         </Providers>
       </body>
     </html>

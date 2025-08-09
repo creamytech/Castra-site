@@ -12,7 +12,7 @@ export default function SignInPage() {
     const checkSession = async () => {
       const session = await getSession()
       if (session) {
-        window.location.href = '/connect'
+        window.location.href = '/dashboard'
       } else {
         setLoading(false)
       }
@@ -24,7 +24,7 @@ export default function SignInPage() {
     console.log('Google sign-in clicked')
     setLoading(true)
     // Use default redirect behavior
-    signIn('google', { callbackUrl: '/connect' }).then((result) => {
+    signIn('google', { callbackUrl: '/dashboard' }).then((result) => {
       console.log('Google sign-in result:', result)
       if (result?.error) {
         setError(result.error)
