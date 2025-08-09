@@ -24,7 +24,7 @@ export default function Skeleton({
   return (
     <div
       className={cn(
-        "animate-pulse bg-surface-200 dark:bg-surface-700",
+        "animate-pulse bg-muted",
         roundedClasses[rounded],
         className
       )}

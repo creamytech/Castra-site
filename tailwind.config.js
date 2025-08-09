@@ -9,85 +9,52 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Brand colors
-        brand: {
-          50: 'hsl(var(--brand-50))',
-          100: 'hsl(var(--brand-100))',
-          200: 'hsl(var(--brand-200))',
-          300: 'hsl(var(--brand-300))',
-          400: 'hsl(var(--brand-400))',
-          500: 'hsl(var(--brand-500))',
-          600: 'hsl(var(--brand-600))',
-          700: 'hsl(var(--brand-700))',
-          800: 'hsl(var(--brand-800))',
-          900: 'hsl(var(--brand-900))',
-          950: 'hsl(var(--brand-950))',
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
+        card: {
+          DEFAULT: 'hsl(var(--card))',
+          foreground: 'hsl(var(--card-foreground))',
         },
-        // Surface colors
-        surface: {
-          0: 'hsl(var(--surface-0))',
-          50: 'hsl(var(--surface-50))',
-          100: 'hsl(var(--surface-100))',
-          200: 'hsl(var(--surface-200))',
-          300: 'hsl(var(--surface-300))',
-          400: 'hsl(var(--surface-400))',
-          500: 'hsl(var(--surface-500))',
-          600: 'hsl(var(--surface-600))',
-          700: 'hsl(var(--surface-700))',
-          800: 'hsl(var(--surface-800))',
-          900: 'hsl(var(--surface-900))',
-          950: 'hsl(var(--surface-950))',
+        popover: {
+          DEFAULT: 'hsl(var(--popover))',
+          foreground: 'hsl(var(--popover-foreground))',
         },
-        // Border colors
-        border: {
-          DEFAULT: 'hsl(var(--border))',
-          muted: 'hsl(var(--border-muted))',
-          focus: 'hsl(var(--border-focus))',
+        primary: {
+          DEFAULT: 'hsl(var(--primary))',
+          foreground: 'hsl(var(--primary-foreground))',
         },
-        // Text colors
-        text: {
-          DEFAULT: 'hsl(var(--text))',
-          muted: 'hsl(var(--text-muted))',
-          inverse: 'hsl(var(--text-inverse))',
+        secondary: {
+          DEFAULT: 'hsl(var(--secondary))',
+          foreground: 'hsl(var(--secondary-foreground))',
         },
-        // Status colors
-        success: {
-          50: 'hsl(var(--success-50))',
-          500: 'hsl(var(--success-500))',
-          600: 'hsl(var(--success-600))',
+        muted: {
+          DEFAULT: 'hsl(var(--muted))',
+          foreground: 'hsl(var(--muted-foreground))',
         },
-        warning: {
-          50: 'hsl(var(--warning-50))',
-          500: 'hsl(var(--warning-500))',
-          600: 'hsl(var(--warning-600))',
+        accent: {
+          DEFAULT: 'hsl(var(--accent))',
+          foreground: 'hsl(var(--accent-foreground))',
         },
-        error: {
-          50: 'hsl(var(--error-50))',
-          500: 'hsl(var(--error-500))',
-          600: 'hsl(var(--error-600))',
+        destructive: {
+          DEFAULT: 'hsl(var(--destructive))',
+          foreground: 'hsl(var(--destructive-foreground))',
         },
+        border: 'hsl(var(--border))',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
+        success: 'hsl(var(--success))',
+        warning: 'hsl(var(--warning))',
+        error: 'hsl(var(--error))',
+      },
+      borderRadius: {
+        lg: 'var(--radius)',
+        md: 'calc(var(--radius) - 2px)',
+        sm: 'calc(var(--radius) - 4px)',
       },
       spacing: {
         '18': '4.5rem',
         '88': '22rem',
         '128': '32rem',
-      },
-      borderRadius: {
-        'xs': 'var(--radius-xs)',
-        'sm': 'var(--radius-sm)',
-        'md': 'var(--radius-md)',
-        'lg': 'var(--radius-lg)',
-        'xl': 'var(--radius-xl)',
-        '2xl': 'var(--radius-2xl)',
-      },
-      boxShadow: {
-        'xs': 'var(--shadow-xs)',
-        'sm': 'var(--shadow-sm)',
-        'md': 'var(--shadow-md)',
-        'lg': 'var(--shadow-lg)',
-        'xl': 'var(--shadow-xl)',
-        '2xl': 'var(--shadow-2xl)',
-        'inner': 'var(--shadow-inner)',
       },
       animation: {
         'fade-in': 'fadeIn 0.2s ease-out',
@@ -127,16 +94,6 @@ module.exports = {
           '0%': { transform: 'translateX(-100%)' },
           '100%': { transform: 'translateX(100%)' },
         },
-      },
-      transitionDuration: {
-        'fast': 'var(--duration-fast)',
-        'normal': 'var(--duration-normal)',
-        'slow': 'var(--duration-slow)',
-      },
-      transitionTimingFunction: {
-        'ease-out': 'var(--ease-out)',
-        'ease-in': 'var(--ease-in)',
-        'ease-in-out': 'var(--ease-in-out)',
       },
     },
   },

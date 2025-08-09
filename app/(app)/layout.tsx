@@ -77,9 +77,9 @@ export default function AppLayout({
   if (!isClient) {
     return (
       <SessionProvider>
-        <div className="min-h-screen bg-surface-0">
+        <div className="min-h-screen bg-background">
           <div className="flex items-center justify-center min-h-screen">
-            <div className="text-text">Loading...</div>
+            <div className="text-foreground">Loading...</div>
           </div>
         </div>
       </SessionProvider>
@@ -88,27 +88,27 @@ export default function AppLayout({
 
   return (
     <SessionProvider>
-      <div className="min-h-screen bg-surface-0">
+      <div className="min-h-screen bg-background">
         <Sidebar />
 
         <div className="ml-64 transition-all duration-300">
           {/* Header */}
-          <header className="bg-surface-50 dark:bg-surface-800 border-b border-border px-6 py-4">
+          <header className="bg-card text-card-foreground border-b border-border px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <h1 className="text-xl font-semibold text-text">Castra</h1>
+                <h1 className="text-xl font-semibold text-foreground">Castra</h1>
               </div>
               
               <div className="flex items-center space-x-4">
                 {/* Search Button */}
                 <button
                   onClick={() => setIsCommandPaletteOpen(true)}
-                  className="flex items-center space-x-2 px-3 py-2 bg-surface-100 dark:bg-surface-700 hover:bg-surface-200 dark:hover:bg-surface-600 rounded-md transition-colors text-text-muted hover:text-text"
+                  className="flex items-center space-x-2 px-3 py-2 bg-muted hover:bg-muted/80 rounded-md transition-colors text-muted-foreground hover:text-foreground"
                   title="Search (⌘K or /)"
                 >
                   <span>🔍</span>
                   <span className="hidden sm:inline">Search</span>
-                  <kbd className="hidden sm:inline text-xs bg-surface-200 dark:bg-surface-600 px-1 rounded">
+                  <kbd className="hidden sm:inline text-xs bg-background px-1 rounded">
                     ⌘K
                   </kbd>
                 </button>

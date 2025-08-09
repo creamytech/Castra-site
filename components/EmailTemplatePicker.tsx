@@ -106,13 +106,13 @@ export default function EmailTemplatePicker({
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-1 w-80 bg-surface-50 dark:bg-surface-800 border border-border rounded-lg shadow-lg z-50">
+        <div className="absolute top-full left-0 mt-1 w-80 bg-card text-card-foreground border border-border rounded-lg shadow-lg z-50">
           <div className="p-4 border-b border-border">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-text">Email Templates</h3>
+              <h3 className="font-semibold text-foreground">Email Templates</h3>
               <button
                 onClick={handleCreateTemplate}
-                className="text-sm text-brand-600 hover:text-brand-700"
+                className="text-sm text-primary hover:text-primary/80"
               >
                 + New
               </button>
@@ -121,15 +121,15 @@ export default function EmailTemplatePicker({
 
           <div className="max-h-64 overflow-y-auto">
             {loading ? (
-              <div className="p-4 text-center text-text-muted">
+              <div className="p-4 text-center text-muted-foreground">
                 Loading templates...
               </div>
             ) : templates.length === 0 ? (
-              <div className="p-4 text-center text-text-muted">
+              <div className="p-4 text-center text-muted-foreground">
                 <p>No templates found</p>
                 <button
                   onClick={handleCreateTemplate}
-                  className="text-brand-600 hover:text-brand-700 text-sm mt-2"
+                  className="text-primary hover:text-primary/80 text-sm mt-2"
                 >
                   Create your first template
                 </button>
@@ -140,19 +140,19 @@ export default function EmailTemplatePicker({
                   <button
                     key={template.id}
                     onClick={() => handleTemplateSelect(template)}
-                    className="w-full text-left p-3 hover:bg-surface-100 dark:hover:bg-surface-700 rounded-md transition-colors"
+                    className="w-full text-left p-3 hover:bg-accent hover:text-accent-foreground rounded-md transition-colors"
                   >
-                    <div className="font-medium text-text">{template.name}</div>
+                    <div className="font-medium text-foreground">{template.name}</div>
                     {template.subject && (
-                      <div className="text-sm text-text-muted mt-1">
+                      <div className="text-sm text-muted-foreground mt-1">
                         Subject: {template.subject}
                       </div>
                     )}
-                    <div className="text-xs text-text-muted mt-1 line-clamp-2">
+                    <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
                       {template.content.substring(0, 100)}...
                     </div>
                     {template.variables.length > 0 && (
-                      <div className="text-xs text-brand-600 mt-1">
+                      <div className="text-xs text-primary mt-1">
                         Variables: {template.variables.join(', ')}
                       </div>
                     )}

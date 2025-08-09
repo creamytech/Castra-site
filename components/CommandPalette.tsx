@@ -161,20 +161,20 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
           transition={{ duration: 0.2 }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="bg-surface-50 dark:bg-surface-800 rounded-lg shadow-2xl border border-border">
+          <div className="bg-card text-card-foreground rounded-lg shadow-2xl border border-border">
             {/* Search Input */}
             <div className="p-4 border-b border-border">
               <div className="flex items-center space-x-3">
-                <span className="text-text-muted">🔍</span>
+                <span className="text-muted-foreground">🔍</span>
                 <input
                   ref={inputRef}
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search chats, contacts, emails, events..."
-                  className="flex-1 bg-transparent text-text placeholder:text-text-muted focus:outline-none text-lg"
+                  className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none text-lg"
                 />
-                <kbd className="px-2 py-1 text-xs bg-surface-200 dark:bg-surface-700 text-text-muted rounded">
+                <kbd className="px-2 py-1 text-xs bg-muted text-muted-foreground rounded">
                   ESC
                 </kbd>
               </div>
@@ -183,18 +183,18 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
             {/* Results */}
             <div className="max-h-96 overflow-y-auto">
               {loading ? (
-                <div className="p-8 text-center text-text-muted">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600 mx-auto mb-4"></div>
+                <div className="p-8 text-center text-muted-foreground">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
                   Searching...
                 </div>
               ) : results.length === 0 && query ? (
-                <div className="p-8 text-center text-text-muted">
+                <div className="p-8 text-center text-muted-foreground">
                   <div className="text-4xl mb-4">🔍</div>
                   <p>No results found for "{query}"</p>
                   <p className="text-sm mt-2">Try different keywords or check your spelling</p>
                 </div>
               ) : results.length === 0 ? (
-                <div className="p-8 text-center text-text-muted">
+                <div className="p-8 text-center text-muted-foreground">
                   <div className="text-4xl mb-4">⌘K</div>
                   <p>Search for anything in Castra</p>
                   <p className="text-sm mt-2">Chats, contacts, emails, events, and more</p>
@@ -203,10 +203,10 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
                 <div className="p-2">
                   {groupResults(results).map(([groupKey, groupResults]) => (
                     <div key={groupKey} className="mb-4">
-                      <div className="px-3 py-2 text-xs font-medium text-text-muted uppercase tracking-wide flex items-center space-x-2">
+                      <div className="px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center space-x-2">
                         <span>{getGroupIcon(groupKey)}</span>
                         <span>{getGroupTitle(groupKey)}</span>
-                        <span className="text-xs bg-surface-200 dark:bg-surface-700 px-2 py-1 rounded">
+                        <span className="text-xs bg-muted px-2 py-1 rounded">
                           {groupResults.length}
                         </span>
                       </div>
@@ -221,23 +221,23 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
                             className={cn(
                               "w-full text-left p-3 rounded-md transition-colors",
                               isSelected 
-                                ? "bg-brand-100 dark:bg-brand-900 text-brand-900 dark:text-brand-100" 
-                                : "hover:bg-surface-100 dark:hover:bg-surface-700"
+                                ? "bg-accent text-accent-foreground" 
+                                : "hover:bg-accent hover:text-accent-foreground"
                             )}
                           >
                             <div className="flex items-center space-x-3">
                               <span className="text-lg">{result.icon}</span>
                               <div className="flex-1 min-w-0">
-                                <div className="font-medium text-text truncate">
+                                <div className="font-medium text-foreground truncate">
                                   {result.title}
                                 </div>
                                 {result.subtitle && (
-                                  <div className="text-sm text-text-muted truncate">
+                                  <div className="text-sm text-muted-foreground truncate">
                                     {result.subtitle}
                                   </div>
                                 )}
                               </div>
-                              <div className="text-xs text-text-muted">
+                              <div className="text-xs text-muted-foreground">
                                 {result.type}
                               </div>
                             </div>
@@ -251,8 +251,8 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
             </div>
 
             {/* Footer */}
-            <div className="p-3 border-t border-border bg-surface-100 dark:bg-surface-700">
-              <div className="flex items-center justify-between text-xs text-text-muted">
+            <div className="p-3 border-t border-border bg-muted/50">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <div className="flex items-center space-x-4">
                   <span>↑↓ Navigate</span>
                   <span>↵ Select</span>
