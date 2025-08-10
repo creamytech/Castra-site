@@ -3,37 +3,99 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   try {
-    const { sdpEndpoint, offerSdp } = await req.json();
-    if (!sdpEndpoint || !offerSdp) {
-      return NextResponse.json({ error: "Missing sdpEndpoint or offerSdp" }, { status: 400 });
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const resp = await fetch(String(sdpEndpoint), {
+    const { offerSdp, model } = await req.json();
+    if (!offerSdp) return NextResponse.json({ error: "Missing offerSdp" }, { status: 400 });
+
+    const useModel = model || (process.env.OPENAI_REALTIME_MODEL || "gpt-4o-realtime-preview-2024-12-17");
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json({ error: "Missing OPENAI_API_KEY" }, { status: 500 });
+    }
+
+    let profile = await prisma.userProfile.findUnique({ where: { userId: session.user.id } });
+    if (!profile) {
+      profile = await prisma.userProfile.create({
+        data: {
+          userId: session.user.id,
+          displayName: session.user.name ?? null,
+          styleGuide: {
+            tone: "friendly",
+            formality: 4,
+            emojis: false,
+            phrases: [],
+            sentenceLength: "medium",
+            description: "Concise, helpful real estate tone.",
+          },
+          voice: "verse",
+          hotwordOn: true,
+        },
+      });
+    }
+    const sg = (profile.styleGuide as any) ?? {};
+    const instructions = `
+You are Castra, a voice-enabled real estate assistant.
+Tone: ${sg.tone ?? "friendly"}; Formality: ${sg.formality ?? 4}; Emojis: ${sg.emojis ? "allowed" : "avoid"}.
+Style: ${sg.description ?? "Concise, conversational, helpful."}
+You can access CRM (Deals/Contacts/Activities), Inbox/Calendar, SMS/Instagram, and MLS tools.
+Keep spoken responses natural and under ~20 seconds unless asked for detail.
+`;
+
+    // Create ephemeral session to obtain ephemeral key
+    const ep = await fetch("https://api.openai.com/v1/realtime/sessions", {
       method: "POST",
-      headers: { "Content-Type": "application/sdp" },
+      headers: {
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: useModel,
+        voice: profile.voice ?? "verse",
+        instructions,
+      }),
+    });
+
+    const epText = await ep.text();
+    if (!ep.ok) {
+      return NextResponse.json({ error: "Failed to create ephemeral session", body: epText }, { status: 502 });
+    }
+    const epJson = JSON.parse(epText);
+    const ephemeralKey = epJson?.client_secret?.value;
+    if (!ephemeralKey) {
+      return NextResponse.json({ error: "Missing ephemeral key in session response", body: epText }, { status: 502 });
+    }
+
+    // Post SDP offer to the realtime endpoint with ephemeral key
+    const realtimeUrl = `https://api.openai.com/v1/realtime?model=${encodeURIComponent(useModel)}`;
+    const answerResp = await fetch(realtimeUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${ephemeralKey}`,
+        "Content-Type": "application/sdp",
+      },
       body: String(offerSdp),
     });
 
-    const answerText = await resp.text();
-    if (!resp.ok) {
-      return NextResponse.json(
-        { error: "SDP exchange failed at OpenAI", status: resp.status, body: answerText },
-        { status: 502 }
+    const answerText = await answerResp.text();
+    if (!answerResp.ok) {
+      return new NextResponse(
+        JSON.stringify({ error: "Realtime SDP exchange failed", status: answerResp.status, body: answerText }),
+        { status: 502, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    return new NextResponse(answerText, {
-      status: 200,
-      headers: { "Content-Type": "application/sdp" },
-    });
+    return new NextResponse(answerText, { status: 200, headers: { "Content-Type": "application/sdp" } });
   } catch (e: any) {
-    return NextResponse.json(
-      { error: "SDP proxy error", detail: e?.message ?? String(e) },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "SDP proxy error", detail: e?.message ?? String(e) }, { status: 500 });
   }
 }
 

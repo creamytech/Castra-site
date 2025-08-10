@@ -35,10 +35,6 @@ export function VoiceSession() {
       const mic = await navigator.mediaDevices.getUserMedia({ audio: true }).catch((e) => { setMicPermission('denied'); throw e })
       setMicPermission('granted')
 
-      const sessRes = await fetch('/api/voice/session', { method: 'POST' })
-      const sessJson = await sessRes.json()
-      if (!sessRes.ok) throw new Error(sessJson?.error || 'Failed to start voice session')
-
       const pc = new RTCPeerConnection({
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
@@ -71,7 +67,7 @@ export function VoiceSession() {
       const proxyRes = await fetch('/api/voice/offer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sdpEndpoint: sessJson.sdpEndpoint, offerSdp: offer.sdp }),
+        body: JSON.stringify({ offerSdp: offer.sdp, model: 'gpt-4o-realtime-preview-2024-12-17' }),
       })
       const contentType = proxyRes.headers.get('content-type') || ''
       if (!proxyRes.ok || !contentType.includes('application/sdp')) {
