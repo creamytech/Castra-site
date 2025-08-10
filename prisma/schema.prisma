@@ -72,6 +72,8 @@ model User {
   tasks            Task[]
   interactions     Interaction[]
   userProfile      UserProfile?
+  emailThreads     EmailThread[]
+  emailMessages    EmailMessage[]
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -160,6 +162,50 @@ model EmailLog {
   @@index([messageId])
 }
 
+// Real-estate Inbox models
+model EmailThread {
+  id           String        @id                 // provider threadId
+  userId       String
+  subject      String?
+  lastSyncedAt DateTime      @default(now())
+  dealId       String?
+  messages     EmailMessage[]
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deal         Deal?         @relation(fields: [dealId], references: [id])
+
+  @@index([userId, lastSyncedAt])
+  @@index([dealId])
+}
+
+model EmailMessage {
+  id           String   @id                    // provider messageId
+  threadId     String
+  userId       String
+  from         String
+  to           String[]
+  cc           String[]
+  date         DateTime
+  snippet      String?
+  bodyHtml     String?
+  bodyText     String?
+  internalRefs Json?
+  intent       String?
+  entities     Json?
+  dealId       String?
+  contactId    String?
+  createdAt    DateTime @default(now())
+
+  thread       EmailThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deal         Deal?       @relation(fields: [dealId], references: [id])
+  contact      Contact?    @relation(fields: [contactId], references: [id])
+
+  @@index([userId, date])
+  @@index([threadId, date])
+  @@index([dealId])
+}
+
 // CRM Models
 model Contact {
   id          String   @id @default(cuid())
@@ -179,6 +225,7 @@ model Contact {
   deals       Deal[]
   dealContacts DealContact[]
   interactions Interaction[]
+  emailMessages EmailMessage[]
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -304,6 +351,8 @@ model Deal {
   leadPreference LeadPreference?
   interactions Interaction[]
   tasks        Task[]
+  emailThreads EmailThread[]
+  emailMessages EmailMessage[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

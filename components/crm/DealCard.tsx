@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Mail, MessageSquare, Calendar, ArrowRight, Sparkles } from 'lucide-react'
 
 interface DealCardProps {
@@ -14,9 +15,10 @@ interface DealCardProps {
 const ORDER = ['LEAD','QUALIFIED','SHOWING','OFFER','ESCROW','CLOSED','LOST']
 
 export default function DealCard({ deal, onMove, onEmail, onSMS, onSchedule }: DealCardProps) {
+  const router = useRouter()
   const nextStage = ORDER[Math.min(ORDER.indexOf(deal.stage) + 1, ORDER.length - 1)]
   return (
-    <div className="p-3 rounded-lg border border-border bg-card hover:bg-muted/50 transition-colors">
+    <div className="p-3 rounded-lg border border-border bg-card hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => router.push(`/crm/deals/${deal.id}`)}>
       <div className="font-medium truncate">{deal.title}</div>
       <div className="text-xs text-muted-foreground truncate">{deal.city || ''} {deal.priceTarget ? `• $${deal.priceTarget.toLocaleString()}` : ''}</div>
       {deal.nextAction && (

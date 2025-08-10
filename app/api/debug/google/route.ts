@@ -1,15 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server'
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const runtime = "nodejs";
+
+import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { config } from '@/lib/config'
 import { isFeatureEnabled } from '@/lib/config'
 import { prisma } from '@/lib/prisma'
 
-export async function GET(request: NextRequest) {
+export async function GET(req: Request) {
   try {
     const session = await getServerSession(authOptions)
     
     const debugInfo: any = {
+      note: 'Dynamic debug route; headers allowed.',
+      sampleHeaders: Object.fromEntries(req.headers.entries()),
       // Environment variables
       env: {
         hasGoogleClientId: !!process.env.GOOGLE_CLIENT_ID,

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+export const runtime = 'nodejs'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { getSessionContext } from '@/lib/agent/context'
@@ -22,7 +23,7 @@ export async function POST() {
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ model, voice: voice || 'verse', instructions, data: context }),
+      body: JSON.stringify({ model, voice: voice || 'verse', instructions }),
     })
 
     if (!res.ok) {
