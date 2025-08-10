@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { withAuth } from "@/lib/auth/api";
 import { prisma } from "@/lib/prisma";
 import OpenAI from "openai";
 
@@ -10,43 +9,23 @@ const openai = new OpenAI({
 
 export const dynamic = "force-dynamic";
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export const POST = withAuth(async ({ req, ctx }, { params }: any) => {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { role, content, memory } = await request.json();
+    const { role, content, memory } = await req.json();
 
     if (!role || !content) {
       return NextResponse.json({ error: "Role and content are required" }, { status: 400 });
     }
 
     // Verify session belongs to user
-    const chatSession = await prisma.chatSession.findFirst({
-      where: {
-        id: params.id,
-        userId: session.user.id
-      }
-    });
+    const chatSession = await prisma.chatSession.findFirst({ where: { id: params.id, userId: ctx.session.user.id } });
 
     if (!chatSession) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
     // Save user message
-    const userMessage = await prisma.chatMessage.create({
-      data: {
-        sessionId: params.id,
-        userId: session.user.id,
-        role,
-        content
-      }
-    });
+    const userMessage = await prisma.chatMessage.create({ data: { sessionId: params.id, userId: ctx.session.user.id, role, content } });
 
     // If this is a user message, generate AI response with streaming
     if (role === "user") {
@@ -106,9 +85,7 @@ export async function POST(
       });
 
       // Get user's memory (tone, etc.)
-      const memories = await prisma.memory.findMany({
-        where: { userId: session.user.id }
-      });
+      const memories = await prisma.memory.findMany({ where: { userId: ctx.session.user.id } });
 
       const tone = memories.find(m => m.key === "tone")?.value || "professional";
       const signature = memories.find(m => m.key === "signature")?.value || "";
@@ -164,14 +141,7 @@ Always be helpful, professional, and concise. If asked to draft emails, create d
             }
 
             // Save the complete assistant message
-            const assistantMessage = await prisma.chatMessage.create({
-              data: {
-                sessionId: params.id,
-                userId: session.user.id,
-                role: "assistant",
-                content: fullContent
-              }
-            });
+            const assistantMessage = await prisma.chatMessage.create({ data: { sessionId: params.id, userId: ctx.session.user.id, role: "assistant", content: fullContent } });
 
             // Send completion signal
             controller.enqueue(encoder.encode("data: [DONE]\n\n"));
@@ -197,4 +167,4 @@ Always be helpful, professional, and concise. If asked to draft emails, create d
     console.error("[chat-message-stream]", error);
     return NextResponse.json({ error: "Failed to add message" }, { status: 500 });
   }
-}
+}, { action: 'chat.message.stream' })
