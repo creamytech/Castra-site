@@ -13,6 +13,13 @@ export default function DashboardInboxPage() {
   return (
     <div className="p-6 grid grid-cols-1 md:grid-cols-5 gap-4">
       <div className="md:col-span-1 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="text-sm font-semibold">Inbox</div>
+          <button
+            onClick={async()=>{ await fetch('/api/inbox/sync', { method: 'POST' }); /* SWR list auto-refreshes on focus/interval */ }}
+            className="text-xs px-2 py-1 rounded border"
+          >Sync</button>
+        </div>
         <div className="flex gap-2">
           <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search…" className="w-full border rounded px-2 py-1 bg-background" />
         </div>

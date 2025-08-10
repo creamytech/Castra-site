@@ -6,7 +6,7 @@ import DraggableCard from './DraggableCard'
 import { useDroppable } from '@dnd-kit/core'
 import EmptyStage from './EmptyStage'
 
-export default function StageColumn({ stage, filters, onMove }: { stage: string; filters: any; onMove: (dealId: string, toStage: string) => void }) {
+export default function StageColumn({ stage, filters, onMove, refreshKey }: { stage: string; filters: any; onMove: (dealId: string, toStage: string) => void; refreshKey?: number }) {
   const [items, setItems] = useState<any[]>([])
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
@@ -26,7 +26,7 @@ export default function StageColumn({ stage, filters, onMove }: { stage: string;
     setLoading(false)
   }
 
-  useEffect(() => { setPage(1); load(true) }, [stage, JSON.stringify(filters)])
+  useEffect(() => { setPage(1); load(true) }, [stage, JSON.stringify(filters), refreshKey])
   useEffect(() => { if (page > 1) load(false) }, [page])
 
   return (

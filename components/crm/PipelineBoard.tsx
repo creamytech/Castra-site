@@ -10,6 +10,7 @@ const STAGES = ['LEAD','QUALIFIED','SHOWING','OFFER','ESCROW','CLOSED','LOST']
 export default function PipelineBoard() {
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState<any>({})
+  const [refreshKey, setRefreshKey] = useState<number>(0)
 
   useEffect(() => { setLoading(false) }, [])
 
@@ -36,12 +37,12 @@ export default function PipelineBoard() {
           <input className="border rounded px-2 py-1 bg-background" placeholder="Max $" onChange={e => setFilters((f: any) => ({ ...f, priceMax: e.target.value }))} />
         </div>
         <div>
-          <NewDealDialog onCreated={() => { /* optionally refresh columns via event */ }} />
+          <NewDealDialog onCreated={() => { setRefreshKey(Date.now()) }} />
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-7 gap-4">
         {STAGES.map(stage => (
-          <StageColumn key={stage} stage={stage} filters={filters} onMove={moveStage} />
+          <StageColumn key={stage} stage={stage} filters={filters} onMove={moveStage} refreshKey={refreshKey} />
         ))}
       </div>
     </DndContext>
