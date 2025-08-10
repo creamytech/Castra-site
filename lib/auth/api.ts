@@ -5,7 +5,7 @@ import { logAudit } from '@/lib/audit/log'
 export type ApiHandler = (
   args: { req: NextRequest; ctx: { session: any; orgId: string; role: any } },
   routeCtx?: any
-) => Promise<NextResponse>
+) => Promise<NextResponse | Response>
 
 export function withAuth(handler: ApiHandler, options?: { action?: string }) {
   return async function(request: NextRequest, routeCtx?: any) {

@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 
 // Security headers and CSRF (SameSite Lax) for API
-export function middleware(req: Request) {
+export function middleware(req: NextRequest) {
   const url = new URL(req.url)
   const res = NextResponse.next()
 
@@ -9,8 +9,18 @@ export function middleware(req: Request) {
   if (url.protocol === 'https:' || process.env.NODE_ENV === 'production') {
     res.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload')
   }
-  // CSP (relaxed for connect-src to required endpoints)
-  res.headers.set('Content-Security-Policy', "default-src 'self'; img-src 'self' data: https:; media-src 'self' blob: https:; connect-src 'self' https://api.openai.com https://www.googleapis.com https://*.twilio.com blob:; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'")
+  // CSP (allow Next.js runtime scripts and dev tools)
+  res.headers.set('Content-Security-Policy', [
+    "default-src 'self'",
+    "img-src 'self' data: https:",
+    "font-src 'self' data: https:",
+    "media-src 'self' blob: https:",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:",
+    "style-src 'self' 'unsafe-inline'",
+    "connect-src 'self' https://api.openai.com https://www.googleapis.com https://*.twilio.com blob: data: wss:",
+    "worker-src 'self' blob:",
+    "frame-ancestors 'none'"
+  ].join('; '))
   res.headers.set('Referrer-Policy', 'no-referrer')
   res.headers.set('X-Content-Type-Options', 'nosniff')
   res.headers.set('X-Frame-Options', 'DENY')
@@ -20,15 +30,19 @@ export function middleware(req: Request) {
   const method = req.method.toUpperCase()
   const isMutation = method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE'
   const isApi = url.pathname.startsWith('/api/')
-  const cookies = (req as any).cookies ?? new Map<string, string>()
-  const existing = (cookies.get?.('csrf') as string) || ''
+  const existing = req.cookies.get('csrf')?.value || ''
+  const skipCsrf = url.pathname.startsWith('/api/auth')
+    || url.pathname.startsWith('/api/voice/offer')
+    || url.pathname.startsWith('/api/ingest/')
+    || url.pathname.startsWith('/api/voice/session')
+
   if (!existing) {
     const token = cryptoRandom()
     const cookie = `csrf=${token}; Path=/; SameSite=Lax; Secure; Max-Age=86400`
     res.headers.append('Set-Cookie', cookie)
   }
-  if (isApi && isMutation) {
-    const header = (req as any).headers?.get('x-csrf') || ''
+  if (isApi && isMutation && !skipCsrf) {
+    const header = req.headers.get('x-csrf') || ''
     const cookie = existing
     if (!cookie || !header || header !== cookie) {
       return new NextResponse(JSON.stringify({ error: 'CSRF token invalid' }), { status: 403, headers: { 'Content-Type': 'application/json' } })
