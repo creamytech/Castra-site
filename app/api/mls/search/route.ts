@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/api'
 import { getMlsProvider } from '@/lib/agent/skills/mls'
 
 export const dynamic = 'force-dynamic'
 
-export async function POST(req: Request) {
+export const POST = withAuth(async ({ req }) => {
   const q = await req.json()
   const provider = getMlsProvider()
   const data = await provider.searchListings(q)
   return NextResponse.json(data)
-}
+}, { action: 'mls.search' })

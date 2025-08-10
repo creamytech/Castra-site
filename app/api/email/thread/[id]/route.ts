@@ -1,21 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { withAuth } from "@/lib/auth/api";
 import { getThreadDetail, extractPlainAndHtml } from "@/lib/google";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export const GET = withAuth(async ({ ctx }, { params }: any) => {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const thread = await getThreadDetail(session.user.id, params.id);
+    const thread = await getThreadDetail(ctx.session.user.id, params.id);
 
     if (!thread.messages || thread.messages.length === 0) {
       return NextResponse.json({ error: "Thread not found" }, { status: 404 });
@@ -50,4 +41,4 @@ export async function GET(
     console.error("[email-thread]", error);
     return NextResponse.json({ error: "Failed to fetch thread details" }, { status: 500 });
   }
-}
+}, { action: 'email.thread' })

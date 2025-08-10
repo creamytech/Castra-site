@@ -1,19 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { withAuth } from "@/lib/auth/api";
 import { createCalendarEvent } from "@/lib/google";
 import { CreateEventSchema } from "@/lib/schemas/calendar";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async ({ req, ctx }) => {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const body = await request.json();
+    const body = await req.json();
     
     // Validate input with Zod schema
     const validationResult = CreateEventSchema.safeParse(body);
@@ -27,7 +21,7 @@ export async function POST(request: NextRequest) {
     const { summary, description, start, end, timeZone, attendees, location, allDay } = validationResult.data;
 
     // Create event with proper Google Calendar format
-    const event = await createCalendarEvent(session.user.id, {
+    const event = await createCalendarEvent(ctx.session.user.id, {
       summary,
       description,
       location,
@@ -63,4 +57,4 @@ export async function POST(request: NextRequest) {
       { status: statusCode }
     );
   }
-}
+}, { action: 'calendar.events.create' })

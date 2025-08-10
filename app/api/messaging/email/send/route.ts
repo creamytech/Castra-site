@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { withAuth } from '@/lib/auth/api'
+import { limit } from '@/lib/rate'
 import { prisma } from '@/lib/prisma'
 import { google } from 'googleapis'
 
 export const dynamic = 'force-dynamic'
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async ({ req, ctx }) => {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    const { to, subject, body, dealId, threadId } = await request.json()
+    const { to, subject, body, dealId, threadId } = await req.json()
+    const rl = await limit(`email:${ctx.session.user.id}`, 20, '1 m')
+    if (!rl.allowed) return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
     if (!to || !subject || !body) return NextResponse.json({ error: 'to, subject, body required' }, { status: 400 })
 
-    const account = await prisma.account.findFirst({ where: { userId: session.user.id, provider: 'google' } })
+    const account = await prisma.account.findFirst({ where: { userId: ctx.session.user.id, provider: 'google' } })
     if (!account?.access_token) return NextResponse.json({ error: 'Google account not connected' }, { status: 400 })
     const oauth2Client = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, process.env.GOOGLE_REDIRECT_URI)
     oauth2Client.setCredentials({ access_token: account.access_token, refresh_token: account.refresh_token })
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     const sent = await gmail.users.messages.send({ userId: 'me', requestBody: { raw, threadId: threadId || undefined } })
 
     if (dealId) {
-      await prisma.activity.create({ data: { dealId, userId: session.user.id, kind: 'EMAIL', channel: 'email', subject, body, meta: { to, threadId: sent.data.threadId, messageId: sent.data.id } } })
+      await prisma.activity.create({ data: { dealId, userId: ctx.session.user.id, kind: 'EMAIL', channel: 'email', subject, body, meta: { to, threadId: sent.data.threadId, messageId: sent.data.id } } })
     }
 
     return NextResponse.json({ success: true, id: sent.data.id })
@@ -33,4 +33,4 @@ export async function POST(request: NextRequest) {
     console.error('[messaging email send]', e)
     return NextResponse.json({ error: 'Failed to send email' }, { status: 500 })
   }
-}
+}, { action: 'messaging.email.send' })

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { withAuth } from '@/lib/auth/api'
 import { getThreadDetail, extractPlainAndHtml } from '@/lib/google'
 import { getCachedThreadSummary, setCachedThreadSummary } from '@/lib/cache'
 import OpenAI from 'openai'
@@ -12,18 +11,9 @@ const openai = process.env.OPENAI_API_KEY ? new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 }) : null
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async ({ req, ctx }) => {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
-
-    const body = await request.json().catch(() => ({}))
+    const body = await req.json().catch(() => ({}))
     const { threadId } = body
 
     // Validate threadId
@@ -35,13 +25,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Check cache first
-    const cachedSummary = getCachedThreadSummary(session.user.id, threadId)
+    const cachedSummary = getCachedThreadSummary(ctx.session.user.id, threadId)
     if (cachedSummary) {
       return NextResponse.json({ summary: cachedSummary, cached: true })
     }
 
     // Fetch thread details
-    const thread = await getThreadDetail(session.user.id, threadId)
+    const thread = await getThreadDetail(ctx.session.user.id, threadId)
 
     if (!thread.messages || thread.messages.length === 0) {
       return NextResponse.json(
@@ -98,7 +88,7 @@ export async function POST(request: NextRequest) {
     const summary = completion.choices[0]?.message?.content || 'Unable to generate summary'
 
     // Cache the summary
-    setCachedThreadSummary(session.user.id, threadId, summary)
+    setCachedThreadSummary(ctx.session.user.id, threadId, summary)
 
     console.log(`Successfully summarized thread ${threadId}`)
 
@@ -133,4 +123,4 @@ export async function POST(request: NextRequest) {
       { status: statusCode }
     )
   }
-}
+}, { action: 'email.summarize' })

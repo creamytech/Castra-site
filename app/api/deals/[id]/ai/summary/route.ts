@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { withAuth } from '@/lib/auth/api'
 import { prisma } from '@/lib/prisma'
 import OpenAI from 'openai'
 
@@ -8,12 +7,10 @@ export const dynamic = 'force-dynamic'
 
 const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null
 
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export const POST = withAuth(async ({ ctx }, { params }: any) => {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const deal = await prisma.deal.findFirst({ where: { id: params.id, userId: session.user.id }, include: { contacts: { include: { contact: true } }, activities: { orderBy: { occurredAt: 'desc' }, take: 50 } } })
+    const deal = await prisma.deal.findFirst({ where: { id: params.id, userId: ctx.session.user.id, orgId: ctx.orgId }, include: { contacts: { include: { contact: true } }, activities: { orderBy: { occurredAt: 'desc' }, take: 50 } } })
     if (!deal) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     if (!openai) return NextResponse.json({ error: 'OpenAI not configured' }, { status: 500 })
@@ -38,11 +35,11 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const jsonMatch = content.match(/\{[\s\S]*\}/)
     const data = jsonMatch ? JSON.parse(jsonMatch[0]) : { summary: content, lastTouch: null, nextActions: [] }
 
-    await prisma.activity.create({ data: { dealId: deal.id, userId: session.user.id, kind: 'AI_SUMMARY', channel: 'ai', subject: 'AI Summary', body: data.summary, meta: data } })
+    await prisma.activity.create({ data: { dealId: deal.id, userId: ctx.session.user.id, orgId: ctx.orgId, kind: 'AI_SUMMARY', channel: 'ai', subject: 'AI Summary', body: data.summary, meta: data } })
 
     return NextResponse.json({ success: true, ...data })
   } catch (e: any) {
     console.error('[deal ai summary]', e)
     return NextResponse.json({ error: 'Failed to summarize' }, { status: 500 })
   }
-}
+}, { action: 'deal.ai.summary' })

@@ -1,34 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { withAuth } from '@/lib/auth/api'
 import { listRecentThreads, getThreadDetail } from '@/lib/google'
 import { prisma } from '@/lib/prisma'
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic'
 
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async ({ req, ctx }) => {
   try {
-    const session = await getServerSession(authOptions)
 
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
-
-    const { searchParams } = new URL(request.url)
+    const { searchParams } = new URL(req.url)
     const maxResults = parseInt(searchParams.get('maxResults') || '10')
     const threadId = searchParams.get('threadId')
 
     if (threadId) {
       // Get specific thread details
-      const thread = await getThreadDetail(session.user.id, threadId)
+      const thread = await getThreadDetail(ctx.session.user.id, threadId)
       return NextResponse.json({ thread })
     } else {
       // List recent threads
-      const threads = await listRecentThreads(session.user.id, maxResults)
+      const threads = await listRecentThreads(ctx.session.user.id, maxResults)
       return NextResponse.json({ threads })
     }
   } catch (error) {
@@ -41,17 +32,15 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     )
   }
-}
+}, { action: 'inbox.gmail.list' })
 
-export async function PATCH(request: NextRequest) {
+export const PATCH = withAuth(async ({ req, ctx }) => {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { action, ids, label } = await request.json().catch(() => ({}))
+    const { action, ids, label } = await req.json().catch(() => ({}))
     if (!Array.isArray(ids) || ids.length === 0) return NextResponse.json({ error: 'ids[] required' }, { status: 400 })
 
-    const where = { id: { in: ids as string[] }, userId: session.user.id }
+    const where = { id: { in: ids as string[] }, userId: ctx.session.user.id }
 
     switch (action) {
       case 'read':
@@ -85,4 +74,4 @@ export async function PATCH(request: NextRequest) {
     console.error('[inbox PATCH]', e)
     return NextResponse.json({ error: 'Failed to update inbox' }, { status: 500 })
   }
-}
+}, { action: 'inbox.gmail.update' })

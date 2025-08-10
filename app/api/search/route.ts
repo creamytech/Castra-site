@@ -1,19 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { withAuth } from "@/lib/auth/api";
 import { prisma } from "@/lib/prisma";
 import { listRecentThreads } from "@/lib/google";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async ({ req, ctx }) => {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(req.url);
     const query = searchParams.get("q") || "";
 
     if (!query.trim()) {
@@ -26,7 +21,7 @@ export async function GET(request: NextRequest) {
     // Search chat sessions
     const chatSessions = await prisma.chatSession.findMany({
       where: {
-        userId: session.user.id,
+        userId: ctx.session.user.id,
         title: {
           contains: searchTerm,
           mode: 'insensitive'
@@ -50,7 +45,7 @@ export async function GET(request: NextRequest) {
     // Search contacts
     const contacts = await prisma.contact.findMany({
       where: {
-        userId: session.user.id,
+        userId: ctx.session.user.id,
         OR: [
           { firstName: { contains: searchTerm, mode: 'insensitive' } },
           { lastName: { contains: searchTerm, mode: 'insensitive' } },
@@ -76,7 +71,7 @@ export async function GET(request: NextRequest) {
     // Search leads
     const leads = await prisma.lead.findMany({
       where: {
-        userId: session.user.id,
+        userId: ctx.session.user.id,
         OR: [
           { title: { contains: searchTerm, mode: 'insensitive' } },
           { description: { contains: searchTerm, mode: 'insensitive' } }
@@ -100,7 +95,7 @@ export async function GET(request: NextRequest) {
 
     // Search email threads (using Gmail API)
     try {
-      const emailThreads = await listRecentThreads(session.user.id, 20);
+      const emailThreads = await listRecentThreads(ctx.session.user.id, 20);
       const matchingThreads = emailThreads.filter(thread => {
         if (!thread.messages || thread.messages.length === 0) return false;
         
@@ -168,4 +163,4 @@ export async function GET(request: NextRequest) {
     console.error("[search]", error);
     return NextResponse.json({ error: "Search failed" }, { status: 500 });
   }
-}
+}, { action: 'search' })

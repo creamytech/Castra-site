@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { withAuth } from '@/lib/auth/api'
 import { prisma } from '@/lib/prisma'
 import OpenAI from 'openai'
 import { google } from 'googleapis'
@@ -10,15 +9,13 @@ export const dynamic = 'force-dynamic'
 const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null
 
 // GET: list suggestions for a message or recent
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async ({ req, ctx }) => {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { searchParams } = new URL(request.url)
+    const { searchParams } = new URL(req.url)
     const messageId = searchParams.get('messageId') || undefined
 
-    const where: any = { userId: session.user.id, status: { in: ['suggested', 'drafted'] } }
+    const where: any = { userId: ctx.session.user.id, orgId: ctx.orgId, status: { in: ['suggested', 'drafted'] } }
     if (messageId) where.messageId = messageId
 
     const suggestions = await prisma.smartReply.findMany({ where, orderBy: { createdAt: 'desc' }, take: 20 })
@@ -27,18 +24,16 @@ export async function GET(request: NextRequest) {
     console.error('[smart-replies GET]', e)
     return NextResponse.json({ error: 'Failed to fetch suggestions' }, { status: 500 })
   }
-}
+}, { action: 'smart-replies.list' })
 
 // POST: generate suggestions for a message
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async ({ req, ctx }) => {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { messageId } = await request.json().catch(() => ({}))
+    const { messageId } = await req.json().catch(() => ({}))
     if (!messageId) return NextResponse.json({ error: 'messageId is required' }, { status: 400 })
 
-    const message = await prisma.message.findFirst({ where: { id: messageId, userId: session.user.id } })
+    const message = await prisma.message.findFirst({ where: { id: messageId, userId: ctx.session.user.id } })
     if (!message) return NextResponse.json({ error: 'Message not found' }, { status: 404 })
 
     if (!openai) return NextResponse.json({ error: 'OpenAI not configured' }, { status: 500 })
@@ -59,11 +54,12 @@ export async function POST(request: NextRequest) {
     const subject = `Re: ${message.subject || ''}`.trim()
 
     const suggestion = await prisma.smartReply.create({
-      data: { userId: session.user.id, messageId: message.id, subject, to, body, status: 'suggested' }
+      data: { userId: ctx.session.user.id, orgId: ctx.orgId, messageId: message.id, subject, to, body, status: 'suggested' }
     })
 
     await prisma.notification.create({ data: {
-      userId: session.user.id,
+      userId: ctx.session.user.id,
+      orgId: ctx.orgId,
       type: 'smart-reply',
       title: 'New smart reply suggestion',
       body: subject,
@@ -75,18 +71,16 @@ export async function POST(request: NextRequest) {
     console.error('[smart-replies POST]', e)
     return NextResponse.json({ error: 'Failed to generate suggestion' }, { status: 500 })
   }
-}
+}, { action: 'smart-replies.create' })
 
 // PATCH: approve and send (or draft) a suggestion
-export async function PATCH(request: NextRequest) {
+export const PATCH = withAuth(async ({ req, ctx }) => {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { id, action } = await request.json().catch(() => ({}))
+    const { id, action } = await req.json().catch(() => ({}))
     if (!id || !action) return NextResponse.json({ error: 'id and action are required' }, { status: 400 })
 
-    const suggestion = await prisma.smartReply.findFirst({ where: { id, userId: session.user.id }, include: { message: true } })
+    const suggestion = await prisma.smartReply.findFirst({ where: { id, userId: ctx.session.user.id, orgId: ctx.orgId }, include: { message: true } })
     if (!suggestion) return NextResponse.json({ error: 'Suggestion not found' }, { status: 404 })
 
     if (action === 'dismiss') {
@@ -95,7 +89,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Send via Gmail as a reply draft then send
-    const account = await prisma.account.findFirst({ where: { userId: session.user.id, provider: 'google' } })
+    const account = await prisma.account.findFirst({ where: { userId: ctx.session.user.id, provider: 'google' } })
     if (!account?.access_token) return NextResponse.json({ error: 'Google account not connected' }, { status: 400 })
 
     const oauth2Client = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, process.env.GOOGLE_REDIRECT_URI)
@@ -117,7 +111,8 @@ export async function PATCH(request: NextRequest) {
     await prisma.smartReply.update({ where: { id }, data: { status, gmailDraftId: draft.data.id || null } })
 
     await prisma.notification.create({ data: {
-      userId: session.user.id,
+      userId: ctx.session.user.id,
+      orgId: ctx.orgId,
       type: status === 'sent' ? 'email-sent' : 'draft',
       title: status === 'sent' ? 'Email sent' : 'Draft created',
       body: suggestion.subject,
@@ -129,4 +124,4 @@ export async function PATCH(request: NextRequest) {
     console.error('[smart-replies PATCH]', e)
     return NextResponse.json({ error: 'Failed to approve suggestion' }, { status: 500 })
   }
-}
+}, { action: 'smart-replies.approve' })

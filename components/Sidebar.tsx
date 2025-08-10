@@ -1,6 +1,6 @@
 'use client'
 
-import { useSession } from 'next-auth/react'
+import { signOut, useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
@@ -105,6 +105,7 @@ export default function Sidebar() {
               </div>
             </div>
           )}
+          <button onClick={()=>signOut()} className="ml-auto text-xs px-2 py-1 rounded border">Log out</button>
         </div>
       </div>
     </div>

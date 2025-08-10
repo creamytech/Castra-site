@@ -1,46 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { withAuth } from '@/lib/auth/api'
 import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async ({ req, ctx }) => {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { searchParams } = new URL(request.url)
+    const { searchParams } = new URL(req.url)
     const unreadOnly = searchParams.get('unread') === 'true'
 
     const notifications = await prisma.notification.findMany({
-      where: { userId: session.user.id, ...(unreadOnly ? { readAt: null } : {}) },
+      where: { userId: ctx.session.user.id, orgId: ctx.orgId, ...(unreadOnly ? { readAt: null } : {}) },
       orderBy: { createdAt: 'desc' },
       take: 50
     })
 
-    const unreadCount = await prisma.notification.count({ where: { userId: session.user.id, readAt: null } })
+    const unreadCount = await prisma.notification.count({ where: { userId: ctx.session.user.id, orgId: ctx.orgId, readAt: null } })
 
     return NextResponse.json({ success: true, notifications, unreadCount })
   } catch (e: any) {
     console.error('[notifications GET]', e)
     return NextResponse.json({ error: 'Failed to fetch notifications' }, { status: 500 })
   }
-}
+}, { action: 'notifications.list' })
 
-export async function PATCH(request: NextRequest) {
+export const PATCH = withAuth(async ({ req, ctx }) => {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { ids } = await request.json().catch(() => ({}))
+    const { ids } = await req.json().catch(() => ({}))
     if (!Array.isArray(ids) || ids.length === 0) return NextResponse.json({ error: 'ids[] required' }, { status: 400 })
 
-    await prisma.notification.updateMany({ where: { userId: session.user.id, id: { in: ids } }, data: { readAt: new Date() } })
+    await prisma.notification.updateMany({ where: { userId: ctx.session.user.id, orgId: ctx.orgId, id: { in: ids } }, data: { readAt: new Date() } })
 
     return NextResponse.json({ success: true })
   } catch (e: any) {
     console.error('[notifications PATCH]', e)
     return NextResponse.json({ error: 'Failed to update notifications' }, { status: 500 })
   }
-}
+}, { action: 'notifications.read' })

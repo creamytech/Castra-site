@@ -1,63 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { withAuth } from "@/lib/auth/api";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 // GET - List all templates for user
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async ({ ctx }) => {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const templates = await prisma.template.findMany({
-      where: { 
-        userId: session.user.id,
-        isActive: true 
-      },
+      where: { userId: ctx.session.user.id, orgId: ctx.orgId, isActive: true },
       orderBy: { updatedAt: "desc" }
     });
-
     return NextResponse.json({ templates });
   } catch (error) {
     console.error("[templates-get]", error);
     return NextResponse.json({ error: "Failed to fetch templates" }, { status: 500 });
   }
-}
+}, { action: 'templates.list' })
 
 // POST - Create new template
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async ({ req, ctx }) => {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { name, type, subject, content, variables } = await request.json();
-
+    const { name, type, subject, content, variables } = await req.json();
     if (!name || !type || !content) {
-      return NextResponse.json({ 
-        error: "Name, type, and content are required" 
-      }, { status: 400 });
+      return NextResponse.json({ error: "Name, type, and content are required" }, { status: 400 });
     }
-
     const template = await prisma.template.create({
-      data: {
-        userId: session.user.id,
-        name,
-        type,
-        subject,
-        content,
-        variables: variables || []
-      }
+      data: { userId: ctx.session.user.id, orgId: ctx.orgId, name, type, subject, content, variables: variables || [] }
     });
-
     return NextResponse.json({ template });
   } catch (error) {
     console.error("[templates-post]", error);
     return NextResponse.json({ error: "Failed to create template" }, { status: 500 });
   }
-}
+}, { action: 'templates.create' })

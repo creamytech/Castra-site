@@ -3,17 +3,12 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { withAuth } from "@/lib/auth/api";
 import { prisma } from "@/lib/prisma";
 import { getGoogleClientsForUser } from "@/lib/google/getClient";
 
-export async function POST(req: Request) {
+export const POST = withAuth(async ({ req, ctx }) => {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     const { offerSdp, model, voice: voiceOverride } = await req.json();
     if (!offerSdp) return NextResponse.json({ error: "Missing offerSdp" }, { status: 400 });
@@ -23,12 +18,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing OPENAI_API_KEY" }, { status: 500 });
     }
 
-    let profile = await prisma.userProfile.findUnique({ where: { userId: session.user.id } });
+    let profile = await prisma.userProfile.findUnique({ where: { userId: ctx.session.user.id } });
     if (!profile) {
       profile = await prisma.userProfile.create({
         data: {
-          userId: session.user.id,
-          displayName: session.user.name ?? null,
+          userId: ctx.session.user.id,
+          displayName: ctx.session.user.name ?? null,
           styleGuide: {
             tone: "friendly",
             formality: 4,
@@ -45,11 +40,11 @@ export async function POST(req: Request) {
     const sg = (profile.styleGuide as any) ?? {};
     // Pull lightweight context
     const [recentThreads, upcomingEvents, hotDeals] = await Promise.all([
-      prisma.emailThread.findMany({ where: { userId: session.user.id }, orderBy: { lastSyncedAt: 'desc' }, take: 5 }),
+      prisma.emailThread.findMany({ where: { userId: ctx.session.user.id }, orderBy: { lastSyncedAt: 'desc' }, take: 5 }),
       (async () => {
-        try { const { calendar } = await getGoogleClientsForUser(session.user.id); const cal = await calendar.events.list({ calendarId: 'primary', maxResults: 3, singleEvents: true, orderBy: 'startTime', timeMin: new Date().toISOString() }); return (cal.data.items||[]).map(i=>i.summary).filter(Boolean) } catch { return [] as string[] }
+        try { const { calendar } = await getGoogleClientsForUser(ctx.session.user.id); const cal = await calendar.events.list({ calendarId: 'primary', maxResults: 3, singleEvents: true, orderBy: 'startTime', timeMin: new Date().toISOString() }); return (cal.data.items||[]).map(i=>i.summary).filter(Boolean) } catch { return [] as string[] }
       })(),
-      prisma.deal.findMany({ where: { userId: session.user.id }, orderBy: { updatedAt: 'desc' }, take: 5, select: { title: true, stage: true } })
+      prisma.deal.findMany({ where: { userId: ctx.session.user.id }, orderBy: { updatedAt: 'desc' }, take: 5, select: { title: true, stage: true } })
     ])
     const inboxSubjects = recentThreads.map(t => t.subject).filter(Boolean).slice(0,5)
     const hotTitles = hotDeals.map(d => `${d.title} (${d.stage})`)
@@ -109,6 +104,6 @@ Use server tools only (no secrets in client): /api/messaging/email/send, /api/ca
   } catch (e: any) {
     return NextResponse.json({ error: "SDP proxy error", detail: e?.message ?? String(e) }, { status: 500 });
   }
-}
+}, { action: 'voice.offer' })
 
 

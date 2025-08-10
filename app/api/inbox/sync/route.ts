@@ -1,18 +1,15 @@
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { withAuth } from '@/lib/auth/api'
 import { prisma } from '@/lib/prisma'
 import { getGoogleAuthForUser, gmailClient } from '@/lib/gmail/client'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
-export async function POST() {
+export const POST = withAuth(async ({ ctx }) => {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { oauth2 } = await getGoogleAuthForUser(session.user.id)
+    const { oauth2 } = await getGoogleAuthForUser(ctx.session.user.id)
     const gmail = gmailClient(oauth2)
 
     // List recent messages (last 60 days)
@@ -58,7 +55,7 @@ export async function POST() {
 
       await prisma.emailThread.upsert({
         where: { id: threadId },
-        create: { id: threadId, userId: session.user.id, subject, lastSyncedAt: new Date() },
+        create: { id: threadId, userId: ctx.session.user.id, orgId: ctx.orgId, subject, lastSyncedAt: new Date() },
         update: { subject, lastSyncedAt: new Date() },
       })
 
@@ -66,7 +63,7 @@ export async function POST() {
       await prisma.emailMessage.upsert({
         where: { id: id! },
         create: {
-          id: id!, threadId, userId: session.user.id, from, to, cc, date, snippet, bodyHtml: bodyHtml || null, bodyText: bodyText || null,
+          id: id!, threadId, userId: ctx.session.user.id, orgId: ctx.orgId, from, to, cc, date, snippet, bodyHtml: bodyHtml || null, bodyText: bodyText || null,
           internalRefs: JSON.parse(JSON.stringify({ labelIds: data.labelIds })),
           intent,
         },
@@ -75,14 +72,14 @@ export async function POST() {
     }
 
     const counts = {
-      threads: await prisma.emailThread.count({ where: { userId: session.user.id } }),
-      messages: await prisma.emailMessage.count({ where: { userId: session.user.id } }),
+      threads: await prisma.emailThread.count({ where: { userId: ctx.session.user.id, orgId: ctx.orgId } }),
+      messages: await prisma.emailMessage.count({ where: { userId: ctx.session.user.id, orgId: ctx.orgId } }),
     }
     return NextResponse.json({ ok: true, synced: ids.length, counts })
   } catch (e: any) {
     console.error('[inbox sync]', e)
     return NextResponse.json({ error: 'Sync failed', detail: e?.message || String(e) }, { status: 500 })
   }
-}
+}, { action: 'inbox.sync' })
 
 

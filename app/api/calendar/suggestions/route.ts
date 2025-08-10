@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { withAuth } from '@/lib/auth/api'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import OpenAI from 'openai'
@@ -13,15 +12,13 @@ const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPE
 const ExtractSchema = z.object({ messageId: z.string() })
 const ApproveSchema = z.object({ id: z.string(), action: z.enum(['create', 'dismiss']) })
 
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async ({ req, ctx }) => {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { searchParams } = new URL(request.url)
+    const { searchParams } = new URL(req.url)
     const messageId = searchParams.get('messageId') || undefined
 
-    const where: any = { userId: session.user.id, status: { in: ['suggested'] } }
+    const where: any = { userId: ctx.session.user.id, orgId: ctx.orgId, status: { in: ['suggested'] } }
     if (messageId) where.messageId = messageId
 
     const suggestions = await prisma.eventSuggestion.findMany({ where, orderBy: { createdAt: 'desc' }, take: 20 })
@@ -30,18 +27,16 @@ export async function GET(request: NextRequest) {
     console.error('[calendar-suggestions GET]', e)
     return NextResponse.json({ error: 'Failed to fetch suggestions' }, { status: 500 })
   }
-}
+}, { action: 'calendar.suggestions.list' })
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async ({ req, ctx }) => {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const body = await request.json()
+    const body = await req.json()
     const parsed = ExtractSchema.safeParse(body)
     if (!parsed.success) return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
 
-    const message = await prisma.message.findFirst({ where: { id: parsed.data.messageId, userId: session.user.id } })
+    const message = await prisma.message.findFirst({ where: { id: parsed.data.messageId, userId: ctx.session.user.id } })
     if (!message) return NextResponse.json({ error: 'Message not found' }, { status: 404 })
 
     if (!openai) return NextResponse.json({ error: 'OpenAI not configured' }, { status: 500 })
@@ -69,7 +64,8 @@ Content: ${message.snippet}`
 
     const suggestion = await prisma.eventSuggestion.create({
       data: {
-        userId: session.user.id,
+        userId: ctx.session.user.id,
+        orgId: ctx.orgId,
         messageId: message.id,
         summary: data.summary || 'Meeting',
         description: data.description || null,
@@ -83,7 +79,8 @@ Content: ${message.snippet}`
     })
 
     await prisma.notification.create({ data: {
-      userId: session.user.id,
+      userId: ctx.session.user.id,
+      orgId: ctx.orgId,
       type: 'calendar-suggestion',
       title: 'New calendar suggestion',
       body: suggestion.summary,
@@ -95,18 +92,16 @@ Content: ${message.snippet}`
     console.error('[calendar-suggestions POST]', e)
     return NextResponse.json({ error: 'Failed to create suggestion' }, { status: 500 })
   }
-}
+}, { action: 'calendar.suggestions.create' })
 
-export async function PATCH(request: NextRequest) {
+export const PATCH = withAuth(async ({ req, ctx }) => {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const body = await request.json()
+    const body = await req.json()
     const parsed = ApproveSchema.safeParse(body)
     if (!parsed.success) return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
 
-    const suggestion = await prisma.eventSuggestion.findFirst({ where: { id: parsed.data.id, userId: session.user.id } })
+    const suggestion = await prisma.eventSuggestion.findFirst({ where: { id: parsed.data.id, userId: ctx.session.user.id, orgId: ctx.orgId } })
     if (!suggestion) return NextResponse.json({ error: 'Suggestion not found' }, { status: 404 })
 
     if (parsed.data.action === 'dismiss') {
@@ -115,7 +110,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Create calendar event
-    const event = await createCalendarEvent(session.user.id, {
+    const event = await createCalendarEvent(ctx.session.user.id, {
       summary: suggestion.summary,
       description: suggestion.description || undefined,
       location: suggestion.location || undefined,
@@ -128,7 +123,8 @@ export async function PATCH(request: NextRequest) {
     await prisma.eventSuggestion.update({ where: { id: suggestion.id }, data: { status: 'created', createdEventId: event.id } })
 
     await prisma.notification.create({ data: {
-      userId: session.user.id,
+      userId: ctx.session.user.id,
+      orgId: ctx.orgId,
       type: 'calendar-created',
       title: 'Calendar event created',
       body: suggestion.summary
@@ -139,4 +135,4 @@ export async function PATCH(request: NextRequest) {
     console.error('[calendar-suggestions PATCH]', e)
     return NextResponse.json({ error: 'Failed to approve suggestion' }, { status: 500 })
   }
-}
+}, { action: 'calendar.suggestions.approve' })

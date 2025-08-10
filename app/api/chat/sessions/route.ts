@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { withAuth } from '@/lib/auth/api'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
@@ -8,14 +7,10 @@ const CreateSessionSchema = z.object({
   title: z.string().optional().default("Draft...")
 })
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async ({ req, ctx }) => {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
 
-    const body = await request.json()
+    const body = await req.json()
     const validationResult = CreateSessionSchema.safeParse(body)
     
     if (!validationResult.success) {
@@ -28,12 +23,7 @@ export async function POST(request: NextRequest) {
     const { title } = validationResult.data
 
     // Create new chat session
-    const newSession = await prisma.chatSession.create({
-      data: {
-        userId: session.user.id,
-        title
-      }
-    })
+    const newSession = await prisma.chatSession.create({ data: { userId: ctx.session.user.id, title } })
 
     return NextResponse.json({
       success: true,
@@ -47,32 +37,13 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-}
+}, { action: 'chat.sessions.create' })
 
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async ({ ctx }) => {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
 
     // Get user's chat sessions
-    const sessions = await prisma.chatSession.findMany({
-      where: {
-        userId: session.user.id
-      },
-      orderBy: {
-        createdAt: 'desc'
-      },
-      include: {
-        messages: {
-          orderBy: {
-            createdAt: 'desc'
-          },
-          take: 1
-        }
-      }
-    })
+    const sessions = await prisma.chatSession.findMany({ where: { userId: ctx.session.user.id }, orderBy: { createdAt: 'desc' }, include: { messages: { orderBy: { createdAt: 'desc' }, take: 1 } } })
 
     return NextResponse.json({
       success: true,
@@ -86,4 +57,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     )
   }
-}
+}, { action: 'chat.sessions.list' })

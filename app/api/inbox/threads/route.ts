@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { withAuth } from '@/lib/auth/api'
 import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async ({ req, ctx }) => {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { searchParams } = new URL(request.url)
+    const { searchParams } = new URL(req.url)
     const q = searchParams.get('q') || ''
     const unread = searchParams.get('unread')
     const hasDeal = searchParams.get('hasDeal')
@@ -18,9 +15,9 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100)
 
     // First try EmailThread
-    const countThreads = await prisma.emailThread.count({ where: { userId: session.user.id } })
+    const countThreads = await prisma.emailThread.count({ where: { userId: ctx.session.user.id, orgId: ctx.orgId } })
     if (countThreads > 0) {
-      const where: any = { userId: session.user.id }
+      const where: any = { userId: ctx.session.user.id, orgId: ctx.orgId }
       if (q) where.subject = { contains: q, mode: 'insensitive' }
       if (hasDeal === 'true') where.dealId = { not: null }
       if (hasDeal === 'false') where.dealId = null
@@ -47,11 +44,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Fallback: group by Message.threadId
-    const messages = await prisma.message.findMany({ where: { userId: session.user.id }, orderBy: { internalDate: 'desc' }, take: 500 })
+    const messages = await prisma.message.findMany({ where: { userId: ctx.session.user.id }, orderBy: { internalDate: 'desc' }, take: 500 })
     const map = new Map<string, any>()
     for (const m of messages) {
       if (q && !(m.subject?.toLowerCase().includes(q.toLowerCase()) || m.from?.toLowerCase().includes(q.toLowerCase()))) continue
-      const t = map.get(m.threadId) || { id: m.threadId, userId: session.user.id, subject: m.subject, lastSyncedAt: m.internalDate, preview: m.snippet }
+      const t = map.get(m.threadId) || { id: m.threadId, userId: ctx.session.user.id, subject: m.subject, lastSyncedAt: m.internalDate, preview: m.snippet }
       if (new Date(m.internalDate) > new Date(t.lastSyncedAt)) {
         t.subject = m.subject
         t.lastSyncedAt = m.internalDate
@@ -67,4 +64,4 @@ export async function GET(request: NextRequest) {
     console.error('[inbox threads GET]', e)
     return NextResponse.json({ error: 'Failed' }, { status: 500 })
   }
-}
+}, { action: 'inbox.threads.list' })

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { withAuth } from '@/lib/auth/api'
 import OpenAI from 'openai'
 
 // Force dynamic rendering for this route
@@ -10,18 +9,9 @@ const openai = process.env.OPENAI_API_KEY ? new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 }) : null
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async ({ req }) => {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
-
-    const { window, constraints } = await request.json()
+    const { window, constraints } = await req.json()
 
     if (!window) {
       return NextResponse.json(
@@ -98,4 +88,4 @@ Return only the JSON array of 3 ISO datetime strings.`
       { status: 500 }
     )
   }
-}
+}, { action: 'calendar.suggest' })

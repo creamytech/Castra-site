@@ -1,23 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { withAuth } from "@/lib/auth/api";
 import { listRecentThreads } from "@/lib/google";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async ({ req, ctx }) => {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(req.url);
     const max = parseInt(searchParams.get("max") || "20");
     const q = searchParams.get("q") || "";
 
     try {
-      const threads = await listRecentThreads(session.user.id, max);
+      const threads = await listRecentThreads(ctx.session.user.id, max);
 
       // Filter threads based on search query if provided
       let filteredThreads = threads;
@@ -96,4 +91,4 @@ export async function GET(request: NextRequest) {
       retryable: true
     }, { status: 500 });
   }
-}
+}, { action: 'email.threads' })

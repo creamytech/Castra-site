@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { withAuth } from '@/lib/auth/api'
 import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const { searchParams } = new URL(request.url)
+export const GET = withAuth(async ({ req, ctx }, { params }: any) => {
+  const { searchParams } = new URL(req.url)
   const status = searchParams.get('status') || undefined
-  const tasks = await prisma.task.findMany({ where: { userId: session.user.id, dealId: params.id, ...(status ? { status } : {}) }, orderBy: { createdAt: 'desc' } })
+  const tasks = await prisma.task.findMany({ where: { userId: ctx.session.user.id, orgId: ctx.orgId, dealId: params.id, ...(status ? { status } : {}) }, orderBy: { createdAt: 'desc' } })
   return NextResponse.json({ tasks })
-}
+}, { action: 'deal.tasks.list' })

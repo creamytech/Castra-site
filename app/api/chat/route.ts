@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { withAuth } from '@/lib/auth/api'
 import { generateChatReply } from '@/lib/llm'
 import { listUpcomingEvents } from '@/lib/google'
 import { z } from 'zod'
 
-export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+export const POST = withAuth(async ({ req, ctx }) => {
 
   try {
     const body = await req.json().catch(() => ({}))
@@ -27,7 +22,7 @@ export async function POST(req: NextRequest) {
     try {
       // Get upcoming calendar events
       const events = await listUpcomingEvents(
-        session.user.id,
+        ctx.session.user.id,
         { max: 5 }
       )
       
@@ -194,4 +189,4 @@ Use these functions when appropriate to help the user accomplish their tasks. Al
       { status: 500 }
     )
   }
-}
+}, { action: 'chat.reply' })

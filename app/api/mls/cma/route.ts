@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/api'
 import PDFDocument from 'pdfkit'
 import { getMlsProvider } from '@/lib/agent/skills/mls'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
-export async function POST(req: Request) {
+export const POST = withAuth(async ({ req }) => {
   const body = await req.json()
   const provider = getMlsProvider()
   const result = await provider.getComps(body)
@@ -39,4 +40,4 @@ export async function POST(req: Request) {
   doc.end()
   const pdf = Buffer.concat(chunks)
   return new NextResponse(pdf, { headers: { 'Content-Type': 'application/pdf' } })
-}
+}, { action: 'mls.cma' })

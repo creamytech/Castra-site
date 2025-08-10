@@ -15,6 +15,8 @@ export default function PipelineBoard() {
   const [showEmail, setShowEmail] = useState(false)
   const [showSMS, setShowSMS] = useState(false)
   const [showSchedule, setShowSchedule] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [drawerData, setDrawerData] = useState<{ emails: any[]; events: any[] }>({ emails: [], events: [] })
 
   useEffect(() => { setLoading(false) }, [])
 
@@ -42,27 +44,78 @@ export default function PipelineBoard() {
   const openEmail = (deal: any) => { setActiveDeal(deal); setShowEmail(true); setShowSMS(false); setShowSchedule(false) }
   const openSMS = (deal: any) => { setActiveDeal(deal); setShowSMS(true); setShowEmail(false); setShowSchedule(false) }
   const openSchedule = (deal: any) => { setActiveDeal(deal); setShowSchedule(true); setShowEmail(false); setShowSMS(false) }
+  const openDrawer = async (dealId: string) => {
+    // Fetch recent emails linked to the deal and upcoming events
+    try {
+      setDrawerOpen(true)
+      const [emailsRes, eventsRes] = await Promise.all([
+        fetch(`/api/inbox/threads?limit=5&hasDeal=true`, { cache: 'no-store' }).then(r=>r.json()).catch(()=>({ threads: [] })),
+        fetch(`/api/calendar/upcoming`, { cache: 'no-store' }).then(r=>r.json()).catch(()=>({ events: [] })),
+      ])
+      setDrawerData({ emails: emailsRes.threads || [], events: eventsRes.events || [] })
+      setActiveDeal({ id: dealId, title: 'Deal' })
+    } catch {}
+  }
 
   return (
     <DndContext onDragEnd={onDragEnd}>
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-2 text-sm flex-wrap">
           <input className="border rounded px-2 py-1 bg-background" placeholder="Search" onChange={e => setFilters((f: any) => ({ ...f, q: e.target.value }))} />
           <input className="border rounded px-2 py-1 bg-background" placeholder="City" onChange={e => setFilters((f: any) => ({ ...f, city: e.target.value }))} />
           <input className="border rounded px-2 py-1 bg-background" placeholder="Min $" onChange={e => setFilters((f: any) => ({ ...f, priceMin: e.target.value }))} />
           <input className="border rounded px-2 py-1 bg-background" placeholder="Max $" onChange={e => setFilters((f: any) => ({ ...f, priceMax: e.target.value }))} />
+          <select className="border rounded px-2 py-1 bg-background" onChange={e=>setFilters((f:any)=>({ ...f, type: e.target.value||undefined }))}>
+            <option value="">All Types</option>
+            <option value="BUYER">Buyer</option>
+            <option value="SELLER">Seller</option>
+            <option value="RENTAL">Rental</option>
+          </select>
+          <label className="inline-flex items-center gap-1 text-xs"><input type="checkbox" onChange={e=>setFilters((f:any)=>({ ...f, hot: e.target.checked }))} /> Hot leads only</label>
         </div>
         <div>
           <NewDealDialog onCreated={() => { setRefreshKey(Date.now()) }} />
         </div>
       </div>
+      {/* TODO: Side drawer for deal details can be added here; using modal pattern for now */}
       <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-7 gap-4">
         {STAGES.map(stage => (
           <StageColumn key={stage} stage={stage} filters={filters} onMove={moveStage} refreshKey={refreshKey}
             onEmail={openEmail} onSMS={openSMS} onSchedule={openSchedule}
+            icon={{ LEAD:'🧑‍🤝‍🧑', QUALIFIED:'📞', SHOWING:'🏠', OFFER:'🤝', ESCROW:'📑', CLOSED:'🔑', LOST:'❌' }[stage]}
+            onOpen={openDrawer}
           />
         ))}
       </div>
+      {/* Side Drawer */}
+      {drawerOpen && (
+        <div className="fixed inset-0 z-40" onClick={()=>setDrawerOpen(false)}>
+          <div className="absolute inset-0 bg-black/40" />
+          <div className="absolute right-0 top-0 h-full w-full max-w-md bg-background border-l p-4 overflow-y-auto" onClick={e=>e.stopPropagation()}>
+            <div className="font-semibold mb-2">Deal Details</div>
+            <div className="text-sm text-muted-foreground mb-4">Recent emails</div>
+            <div className="space-y-2 mb-4">
+              {drawerData.emails.slice(0,3).map((t:any)=>(
+                <a key={t.id} href={`/dashboard/inbox/${t.id}`} className="block p-2 border rounded hover:bg-muted/50">
+                  <div className="text-sm truncate">{t.subject || '(No subject)'}</div>
+                  <div className="text-xs text-muted-foreground">{new Date(t.lastSyncedAt).toLocaleString()}</div>
+                </a>
+              ))}
+              {drawerData.emails.length===0 && <div className="text-xs text-muted-foreground">No recent emails</div>}
+            </div>
+            <div className="text-sm text-muted-foreground mb-2">Upcoming events</div>
+            <div className="space-y-2">
+              {drawerData.events.slice(0,3).map((e:any)=>(
+                <div key={e.id} className="p-2 border rounded">
+                  <div className="text-sm">{e.summary || 'Event'}</div>
+                  <div className="text-xs text-muted-foreground">{e.start?.dateTime || e.start?.date}</div>
+                </div>
+              ))}
+              {drawerData.events.length===0 && <div className="text-xs text-muted-foreground">No upcoming events</div>}
+            </div>
+          </div>
+        </div>
+      )}
       {showEmail && activeDeal && (
         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
           <div className="bg-background border rounded p-4 w-full max-w-lg space-y-2">

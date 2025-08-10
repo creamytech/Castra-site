@@ -1,23 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { withAuth } from '@/lib/auth/api'
 import { createCalendarEvent } from '@/lib/google'
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic'
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async ({ req, ctx }) => {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
-
-    const body = await request.json().catch(() => ({}))
+    const body = await req.json().catch(() => ({}))
     const { summary, startISO, endISO, attendees = [], timeZone = "UTC" } = body
 
     // Validate required fields
@@ -107,7 +97,7 @@ export async function POST(request: NextRequest) {
     }
 
     const event = await createCalendarEvent(
-      session.user.id,
+      ctx.session.user.id,
       { summary, startISO: validatedStartISO, endISO: validatedEndISO, attendees, timeZone }
     )
 
@@ -136,4 +126,4 @@ export async function POST(request: NextRequest) {
       { status: statusCode }
     )
   }
-}
+}, { action: 'calendar.create' })

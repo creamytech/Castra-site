@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { withAuth } from "@/lib/auth/api";
 import { prisma } from "@/lib/prisma";
 import OpenAI from "openai";
 import { generateChatReply } from "@/lib/llm";
@@ -11,49 +10,26 @@ const openai = new OpenAI({
 
 export const dynamic = "force-dynamic";
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export const POST = withAuth(async ({ req, ctx }, { params }: any) => {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { role, content } = await request.json();
+    const { role, content } = await req.json();
 
     if (!role || !content) {
       return NextResponse.json({ error: "Role and content are required" }, { status: 400 });
     }
 
     // Verify session belongs to user
-    const chatSession = await prisma.chatSession.findFirst({
-      where: {
-        id: params.id,
-        userId: session.user.id
-      }
-    });
+    const chatSession = await prisma.chatSession.findFirst({ where: { id: params.id, userId: ctx.session.user.id } });
 
     if (!chatSession) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
     // Save user message
-    const userMessage = await prisma.chatMessage.create({
-      data: {
-        sessionId: params.id,
-        userId: session.user.id,
-        role,
-        content
-      }
-    });
+    const userMessage = await prisma.chatMessage.create({ data: { sessionId: params.id, userId: ctx.session.user.id, role, content } });
 
     // Get conversation history
-    const dbMessages = await prisma.chatMessage.findMany({
-      where: { sessionId: params.id },
-      orderBy: { createdAt: "asc" }
-    });
+    const dbMessages = await prisma.chatMessage.findMany({ where: { sessionId: params.id }, orderBy: { createdAt: "asc" } });
 
     // Convert to OpenAI format
     const messages = dbMessages
@@ -61,7 +37,7 @@ export async function POST(
       .map(m => ({ role: m.role as "user" | "assistant", content: m.content }));
 
     // Fetch user memories (tone, signature, etc.)
-    const memories = await prisma.memory.findMany({ where: { userId: session.user.id } });
+    const memories = await prisma.memory.findMany({ where: { userId: ctx.session.user.id } });
     const tone = memories.find(m => m.key === "tone")?.value || "professional";
     const signature = memories.find(m => m.key === "signature")?.value || "";
     const userPrefs = memories
@@ -121,14 +97,7 @@ ${userPrefs ? `Preferences:\n${userPrefs}` : ""}
     const aiContent = await generateChatReply(messages, functions, systemPrompt);
 
     // Save AI response
-    const assistantMessage = await prisma.chatMessage.create({
-      data: {
-        sessionId: params.id,
-        userId: session.user.id,
-        role: "assistant",
-        content: aiContent
-      }
-    });
+    const assistantMessage = await prisma.chatMessage.create({ data: { sessionId: params.id, userId: ctx.session.user.id, role: "assistant", content: aiContent } });
 
     // Generate contextual title if needed
     const messageCount = await prisma.chatMessage.count({ where: { sessionId: params.id } });
@@ -142,40 +111,21 @@ ${userPrefs ? `Preferences:\n${userPrefs}` : ""}
     console.error("[chat-message]", error);
     return NextResponse.json({ error: "Failed to add message" }, { status: 500 });
   }
-}
+}, { action: 'chat.message.add' })
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export const PATCH = withAuth(async ({ req, ctx }, { params }: any) => {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { title } = await request.json();
-
+    const { title } = await req.json();
     if (!title) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
     }
-
-    // Verify session belongs to user and update title
-    const updatedSession = await prisma.chatSession.updateMany({
-      where: {
-        id: params.id,
-        userId: session.user.id
-      },
-      data: { title }
-    });
-
+    const updatedSession = await prisma.chatSession.updateMany({ where: { id: params.id, userId: ctx.session.user.id }, data: { title } });
     if (updatedSession.count === 0) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
-
     return NextResponse.json({ success: true, title });
   } catch (error) {
     console.error("[chat-session-rename]", error);
     return NextResponse.json({ error: "Failed to rename session" }, { status: 500 });
   }
-}
+}, { action: 'chat.message.rename' })

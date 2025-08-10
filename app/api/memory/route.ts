@@ -1,18 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { withAuth } from "@/lib/auth/api";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async ({ req, ctx }) => {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
-    const { key, value } = await request.json();
+    const { key, value } = await req.json();
 
     if (!key || value === undefined) {
       return NextResponse.json({ error: "Key and value are required" }, { status: 400 });
@@ -21,7 +16,7 @@ export async function POST(request: NextRequest) {
     const memory = await prisma.memory.upsert({
       where: {
         userId_key: {
-          userId: session.user.id,
+          userId: ctx.session.user.id,
           key
         }
       },
@@ -29,7 +24,7 @@ export async function POST(request: NextRequest) {
         value
       },
       create: {
-        userId: session.user.id,
+        userId: ctx.session.user.id,
         key,
         value
       }
@@ -40,36 +35,24 @@ export async function POST(request: NextRequest) {
     console.error("[memory]", error);
     return NextResponse.json({ error: "Failed to set memory" }, { status: 500 });
   }
-}
+}, { action: 'memory.set' })
 
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async ({ req, ctx }) => {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(req.url);
     const keys = searchParams.get("keys");
 
     if (keys) {
       const keyArray = keys.split(",");
-      const memories = await prisma.memory.findMany({
-        where: {
-          userId: session.user.id,
-          key: { in: keyArray }
-        }
-      });
+      const memories = await prisma.memory.findMany({ where: { userId: ctx.session.user.id, key: { in: keyArray } } });
       return NextResponse.json({ memories });
     } else {
-      const memories = await prisma.memory.findMany({
-        where: { userId: session.user.id },
-        orderBy: { updatedAt: "desc" }
-      });
+      const memories = await prisma.memory.findMany({ where: { userId: ctx.session.user.id }, orderBy: { updatedAt: "desc" } });
       return NextResponse.json({ memories });
     }
   } catch (error) {
     console.error("[memory]", error);
     return NextResponse.json({ error: "Failed to get memories" }, { status: 500 });
   }
-}
+}, { action: 'memory.get' })
