@@ -15,7 +15,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { offerSdp, model } = await req.json();
+    const { offerSdp, model, voice: voiceOverride } = await req.json();
     if (!offerSdp) return NextResponse.json({ error: "Missing offerSdp" }, { status: 400 });
 
     const useModel = model || (process.env.OPENAI_REALTIME_MODEL || "gpt-4o-realtime-preview-2024-12-17");
@@ -71,7 +71,7 @@ Use server tools only (no secrets in client): /api/messaging/email/send, /api/ca
       },
       body: JSON.stringify({
         model: useModel,
-        voice: profile.voice ?? "verse",
+        voice: voiceOverride || profile.voice || "verse",
         instructions,
       }),
     });

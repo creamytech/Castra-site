@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 
 type WebrtcState = 'idle' | 'connecting' | 'connected' | 'error'
 
-export function VoiceSession() {
+export function VoiceSession({ voice = 'verse' }: { voice?: string }) {
   const pcRef = useRef<RTCPeerConnection | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [active, setActive] = useState(false)
@@ -67,7 +67,7 @@ export function VoiceSession() {
       const proxyRes = await fetch('/api/voice/offer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ offerSdp: offer.sdp, model: 'gpt-4o-realtime-preview-2024-12-17' }),
+        body: JSON.stringify({ offerSdp: offer.sdp, model: 'gpt-4o-realtime-preview-2024-12-17', voice }),
       })
       const contentType = proxyRes.headers.get('content-type') || ''
       if (!proxyRes.ok || !contentType.includes('application/sdp')) {

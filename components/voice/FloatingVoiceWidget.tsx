@@ -8,6 +8,7 @@ import { loadHotword } from './hotword'
 
 export default function FloatingVoiceWidget() {
   const [open, setOpen] = useState(false)
+  const [voice, setVoice] = useState('verse')
   const [hotwordStatus, setHotwordStatus] = useState<'loading'|'ready'|'failed'>('loading')
   const [hotwordError, setHotwordError] = useState<string>('')
   const stopRef = useRef<(()=>void)|null>(null)
@@ -42,7 +43,17 @@ export default function FloatingVoiceWidget() {
       {open && (
         <div className="fixed bottom-20 right-4 z-50 w-80 p-3 border rounded-lg bg-background shadow-lg">
           <div className="text-sm font-medium mb-2">Voice Assistant</div>
-          <VoiceSession />
+          <div className="mb-2">
+            <label className="text-xs text-muted-foreground">Voice</label>
+            <select value={voice} onChange={e=>setVoice(e.target.value)} className="w-full mt-1 border rounded px-2 py-1 bg-background text-sm">
+              <option value="verse">Verse (default)</option>
+              <option value="alloy">Alloy</option>
+              <option value="ember">Ember</option>
+              <option value="sol">Sol</option>
+              <option value="lumi">Lumi</option>
+            </select>
+          </div>
+          <VoiceSession voice={voice} />
           {process.env.NEXT_PUBLIC_VOICE_DEBUG === 'true' && (
             <div className="mt-2 text-[10px] text-muted-foreground">Hotword: {hotwordStatus}{hotwordError ? ` — ${hotwordError}` : ''}</div>
           )}

@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
         type: "chat",
         title: session.title || "Untitled Chat",
         subtitle: `Created ${new Date(session.createdAt).toLocaleDateString()}`,
-        url: `/app/chat?sessionId=${session.id}`,
+        url: `/chat?sessionId=${session.id}`,
         icon: "💬"
       });
     });
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
         type: "contact",
         title: `${contact.firstName} ${contact.lastName}`,
         subtitle: contact.email || contact.company || "No email/company",
-        url: `/app/crm/${contact.id}`,
+        url: `/crm/${contact.id}`,
         icon: "👥"
       });
     });
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
         type: "lead",
         title: lead.title,
         subtitle: `${lead.status} • ${lead.contact ? `${lead.contact.firstName} ${lead.contact.lastName}` : 'No contact'}`,
-        url: `/app/crm/leads/${lead.id}`,
+        url: `/crm/leads/${lead.id}`,
         icon: "🎯"
       });
     });
@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
           type: "email",
           title: subject || "No Subject",
           subtitle: `From: ${from}`,
-          url: `/app/inbox?threadId=${thread.id}`,
+          url: `/dashboard/inbox/${thread.id}`,
           icon: "📧"
         });
       });

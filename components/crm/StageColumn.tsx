@@ -6,7 +6,7 @@ import DraggableCard from './DraggableCard'
 import { useDroppable } from '@dnd-kit/core'
 import EmptyStage from './EmptyStage'
 
-export default function StageColumn({ stage, filters, onMove, refreshKey }: { stage: string; filters: any; onMove: (dealId: string, toStage: string) => void; refreshKey?: number }) {
+export default function StageColumn({ stage, filters, onMove, refreshKey, onEmail, onSMS, onSchedule }: { stage: string; filters: any; onMove: (dealId: string, toStage: string) => void; refreshKey?: number; onEmail?: (deal: any)=>void; onSMS?: (deal:any)=>void; onSchedule?: (deal:any)=>void }) {
   const [items, setItems] = useState<any[]>([])
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
@@ -35,7 +35,7 @@ export default function StageColumn({ stage, filters, onMove, refreshKey }: { st
       <div className="space-y-2 flex-1">
         {items.map((d: any) => (
           <DraggableCard key={d.id} id={d.id}>
-            <DealCard deal={d} onMove={(id, next) => onMove(id, next)} onEmail={() => {}} onSMS={() => {}} onSchedule={() => {}} />
+            <DealCard deal={d} onMove={(id, next) => onMove(id, next)} onEmail={onEmail} onSMS={onSMS} onSchedule={onSchedule} />
           </DraggableCard>
         ))}
         {!loading && items.length === 0 && <EmptyStage stage={stage} />}
