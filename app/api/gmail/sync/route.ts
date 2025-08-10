@@ -182,7 +182,8 @@ export async function GET(request: NextRequest) {
         spam: spamCount,
         drafts: draftsCount,
         trash: trashCount,
-      }
+      },
+      lastSynced: new Date().toISOString()
     });
 
   } catch (error: any) {

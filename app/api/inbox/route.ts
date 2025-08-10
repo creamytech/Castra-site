@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { listRecentThreads, getThreadDetail } from '@/lib/google'
+import { prisma } from '@/lib/prisma'
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic'
@@ -39,5 +40,49 @@ export async function GET(request: NextRequest) {
       },
       { status: 500 }
     )
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const { action, ids, label } = await request.json().catch(() => ({}))
+    if (!Array.isArray(ids) || ids.length === 0) return NextResponse.json({ error: 'ids[] required' }, { status: 400 })
+
+    const where = { id: { in: ids as string[] }, userId: session.user.id }
+
+    switch (action) {
+      case 'read':
+        await prisma.message.updateMany({ where, data: { labels: { set: [] } } })
+        break
+      case 'unread':
+        await prisma.message.updateMany({ where, data: { labels: { set: ['UNREAD'] } } })
+        break
+      case 'delete':
+        // soft delete by adding TRASH label
+        const msgs = await prisma.message.findMany({ where })
+        for (const m of msgs) {
+          const next = Array.from(new Set([...(m.labels || []), 'TRASH']))
+          await prisma.message.update({ where: { id: m.id }, data: { labels: next } })
+        }
+        break
+      case 'label':
+        if (!label) return NextResponse.json({ error: 'label required' }, { status: 400 })
+        const ms = await prisma.message.findMany({ where })
+        for (const m of ms) {
+          const next = Array.from(new Set([...(m.labels || []), String(label).toUpperCase()]))
+          await prisma.message.update({ where: { id: m.id }, data: { labels: next } })
+        }
+        break
+      default:
+        return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (e: any) {
+    console.error('[inbox PATCH]', e)
+    return NextResponse.json({ error: 'Failed to update inbox' }, { status: 500 })
   }
 }
