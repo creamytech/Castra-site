@@ -10,6 +10,7 @@ import CommandPalette from "@/components/CommandPalette";
 import { UserMenu } from "@/components/user-menu";
 import { FloatingThemeToggle } from "@/components/theme/floating-toggle";
 import { applyTheme, getInitialTheme } from "@/lib/ui/theme";
+import { CastraWordmark } from "@/components/brand/CastraWordmark";
 
 export default function AppLayout({
   children,
@@ -85,13 +86,13 @@ export default function AppLayout({
 
       <div className="ml-64 transition-all duration-300">
         {/* Header */}
-        <header className="bg-card text-card-foreground border-b border-border px-6 py-4">
+        <header className="bg-card text-card-foreground border-b border-border px-6 py-4 sticky top-0 z-40 backdrop-blur supports-[backdrop-filter]:bg-card/80">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <h1 className="text-xl font-semibold text-foreground">Castra</h1>
+              <CastraWordmark size="md" />
             </div>
             
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
               {/* Search Button */}
               <button
                 onClick={() => setIsCommandPaletteOpen(true)}
@@ -106,7 +107,7 @@ export default function AppLayout({
               </button>
 
               {/* Quick Actions */}
-              <div className="flex items-center space-x-2">
+              <div className="hidden md:flex items-center space-x-2">
                 <button
                   onClick={() => window.open('/chat', '_blank')}
                   className="btn-ghost text-sm"
