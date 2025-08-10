@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import OpenAI from "openai";
+import { generateChatReply } from "@/lib/llm";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -48,123 +49,82 @@ export async function POST(
       }
     });
 
-    // If this is a user message, generate AI response and potentially update title
-    if (role === "user") {
-      // Check if this is the first user message and session has no title
-      const messageCount = await prisma.chatMessage.count({
-        where: { sessionId: params.id }
-      });
+    // Get conversation history
+    const dbMessages = await prisma.chatMessage.findMany({
+      where: { sessionId: params.id },
+      orderBy: { createdAt: "asc" }
+    });
 
-      // Generate contextual title if this is the first user message and no title exists
-      if (messageCount === 1 && !chatSession.title) {
-        let newTitle = "New Chat";
-        
-        if (content.length < 80) {
-          // Use first 60 chars as title
-          newTitle = content.substring(0, 60).trim();
-        } else {
-          // Generate contextual title with OpenAI
-          try {
-            const titleResponse = await openai.chat.completions.create({
-              model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-              messages: [
-                {
-                  role: "system",
-                  content: "You are a helpful assistant that creates short, descriptive titles for chat conversations. Respond with only the title, 3-6 words maximum."
-                },
-                {
-                  role: "user",
-                  content: `Name this chat conversation in 3-6 words: "${content.substring(0, 200)}..."`
-                }
-              ],
-              temperature: 0.7,
-              max_tokens: 20
-            });
+    // Convert to OpenAI format
+    const messages = dbMessages
+      .filter(m => m.role === "user" || m.role === "assistant")
+      .map(m => ({ role: m.role as "user" | "assistant", content: m.content }));
 
-            const generatedTitle = titleResponse.choices[0]?.message?.content?.trim();
-            if (generatedTitle) {
-              newTitle = generatedTitle;
-            }
-          } catch (error) {
-            console.error("Failed to generate title:", error);
-            // Fallback to first 60 chars
-            newTitle = content.substring(0, 60).trim();
+    // Define tools available to the assistant
+    const functions = [
+      {
+        name: "create_calendar_event",
+        description: "Create a new calendar event with proper validation",
+        parameters: {
+          type: "object",
+          properties: {
+            summary: { type: "string", description: "Event title or summary" },
+            description: { type: "string", description: "Event description (optional)" },
+            start: { type: "string", description: "Start time in RFC3339 format (e.g., '2024-01-15T14:00:00-05:00')" },
+            end: { type: "string", description: "End time in RFC3339 format (e.g., '2024-01-15T15:00:00-05:00')" },
+            timeZone: { type: "string", description: "Time zone (default: America/New_York)" },
+            attendees: {
+              type: "array",
+              items: { type: "object", properties: { email: { type: "string", description: "Attendee email address" } }, required: ["email"] },
+              description: "Array of attendee objects with email addresses"
+            },
+            location: { type: "string", description: "Event location (optional)" }
+          },
+          required: ["summary", "start", "end"]
+        }
+      },
+      {
+        name: "get_recent_emails",
+        description: "Get recent emails from Gmail inbox",
+        parameters: {
+          type: "object",
+          properties: {
+            q: { type: "string", description: "Search query (optional)" },
+            limit: { type: "number", description: "Number of emails to fetch (default: 10)" }
           }
         }
-
-        // Update session title
-        await prisma.chatSession.update({
-          where: { id: params.id },
-          data: { title: newTitle }
-        });
       }
+    ];
 
-      // Get conversation history
-      const messages = await prisma.chatMessage.findMany({
-        where: { sessionId: params.id },
-        orderBy: { createdAt: "asc" }
-      });
+    const systemPrompt = `You are Castra, an AI-powered realtor co-pilot. You help real estate professionals manage their business efficiently.
 
-      // Get user's memory (tone, etc.)
-      const memories = await prisma.memory.findMany({
-        where: { userId: session.user.id }
-      });
+- Email: draft replies (never send), summarize threads, sync/search inbox
+- Calendar: create/manage events with validation (RFC3339 with timezone)
+- Always ask for consent before accessing inbox or creating events
+- Be concise, professional, and confirm actions
+`;
 
-      const tone = memories.find(m => m.key === "tone")?.value || "professional";
-      const signature = memories.find(m => m.key === "signature")?.value || "";
+    // Generate tool-enabled assistant reply
+    const aiContent = await generateChatReply(messages, functions, systemPrompt);
 
-      // Build system prompt
-      const systemPrompt = `You are Castra, an AI co-pilot for real estate professionals. 
+    // Save AI response
+    const assistantMessage = await prisma.chatMessage.create({
+      data: {
+        sessionId: params.id,
+        userId: session.user.id,
+        role: "assistant",
+        content: aiContent
+      }
+    });
 
-User's writing tone: ${tone}
-User's signature: ${signature}
-
-You can help with:
-- Email drafting and responses
-- CRM management (contacts, leads, deals)
-- Calendar scheduling
-- MLS content and property descriptions
-- Document preparation
-- General real estate questions
-
-Always be helpful, professional, and concise. If asked to draft emails, create drafts only (don't send automatically).`;
-
-      // Prepare messages for OpenAI
-      const openaiMessages = [
-        { role: "system" as const, content: systemPrompt },
-        ...messages.map(msg => ({
-          role: msg.role as "user" | "assistant",
-          content: msg.content
-        }))
-      ];
-
-      // Generate AI response
-      const completion = await openai.chat.completions.create({
-        model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-        messages: openaiMessages,
-        temperature: 0.7,
-      });
-
-      const aiResponse = completion.choices[0]?.message?.content || "I'm sorry, I couldn't generate a response.";
-
-      // Save AI response
-      const assistantMessage = await prisma.chatMessage.create({
-        data: {
-          sessionId: params.id,
-          userId: session.user.id,
-          role: "assistant",
-          content: aiResponse
-        }
-      });
-
-      return NextResponse.json({
-        userMessage,
-        assistantMessage,
-        messages: [userMessage, assistantMessage]
-      });
+    // Generate contextual title if needed
+    const messageCount = await prisma.chatMessage.count({ where: { sessionId: params.id } });
+    if (messageCount === 2 && (!chatSession.title || chatSession.title === "Draft...")) {
+      const newTitle = content.substring(0, 60).trim() || "New Chat";
+      await prisma.chatSession.update({ where: { id: params.id }, data: { title: newTitle } });
     }
 
-    return NextResponse.json({ message: userMessage });
+    return NextResponse.json({ userMessage, assistantMessage, messages: [userMessage, assistantMessage] });
   } catch (error) {
     console.error("[chat-message]", error);
     return NextResponse.json({ error: "Failed to add message" }, { status: 500 });
