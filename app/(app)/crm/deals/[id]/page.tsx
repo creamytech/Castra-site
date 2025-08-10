@@ -4,6 +4,10 @@ import { useEffect, useState } from 'react'
 import Timeline from '@/components/crm/Timeline'
 import AutopilotPanel from '@/components/crm/AutopilotPanel'
 import DraftsPanel from '@/components/crm/DraftsPanel'
+import PreferencesEditor from '@/components/deal/PreferencesEditor'
+import EmailComposer from '@/components/messaging/EmailComposer'
+import SmsComposer from '@/components/messaging/SmsComposer'
+import ConfirmShowingSheet from '@/components/calendar/ConfirmShowingSheet'
 
 export default function DealWorkspace({ params }: { params: { id: string } }) {
   const { id } = params
@@ -13,6 +17,8 @@ export default function DealWorkspace({ params }: { params: { id: string } }) {
   const [results, setResults] = useState<any[]>([])
   const [cmaLoading, setCmaLoading] = useState(false)
   const [cmaResult, setCmaResult] = useState<any | null>(null)
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [emailBody, setEmailBody] = useState('')
 
   useEffect(() => {
     const load = async () => {
@@ -122,12 +128,36 @@ export default function DealWorkspace({ params }: { params: { id: string } }) {
           </div>
         )}
 
+        {/* Messages */}
+        <div className="p-4 border rounded-lg bg-card space-y-3">
+          <div className="font-semibold text-sm">Messages</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Email</div>
+              <EmailComposer dealId={deal.id} />
+              <div className="mt-2">
+                <button onClick={()=>setShowConfirm(true)} className="px-2 py-1 text-xs border rounded">Propose Showing Times</button>
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">SMS</div>
+              <SmsComposer dealId={deal.id} />
+            </div>
+          </div>
+        </div>
+
         <Timeline dealId={deal.id} />
       </div>
       <div className="lg:col-span-4 space-y-4">
         <AutopilotPanel userId={deal.userId} stage={deal.stage} />
+        <div className="p-3 border rounded-lg bg-card">
+          <div className="font-semibold mb-2 text-sm">Preferences</div>
+          <PreferencesEditor dealId={deal.id} />
+        </div>
         <DraftsPanel dealId={deal.id} />
       </div>
+
+      <ConfirmShowingSheet open={showConfirm} onClose={()=>setShowConfirm(false)} onInsert={(text)=>setEmailBody(text)} />
     </div>
   )
 }

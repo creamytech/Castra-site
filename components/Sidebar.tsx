@@ -24,6 +24,7 @@ export default function Sidebar() {
     { id: 'inbox', label: 'Inbox', icon: '📧', href: '/inbox' },
     { id: 'crm', label: 'CRM', icon: '👥', href: '/crm' },
     { id: 'calendar', label: 'Calendar', icon: '📅', href: '/calendar' },
+    { id: 'brief', label: 'Daily Brief', icon: '🗒', href: '/daily-brief' },
     { id: 'admin', label: 'Admin', icon: '⚙️', href: '/admin' },
   ]
 

@@ -17,12 +17,17 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const deal = await prisma.deal.findFirst({ where: { id: params.id, userId: session.user.id }, select: { stage: true } })
     if (!deal) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    // Simple validation: allow forward moves or to LOST
     const fromIdx = ORDER.indexOf(deal.stage as any)
     const toIdx = ORDER.indexOf(stage)
     if (!(toIdx >= fromIdx || stage === 'LOST')) return NextResponse.json({ error: 'Invalid stage transition' }, { status: 400 })
 
     await prisma.deal.update({ where: { id: params.id }, data: { stage } })
+    await prisma.activity.create({ data: { dealId: params.id, userId: session.user.id, kind: 'NOTE', channel: 'ui', subject: `Stage moved to ${stage}`, body: '', meta: { from: deal.stage, to: stage } } })
+    if (stage === 'SHOWING') {
+      const next = new Date(); next.setHours(9,0,0,0)
+      await prisma.deal.update({ where: { id: params.id }, data: { nextAction: 'Confirm showing time', nextDue: next } })
+    }
+
     return NextResponse.json({ success: true })
   } catch (e: any) {
     console.error('[deal stage PATCH]', e)
