@@ -17,7 +17,14 @@ export default function InboxList({ q, filter, onSelect }: { q: string; filter: 
       {isLoading && <div className="text-sm text-muted-foreground">Loading…</div>}
       {threads.map((t: any) => (
         <div key={t.id} className="p-3 border rounded bg-card hover:bg-muted/50 cursor-pointer" onClick={() => onSelect(t.id)}>
-          <div className="font-medium text-sm truncate">{t.subject || '(No subject)'}</div>
+          <div className="flex items-center gap-2">
+            <div className="font-medium text-sm truncate flex-1">{t.subject || '(No subject)'}</div>
+            {t.lastIntent && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-foreground">
+                {t.lastIntent.replaceAll('_',' ').toLowerCase()}
+              </span>
+            )}
+          </div>
           <div className="text-xs text-muted-foreground">{new Date(t.lastSyncedAt).toLocaleString()}</div>
         </div>
       ))}

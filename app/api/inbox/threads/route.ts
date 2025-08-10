@@ -25,10 +25,24 @@ export async function GET(request: NextRequest) {
       if (hasDeal === 'true') where.dealId = { not: null }
       if (hasDeal === 'false') where.dealId = null
       // unread filter would need flags; skip for now
-      const [total, threads] = await Promise.all([
+      const [total, rows] = await Promise.all([
         prisma.emailThread.count({ where }),
-        prisma.emailThread.findMany({ where, orderBy: { lastSyncedAt: 'desc' }, skip: (page - 1) * limit, take: limit, include: { deal: true } })
+        prisma.emailThread.findMany({
+          where,
+          orderBy: { lastSyncedAt: 'desc' },
+          skip: (page - 1) * limit,
+          take: limit,
+          include: { deal: true, messages: { select: { intent: true }, orderBy: { date: 'desc' }, take: 1 } },
+        })
       ])
+      const threads = rows.map((t: any) => ({
+        id: t.id,
+        userId: t.userId,
+        subject: t.subject,
+        lastSyncedAt: t.lastSyncedAt,
+        deal: t.deal || null,
+        lastIntent: t.messages?.[0]?.intent || null,
+      }))
       return NextResponse.json({ total, page, limit, threads })
     }
 

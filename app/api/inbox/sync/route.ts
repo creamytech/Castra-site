@@ -20,6 +20,15 @@ export async function POST() {
     const list = await gmail.users.messages.list({ userId: 'me', q, maxResults: 50 })
     const ids = (list.data.messages || []).map(m => m.id!).filter(Boolean)
 
+    const classify = (subject: string, snippet: string) => {
+      const text = `${subject} ${snippet}`.toLowerCase()
+      if (/tour|showing|visit|view(ing)?/.test(text)) return 'SHOWING_REQUEST'
+      if (/offer|counter|contract/.test(text)) return 'OFFER_DISCUSSION'
+      if (/interested|looking|buy|rent|sell/.test(text)) return 'LEAD_INTEREST'
+      if (/unsubscribe|promo|sale/.test(text)) return 'POSSIBLE_SPAM'
+      return 'GENERAL'
+    }
+
     for (const id of ids) {
       const m = await gmail.users.messages.get({ userId: 'me', id: id!, format: 'full' })
       const data = m.data
@@ -53,13 +62,15 @@ export async function POST() {
         update: { subject, lastSyncedAt: new Date() },
       })
 
+      const intent = classify(subject || '', snippet || '')
       await prisma.emailMessage.upsert({
         where: { id: id! },
         create: {
           id: id!, threadId, userId: session.user.id, from, to, cc, date, snippet, bodyHtml: bodyHtml || null, bodyText: bodyText || null,
           internalRefs: JSON.parse(JSON.stringify({ labelIds: data.labelIds })),
+          intent,
         },
-        update: { snippet, bodyHtml: bodyHtml || null, bodyText: bodyText || null, internalRefs: JSON.parse(JSON.stringify({ labelIds: data.labelIds })) },
+        update: { snippet, bodyHtml: bodyHtml || null, bodyText: bodyText || null, internalRefs: JSON.parse(JSON.stringify({ labelIds: data.labelIds })), intent },
       })
     }
 
