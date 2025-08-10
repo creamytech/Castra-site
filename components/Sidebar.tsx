@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
+import { CastraWordmark } from '@/components/brand/CastraWordmark'
 
 interface NavItem {
   id: string
@@ -38,15 +39,15 @@ export default function Sidebar() {
       {/* Header */}
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
-          {!isCollapsed && (
-            <div className="flex items-center space-x-2">
-              <div className="text-2xl">🏠</div>
-              <span className="font-bold text-lg text-foreground">Castra</span>
-            </div>
+          {!isCollapsed ? (
+            <CastraWordmark size="md" />
+          ) : (
+            <Link href="/dashboard" className="text-2xl" aria-label="Castra Home">✨</Link>
           )}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
             className="p-2 rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors"
+            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             {isCollapsed ? '→' : '←'}
           </button>

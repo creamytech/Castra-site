@@ -105,6 +105,18 @@ export async function GET(request: NextRequest) {
     const q = searchParams.get('q') || '';
     const limit = parseInt(searchParams.get('limit') || '10');
 
+    // Direct id lookups
+    if (q.startsWith('id:')) {
+      const id = q.slice(3);
+      const message = await prisma.message.findFirst({ where: { id, userId: session.user.id } });
+      return NextResponse.json({ success: true, messages: message ? [message] : [], count: message ? 1 : 0 });
+    }
+    if (q.startsWith('gmail:')) {
+      const gmailId = q.slice(6);
+      const message = await prisma.message.findFirst({ where: { gmailId, userId: session.user.id } });
+      return NextResponse.json({ success: true, messages: message ? [message] : [], count: message ? 1 : 0 });
+    }
+
     // Get messages from database with optional search
     const messages = await prisma.message.findMany({
       where: {
@@ -121,19 +133,13 @@ export async function GET(request: NextRequest) {
       take: limit
     });
 
-    return NextResponse.json({
-      success: true,
-      messages,
-      count: messages.length
-    });
+    return NextResponse.json({ success: true, messages, count: messages.length });
 
   } catch (error: any) {
     console.error("[gmail-sync-get]", error);
 
     return NextResponse.json(
-      {
-        error: error.message || "Failed to fetch messages"
-      },
+      { error: error.message || "Failed to fetch messages" },
       { status: 500 }
     );
   }
