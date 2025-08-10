@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Calendar, User, RefreshCw, Send } from 'lucide-react'
+import { ArrowLeft, Calendar, User, RefreshCw, Send, Wand2 } from 'lucide-react'
 
 interface Message {
   id: string
@@ -13,6 +13,7 @@ interface Message {
   snippet: string
   internalDate: string
   labels: string[]
+  payload?: any
 }
 
 export default function MessageDetailPage() {
@@ -26,6 +27,7 @@ export default function MessageDetailPage() {
   const [draftBody, setDraftBody] = useState('')
   const [drafting, setDrafting] = useState(false)
   const [draftPreview, setDraftPreview] = useState<string | null>(null)
+  const [draftId, setDraftId] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchMessage = async () => {
@@ -34,11 +36,12 @@ export default function MessageDetailPage() {
         if (response.ok) {
           const data = await response.json()
           if (data.messages && data.messages.length > 0) {
-            setMessage(data.messages[0])
-            // Set defaults for draft
-            const fromEmail = data.messages[0].from?.match(/<([^>]+)>/)?.[1] || data.messages[0].from
+            const m = data.messages[0]
+            setMessage(m)
+            // Defaults for draft
+            const fromEmail = m.from?.match(/<([^>]+)>/)?.[1] || m.from
             setDraftTo(fromEmail || '')
-            setDraftSubject(`Re: ${data.messages[0].subject || ''}`.trim())
+            setDraftSubject(`Re: ${m.subject || ''}`.trim())
           } else {
             setError("Message not found. It may have been unsynced. Try syncing your inbox.")
           }
@@ -61,11 +64,7 @@ export default function MessageDetailPage() {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleString([], {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
     })
   }
 
@@ -110,6 +109,7 @@ export default function MessageDetailPage() {
       const data = await res.json()
       if (res.ok) {
         setDraftPreview(data.html)
+        setDraftId(data.draftId || null)
       } else {
         setError(data.error || 'Failed to create draft')
       }
@@ -118,6 +118,73 @@ export default function MessageDetailPage() {
     } finally {
       setDrafting(false)
     }
+  }
+
+  const sendDraft = async () => {
+    if (!draftId) return
+    try {
+      const res = await fetch('/api/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ draftId })
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || 'Failed to send email')
+      } else {
+        // Refresh detail after send
+        await handleSync()
+      }
+    } catch (e) {
+      setError('Network error sending email')
+    }
+  }
+
+  const aiDraftReply = async () => {
+    if (!message) return
+    setDrafting(true)
+    try {
+      // Use summarize API to get context (future: dedicated reply generation)
+      const res = await fetch('/api/email/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ threadId: message.threadId })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        const base = `Thanks for the update.\n\nSummary of the thread:\n${data.summary}\n\nBest,\n`
+        setDraftBody(base)
+      } else {
+        setError(data.error || 'Failed to prepare AI draft')
+      }
+    } catch (e) {
+      setError('Network error preparing AI draft')
+    } finally {
+      setDrafting(false)
+    }
+  }
+
+  // Render inline images if present in payload (simple preview of attachments)
+  const inlineImages = () => {
+    const parts = message?.payload?.parts || []
+    const images: { mimeType: string, data: string }[] = []
+    const walk = (ps: any[]) => {
+      for (const p of ps) {
+        if (p.mimeType?.startsWith('image/') && p.body?.data) {
+          images.push({ mimeType: p.mimeType, data: p.body.data })
+        }
+        if (p.parts) walk(p.parts)
+      }
+    }
+    walk(parts)
+    if (images.length === 0) return null
+    return (
+      <div className="mt-4 pt-4 border-t border-border grid grid-cols-2 gap-3">
+        {images.slice(0,6).map((img, idx) => (
+          <img key={idx} src={`data:${img.mimeType};base64,${img.data}`} className="rounded border border-border object-cover" alt="inline attachment" />
+        ))}
+      </div>
+    )
   }
 
   if (loading) {
@@ -131,20 +198,13 @@ export default function MessageDetailPage() {
   if (error) {
     return (
       <div className="max-w-4xl mx-auto p-6">
-        <button
-          onClick={() => router.back()}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6"
-        >
+        <button onClick={() => router.back()} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6">
           <ArrowLeft className="w-4 h-4" />
           Back to inbox
         </button>
-
         <div className="text-center py-12">
           <div className="text-muted-foreground mb-4">{error}</div>
-          <button
-            onClick={handleSync}
-            className="flex items-center gap-2 mx-auto px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-          >
+          <button onClick={handleSync} className="flex items-center gap-2 mx-auto px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
             <RefreshCw className="w-4 h-4" />
             Sync Inbox
           </button>
@@ -165,10 +225,7 @@ export default function MessageDetailPage() {
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
-      <button
-        onClick={() => router.back()}
-        className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-      >
+      <button onClick={() => router.back()} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
         <ArrowLeft className="w-4 h-4" />
         Back to inbox
       </button>
@@ -176,27 +233,17 @@ export default function MessageDetailPage() {
       <div className="bg-card border border-border rounded-lg p-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
-            <h1 className="text-2xl font-bold mb-2">
-              {message.subject || '(No subject)'}
-            </h1>
+            <h1 className="text-2xl font-bold mb-2">{message.subject || '(No subject)'}</h1>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <User className="w-4 h-4" />
-                {message.from}
-              </div>
-              <div className="flex items-center gap-1">
-                <Calendar className="w-4 h-4" />
-                {formatDate(message.internalDate)}
-              </div>
+              <div className="flex items-center gap-1"><User className="w-4 h-4" />{message.from}</div>
+              <div className="flex items-center gap-1"><Calendar className="w-4 h-4" />{formatDate(message.internalDate)}</div>
             </div>
           </div>
         </div>
 
         <div className="border-t border-border pt-4">
           <div className="prose prose-sm max-w-none">
-            <p className="text-foreground whitespace-pre-wrap">
-              {message.snippet}
-            </p>
+            <p className="text-foreground whitespace-pre-wrap">{message.snippet}</p>
           </div>
         </div>
 
@@ -204,30 +251,34 @@ export default function MessageDetailPage() {
           <div className="mt-4 pt-4 border-t border-border">
             <div className="flex flex-wrap gap-2">
               {message.labels.map((label) => (
-                <span
-                  key={label}
-                  className="px-2 py-1 bg-muted text-muted-foreground text-xs rounded-md"
-                >
-                  {label}
-                </span>
+                <span key={label} className="px-2 py-1 bg-muted text-muted-foreground text-xs rounded-md">{label}</span>
               ))}
             </div>
           </div>
         )}
+
+        {inlineImages()}
       </div>
 
-      {/* AI Reply Composer */}
+      {/* Compose + AI Reply */}
       <div className="bg-card border border-border rounded-lg p-6">
-        <h2 className="text-lg font-semibold mb-3">Draft a reply</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold">Draft a reply</h2>
+          <button onClick={aiDraftReply} disabled={drafting} className="inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded bg-muted hover:bg-muted/80">
+            <Wand2 className="w-4 h-4" /> AI Draft
+          </button>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
           <input value={draftTo} onChange={(e)=>setDraftTo(e.target.value)} className="px-3 py-2 bg-input border border-input rounded" placeholder="To" />
           <input value={draftSubject} onChange={(e)=>setDraftSubject(e.target.value)} className="px-3 py-2 bg-input border border-input rounded" placeholder="Subject" />
         </div>
         <textarea value={draftBody} onChange={(e)=>setDraftBody(e.target.value)} className="w-full h-32 px-3 py-2 bg-input border border-input rounded mb-3" placeholder="Write your reply..." />
-        <button onClick={createDraft} disabled={drafting || !draftTo || !draftSubject || !draftBody} className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50">
-          <Send className="w-4 h-4" />
-          {drafting ? 'Drafting...' : 'Create Draft'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={createDraft} disabled={drafting || !draftTo || !draftSubject || !draftBody} className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50">
+            <Send className="w-4 h-4" /> Create Draft
+          </button>
+          <button onClick={sendDraft} disabled={!draftId} className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50">Send</button>
+        </div>
         {draftPreview && (
           <div className="mt-4 border-t border-border pt-4">
             <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: draftPreview }} />

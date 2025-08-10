@@ -67,6 +67,7 @@ export default function InboxPage() {
     try {
       const response = await fetch('/api/gmail/sync', { method: 'POST' })
       if (response.ok) {
+        // Immediately refresh current folder view so UI shows new items without page reload
         await fetchMessages(folder, searchQuery)
       }
     } catch (error) {
