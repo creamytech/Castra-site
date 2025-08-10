@@ -69,6 +69,7 @@ model User {
   
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  activities    Activity[]
 }
 
 // Gmail Message Model
@@ -170,6 +171,7 @@ model Contact {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   leads       Lead[]
   deals       Deal[]
+  dealContacts DealContact[]
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -200,6 +202,62 @@ model Lead {
   @@index([contactId])
 }
 
+enum DealStage {
+  LEAD
+  QUALIFIED
+  SHOWING
+  OFFER
+  ESCROW
+  CLOSED
+  LOST
+}
+
+enum DealType {
+  BUYER
+  SELLER
+  RENTAL
+}
+
+enum ActivityKind {
+  NOTE
+  EMAIL
+  SMS
+  IGDM
+  CALL
+  MEETING
+  FILE
+  AI_SUMMARY
+}
+
+model DealContact {
+  id        String   @id @default(cuid())
+  dealId    String
+  contactId String
+  role      String?
+  deal      Deal     @relation(fields: [dealId], references: [id])
+  contact   Contact  @relation(fields: [contactId], references: [id])
+
+  @@index([dealId])
+  @@index([contactId])
+}
+
+model Activity {
+  id         String       @id @default(cuid())
+  dealId     String
+  userId     String
+  kind       ActivityKind
+  channel    String?
+  subject    String?
+  body       String?
+  meta       Json?
+  occurredAt DateTime     @default(now())
+  deal       Deal         @relation(fields: [dealId], references: [id])
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([dealId, occurredAt])
+  @@index([userId, occurredAt])
+}
+
 model Deal {
   id          String   @id @default(cuid())
   userId      String
@@ -207,23 +265,37 @@ model Deal {
   leadId      String?
   title       String
   description String?
-  status      String   @default("prospecting") // prospecting, qualified, proposal, negotiation, closed-won, closed-lost
+  status      String   @default("prospecting")
   value       Float?
   probability Float    @default(0)
   closeDate   DateTime?
   notes       String?
-  
+
+  // New fields for V2 pipeline
+  stage       DealStage @default(LEAD)
+  type        DealType  @default(BUYER)
+  propertyAddr String?
+  city        String?
+  state       String?
+  priceTarget Int?
+  mlsId       String?
+  nextAction  String?
+  nextDue     DateTime?
+
   // Relations
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   contact     Contact? @relation(fields: [contactId], references: [id])
   lead        Lead?    @relation(fields: [leadId], references: [id])
-  
+  contacts    DealContact[]
+  activities  Activity[]
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   @@index([userId])
   @@index([contactId])
   @@index([leadId])
+  @@index([userId, stage])
 }
 
 model Template {
