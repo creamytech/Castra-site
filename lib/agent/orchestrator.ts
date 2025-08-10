@@ -3,7 +3,7 @@ import { enqueue } from './queue'
 import { sendEmail } from './skills/gmail'
 import { sendSMS } from './skills/sms'
 import { createCalendarEvent } from './skills/calendar'
-import { searchListings, getComps } from './skills/mls'
+import { getMlsProvider } from './skills/mls'
 import { buyerCadence, sellerCadence } from './policies/cadences'
 import OpenAI from 'openai'
 import { buildPrompt } from './policies/replies'
@@ -138,7 +138,8 @@ export async function runTask(task: { id: string; type: string; payload: any; us
     if (task.type === 'SEND_LISTINGS') {
       if (!deal) throw new Error('No deal')
       const prefs: any = deal.leadPreference || {}
-      const listings = await searchListings({ city: deal.city || undefined, priceMin: (prefs.priceMin as number | undefined) || deal.priceTarget || undefined, priceMax: (prefs.priceMax as number | undefined) || undefined, beds: (prefs.beds as number | undefined) || undefined, baths: (prefs.baths as number | undefined) || undefined })
+      const mls = getMlsProvider()
+      const listings = await mls.searchListings({ city: deal.city || undefined, priceMin: (prefs.priceMin as number | undefined) || deal.priceTarget || undefined, priceMax: (prefs.priceMax as number | undefined) || undefined, bedsMin: (prefs.beds as number | undefined) || undefined, bathsMin: (prefs.baths as number | undefined) || undefined, limit: 6 })
       const top = listings.slice(0, 3)
       const content = top.map(l => `${l.address}, ${l.city} — $${l.price.toLocaleString()} (${l.beds}bd/${l.baths}ba)`).join('\n')
       await prisma.task.update({ where: { id: task.id }, data: { status: 'NEEDS_APPROVAL', result: { draft: `Here are 3 homes that match your criteria:\n${content}\nWould you like to see any of these?` } } })
@@ -147,8 +148,9 @@ export async function runTask(task: { id: string; type: string; payload: any; us
 
     if (task.type === 'SEND_CMA') {
       const address = task.payload?.address || deal?.propertyAddr || 'your property'
-      const comps = await getComps(address)
-      await prisma.task.update({ where: { id: task.id }, data: { status: 'NEEDS_APPROVAL', result: { draft: `Attached is a quick market analysis for ${address}. Recent sales: ${comps.recentSales.map(r => `${r.address} $${r.price.toLocaleString()}`).join(', ')}.` } } })
+      const mls = getMlsProvider()
+      const comps = await mls.getComps({ address, city: deal?.city || undefined, beds: deal?.leadPreference?.beds || undefined, baths: deal?.leadPreference?.baths || undefined, sqft: undefined })
+      await prisma.task.update({ where: { id: task.id }, data: { status: 'NEEDS_APPROVAL', result: { draft: `Attached is a quick market analysis for ${address}. Top comps: ${comps.comps.slice(0,3).map(r => `${r.address} $${r.price.toLocaleString()}`).join(', ')}.` } } })
       return { status: 'NEEDS_APPROVAL' }
     }
 
