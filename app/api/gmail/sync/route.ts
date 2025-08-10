@@ -17,80 +17,57 @@ export async function POST(request: NextRequest) {
     const oauth2Client = await getGoogleOAuth(session.user.id);
     const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
-    // Get recent messages
-    const messagesResponse = await gmail.users.messages.list({
-      userId: 'me',
-      maxResults: 50,
-      q: 'in:inbox'
-    });
+    let nextPageToken: string | undefined = undefined;
+    let totalSynced = 0;
+    const maxPages = 5; // pull up to ~250 messages
 
-    const messages = messagesResponse.data.messages || [];
-    const syncedMessages = [];
+    for (let page = 0; page < maxPages; page++) {
+      const listRes: any = await gmail.users.messages.list({
+        userId: 'me',
+        maxResults: 50,
+        q: 'in:anywhere',
+        pageToken: nextPageToken
+      });
 
-    // Fetch full message details and store in database
-    for (const message of messages) {
-      try {
-        const messageDetail = await gmail.users.messages.get({
-          userId: 'me',
-          id: message.id!
-        });
+      const messages: Array<{ id?: string }> = listRes.data.messages || [];
+      if (messages.length === 0) break;
 
-        const headers = messageDetail.data.payload?.headers || [];
-        const from = headers.find(h => h.name === 'From')?.value || '';
-        const subject = headers.find(h => h.name === 'Subject')?.value || '';
-        const snippet = messageDetail.data.snippet || '';
-        const internalDate = new Date(parseInt(messageDetail.data.internalDate || '0'));
-        const labels = messageDetail.data.labelIds || [];
+      for (const message of messages) {
+        try {
+          const messageDetail: any = await gmail.users.messages.get({ userId: 'me', id: message.id! });
+          const headers = messageDetail.data.payload?.headers || [];
+          const from = headers.find((h: any) => h.name === 'From')?.value || '';
+          const subject = headers.find((h: any) => h.name === 'Subject')?.value || '';
+          const snippet = messageDetail.data.snippet || '';
+          const internalDate = new Date(parseInt(messageDetail.data.internalDate || '0'));
+          const labels = messageDetail.data.labelIds || [];
+          const payload = JSON.parse(JSON.stringify(messageDetail.data));
 
-        // Convert messageDetail.data to JSON-safe object
-        const payload = JSON.parse(JSON.stringify(messageDetail.data));
-
-        // Upsert message in database using gmailId
-        const savedMessage = await prisma.message.upsert({
-          where: { gmailId: message.id! },
-          update: {
-            from,
-            subject,
-            snippet,
-            internalDate,
-            labels,
-            payload
-          },
-          create: {
-            gmailId: message.id!,
-            threadId: messageDetail.data.threadId || '',
-            userId: session.user.id,
-            from,
-            subject,
-            snippet,
-            internalDate,
-            labels,
-            payload
-          }
-        });
-
-        syncedMessages.push(savedMessage);
-      } catch (error) {
-        console.error(`Error syncing message ${message.id}:`, error);
+          await prisma.message.upsert({
+            where: { gmailId: message.id! },
+            update: { from, subject, snippet, internalDate, labels, payload },
+            create: {
+              gmailId: message.id!,
+              threadId: messageDetail.data.threadId || '',
+              userId: session.user.id,
+              from, subject, snippet, internalDate, labels, payload
+            }
+          });
+          totalSynced++;
+        } catch (e) {
+          console.error(`Error syncing message ${message.id}:`, e);
+        }
       }
+
+      nextPageToken = listRes.data.nextPageToken || undefined;
+      if (!nextPageToken) break;
     }
 
-    return NextResponse.json({
-      success: true,
-      syncedCount: syncedMessages.length,
-      messages: syncedMessages
-    });
+    return NextResponse.json({ success: true, syncedCount: totalSynced });
 
   } catch (error: any) {
     console.error("[gmail-sync]", error);
-
-    return NextResponse.json(
-      {
-        error: error.message || "Failed to sync Gmail messages",
-        details: "Check if Gmail API is enabled and account is connected"
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || "Failed to sync Gmail messages" }, { status: 500 });
   }
 }
 
