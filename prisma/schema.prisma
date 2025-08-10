@@ -391,7 +391,10 @@ model Interaction {
 model UserProfile {
   id          String   @id @default(cuid())
   userId      String   @unique
+  displayName String?
   styleGuide  Json?
+  voice       String?
+  hotwordOn   Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
