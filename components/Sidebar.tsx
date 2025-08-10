@@ -21,7 +21,7 @@ export default function Sidebar() {
   const navItems: NavItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: '🏠', href: '/dashboard' },
     { id: 'chat', label: 'AI Chat', icon: '💬', href: '/chat' },
-    { id: 'inbox', label: 'Inbox', icon: '📧', href: '/inbox' },
+    { id: 'inbox', label: 'Inbox', icon: '📧', href: '/dashboard/inbox' },
     { id: 'crm', label: 'CRM', icon: '👥', href: '/crm' },
     { id: 'calendar', label: 'Calendar', icon: '📅', href: '/calendar' },
     { id: 'brief', label: 'Daily Brief', icon: '🗒', href: '/daily-brief' },

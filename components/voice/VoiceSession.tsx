@@ -39,7 +39,12 @@ export function VoiceSession() {
       const sessJson = await sessRes.json()
       if (!sessRes.ok) throw new Error(sessJson?.error || 'Failed to start voice session')
 
-      const pc = new RTCPeerConnection()
+      const pc = new RTCPeerConnection({
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          // Add TURN here if needed with credentials
+        ],
+      })
       pcRef.current = pc
 
       mic.getTracks().forEach((t) => pc.addTrack(t, mic))
@@ -63,17 +68,17 @@ export function VoiceSession() {
       const offer = await pc.createOffer()
       await pc.setLocalDescription(offer)
 
-      let sdpText: string | null = null
-      try {
-        const sdpRes = await fetch(String(sessJson.sdpEndpoint), { method: 'POST', headers: { 'Content-Type': 'application/sdp' }, body: offer.sdp || '' })
-        if (!sdpRes.ok) throw new Error(`SDP exchange failed: ${await sdpRes.text()}`)
-        sdpText = await sdpRes.text()
-      } catch (e) {
-        // retry once
-        const sdpRes = await fetch(String(sessJson.sdpEndpoint), { method: 'POST', headers: { 'Content-Type': 'application/sdp' }, body: offer.sdp || '' })
-        if (!sdpRes.ok) throw new Error(`SDP exchange failed: ${await sdpRes.text()}`)
-        sdpText = await sdpRes.text()
+      const proxyRes = await fetch('/api/voice/offer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sdpEndpoint: sessJson.sdpEndpoint, offerSdp: offer.sdp }),
+      })
+      const contentType = proxyRes.headers.get('content-type') || ''
+      if (!proxyRes.ok || !contentType.includes('application/sdp')) {
+        const text = await proxyRes.text()
+        throw new Error(`SDP exchange failed (${proxyRes.status}): ${text}`)
       }
+      const sdpText = await proxyRes.text()
 
       const answer: RTCSessionDescriptionInit = { type: 'answer', sdp: sdpText || '' }
       await pc.setRemoteDescription(answer)
