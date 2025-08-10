@@ -11,6 +11,7 @@ import { UserMenu } from "@/components/user-menu";
 import { FloatingThemeToggle } from "@/components/theme/floating-toggle";
 import { applyTheme, getInitialTheme } from "@/lib/ui/theme";
 import { CastraWordmark } from "@/components/brand/CastraWordmark";
+import NotificationsBell from "@/components/NotificationsBell";
 
 export default function AppLayout({
   children,
@@ -131,6 +132,7 @@ export default function AppLayout({
                 </button>
               </div>
 
+              <NotificationsBell />
               {/* User Menu */}
               <UserMenu />
             </div>

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Calendar, User, RefreshCw, Send, Wand2 } from 'lucide-react'
+import { ArrowLeft, Calendar, User, RefreshCw, Send, Wand2, ThumbsUp, X } from 'lucide-react'
+import { CalendarPlus, Check, XCircle } from 'lucide-react'
 
 interface Message {
   id: string
@@ -28,6 +29,10 @@ export default function MessageDetailPage() {
   const [drafting, setDrafting] = useState(false)
   const [draftPreview, setDraftPreview] = useState<string | null>(null)
   const [draftId, setDraftId] = useState<string | null>(null)
+  const [suggestions, setSuggestions] = useState<any[]>([])
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false)
+  const [eventSuggestions, setEventSuggestions] = useState<any[]>([])
+  const [loadingEvents, setLoadingEvents] = useState(false)
 
   useEffect(() => {
     const fetchMessage = async () => {
@@ -59,6 +64,34 @@ export default function MessageDetailPage() {
     if (params.id) {
       fetchMessage()
     }
+  }, [params.id])
+
+  useEffect(() => {
+    const loadSuggestions = async () => {
+      if (!params.id) return
+      setLoadingSuggestions(true)
+      try {
+        const res = await fetch(`/api/email/smart-replies?messageId=${params.id}`)
+        const data = await res.json()
+        if (res.ok) setSuggestions(data.suggestions || [])
+      } catch {}
+      setLoadingSuggestions(false)
+    }
+    loadSuggestions()
+  }, [params.id])
+
+  useEffect(() => {
+    const loadEvents = async () => {
+      if (!params.id) return
+      setLoadingEvents(true)
+      try {
+        const res = await fetch(`/api/calendar/suggestions?messageId=${params.id}`)
+        const data = await res.json()
+        if (res.ok) setEventSuggestions(data.suggestions || [])
+      } catch {}
+      setLoadingEvents(false)
+    }
+    loadEvents()
   }, [params.id])
 
   const formatDate = (dateString: string) => {
@@ -164,6 +197,53 @@ export default function MessageDetailPage() {
     }
   }
 
+  const generateSuggestion = async () => {
+    if (!message) return
+    setLoadingSuggestions(true)
+    try {
+      await fetch('/api/email/smart-replies', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messageId: message.id }) })
+      const res = await fetch(`/api/email/smart-replies?messageId=${message.id}`)
+      const data = await res.json()
+      if (res.ok) setSuggestions(data.suggestions || [])
+    } catch {}
+    setLoadingSuggestions(false)
+  }
+
+  const approveSuggestion = async (id: string, action: 'draft'|'send'|'dismiss') => {
+    try {
+      const res = await fetch('/api/email/smart-replies', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, action: action === 'draft' ? 'draft' : action }) })
+      if (res.ok) {
+        // reload
+        const r2 = await fetch(`/api/email/smart-replies?messageId=${message?.id}`)
+        const d2 = await r2.json()
+        setSuggestions(d2.suggestions || [])
+      }
+    } catch {}
+  }
+
+  const generateEvent = async () => {
+    if (!message) return
+    setLoadingEvents(true)
+    try {
+      await fetch('/api/calendar/suggestions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messageId: message.id }) })
+      const res = await fetch(`/api/calendar/suggestions?messageId=${message.id}`)
+      const data = await res.json()
+      if (res.ok) setEventSuggestions(data.suggestions || [])
+    } catch {}
+    setLoadingEvents(false)
+  }
+
+  const approveEvent = async (id: string, action: 'create'|'dismiss') => {
+    try {
+      const res = await fetch('/api/calendar/suggestions', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, action }) })
+      if (res.ok) {
+        const r2 = await fetch(`/api/calendar/suggestions?messageId=${message?.id}`)
+        const d2 = await r2.json()
+        setEventSuggestions(d2.suggestions || [])
+      }
+    } catch {}
+  }
+
   // Render inline images if present in payload (simple preview of attachments)
   const inlineImages = () => {
     const parts = message?.payload?.parts || []
@@ -258,6 +338,58 @@ export default function MessageDetailPage() {
         )}
 
         {inlineImages()}
+      </div>
+
+      {(suggestions.length > 0 || !loadingSuggestions) && (
+        <div className="bg-card border border-border rounded-lg p-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold">Smart suggestions</h2>
+            <button onClick={generateSuggestion} disabled={loadingSuggestions} className="text-sm px-3 py-1.5 rounded bg-muted hover:bg-muted/80">{loadingSuggestions ? 'Generating...' : 'Generate'}</button>
+          </div>
+          {suggestions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No suggestions yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {suggestions.map(s => (
+                <div key={s.id} className="p-3 rounded border border-border">
+                  <div className="text-xs text-muted-foreground mb-1">To: {s.to} • Subject: {s.subject}</div>
+                  <div className="whitespace-pre-wrap text-sm">{s.body}</div>
+                  <div className="mt-2 flex gap-2">
+                    <button onClick={() => approveSuggestion(s.id, 'draft')} className="inline-flex items-center gap-1 px-2 py-1 text-sm rounded bg-muted hover:bg-muted/80"><ThumbsUp className="w-4 h-4" /> Draft</button>
+                    <button onClick={() => approveSuggestion(s.id, 'send')} className="inline-flex items-center gap-1 px-2 py-1 text-sm rounded bg-green-600 text-white hover:bg-green-700">Send</button>
+                    <button onClick={() => approveSuggestion(s.id, 'dismiss')} className="inline-flex items-center gap-1 px-2 py-1 text-sm rounded bg-destructive text-destructive-foreground"><X className="w-4 h-4" /> Dismiss</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="bg-card border border-border rounded-lg p-6">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold">Calendar suggestions</h2>
+          <button onClick={generateEvent} disabled={loadingEvents} className="inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded bg-muted hover:bg-muted/80"><CalendarPlus className="w-4 h-4" /> {loadingEvents ? 'Generating...' : 'Generate'}</button>
+        </div>
+        {eventSuggestions.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No suggestions yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {eventSuggestions.map(s => (
+              <div key={s.id} className="p-3 rounded border border-border text-sm">
+                <div className="font-medium">{s.summary}</div>
+                <div className="text-xs text-muted-foreground">{new Date(s.startISO).toLocaleString()} - {new Date(s.endISO).toLocaleString()} • {s.location || ''}</div>
+                {s.attendees && s.attendees.length > 0 && (
+                  <div className="text-xs text-muted-foreground mt-1">Attendees: {s.attendees.join(', ')}</div>
+                )}
+                <div className="mt-2 flex gap-2">
+                  <button onClick={() => approveEvent(s.id, 'create')} className="inline-flex items-center gap-1 px-2 py-1 rounded bg-green-600 text-white hover:bg-green-700"><Check className="w-4 h-4" /> Create</button>
+                  <button onClick={() => approveEvent(s.id, 'dismiss')} className="inline-flex items-center gap-1 px-2 py-1 rounded bg-destructive text-destructive-foreground"><XCircle className="w-4 h-4" /> Dismiss</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Compose + AI Reply */}

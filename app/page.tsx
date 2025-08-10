@@ -5,6 +5,8 @@ import Section from "@/components/Section";
 import FAQ from "@/components/FAQ";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import MarketingWordmark from "@/components/brand/MarketingWordmark";
+import AnimatedBackground from "@/components/AnimatedBackground";
 
 const features = [
   {
@@ -114,16 +116,18 @@ const faqItems = [
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col relative">
+      <AnimatedBackground />
       <Header />
       <main className="flex-1">
         {/* Hero Section */}
-        <Section className="py-20 text-center">
+        <Section className="py-24 text-center relative">
           <div className="max-w-4xl mx-auto">
-            <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+            <MarketingWordmark className="mb-4" />
+            <h2 className="text-2xl md:text-3xl font-medium text-gray-700 dark:text-gray-300 mb-6">
               The AI Co-Pilot for Real Estate
-            </h1>
-            <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-8">
+            </h2>
+            <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-10">
               Castra drafts emails in your tone, schedules meetings, updates your CRM, preps MLS content—so you can focus on clients.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -141,10 +145,24 @@ export default function HomePage() {
               </Link>
             </div>
           </div>
+          {/* Fun floating badges */}
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute left-[10%] top-[20%] animate-bounce-slow text-3xl">📧</div>
+            <div className="absolute right-[12%] top-[28%] animate-bounce-slower text-3xl">📅</div>
+            <div className="absolute left-[18%] bottom-[20%] animate-bounce-slower text-3xl">🏠</div>
+            <style jsx global>{`
+              .animate-bounce-slow { animation: bounce 3s infinite; }
+              .animate-bounce-slower { animation: bounce 4s infinite; }
+              @keyframes bounce {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(-8px); }
+              }
+            `}</style>
+          </div>
         </Section>
 
         {/* Features Section */}
-        <Section id="features" className="py-20 bg-gray-50 dark:bg-gray-800">
+        <Section id="features" className="py-20 bg-gray-50 dark:bg-gray-800/60">
           <div className="max-w-6xl mx-auto">
             <h2 className="text-4xl font-bold text-center mb-12">
               Everything you need to close more deals
@@ -211,7 +229,7 @@ export default function HomePage() {
         </Section>
 
         {/* FAQ Section */}
-        <Section id="faq" className="py-20 bg-gray-50 dark:bg-gray-800">
+        <Section id="faq" className="py-20 bg-gray-50 dark:bg-gray-800/60">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-4xl font-bold text-center mb-12">
               Frequently Asked Questions

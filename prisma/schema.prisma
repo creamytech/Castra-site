@@ -60,6 +60,9 @@ model User {
   memories      Memory[]
   emailThreadCaches EmailThreadCache[]
   emailLogs     EmailLog[]
+  smartReplies  SmartReply[]
+  notifications Notification[]
+  eventSuggestions EventSuggestion[]
   
   // Gmail Relations
   messages      Message[]
@@ -83,6 +86,8 @@ model Message {
   createdAt    DateTime @default(now())
   
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  smartReplies SmartReply[]
+  eventSuggestions EventSuggestion[]
   
   @@index([userId, internalDate])
   @@index([threadId])
@@ -255,4 +260,62 @@ model ToneEmbedding {
   updatedAt   DateTime @updatedAt
   
   @@index([userId])
+}
+
+model SmartReply {
+  id           String   @id @default(cuid())
+  userId       String
+  messageId    String
+  gmailDraftId String?
+  subject      String
+  to           String
+  body         String
+  status       String   @default("suggested") // suggested | drafted | sent | dismissed
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status, createdAt])
+  @@index([messageId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // e.g., smart-reply, draft, inbox
+  title     String
+  body      String?
+  link      String?  // client route to open
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+}
+
+model EventSuggestion {
+  id           String   @id @default(cuid())
+  userId       String
+  messageId    String
+  summary      String
+  description  String?
+  startISO     String
+  endISO       String
+  timeZone     String   @default("America/New_York")
+  attendees    String[] // list of attendee emails
+  location     String?
+  status       String   @default("suggested") // suggested | created | dismissed
+  createdEventId String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status, createdAt])
+  @@index([messageId])
 }
