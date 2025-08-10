@@ -3,6 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Sidebar from "@/components/Sidebar";
 import TransitionProvider from "./motion/TransitionProvider";
 import AssistantDock from "@/components/AssistantDock";
@@ -158,6 +159,11 @@ export default function AppLayout({
         isOpen={isCommandPaletteOpen}
         onClose={() => setIsCommandPaletteOpen(false)}
       />
+
+      {/* Floating Voice Widget */}
+      {isClient && <DynamicVoice />}
     </div>
   );
 }
+
+const DynamicVoice = dynamic(() => import("@/components/voice/FloatingVoiceWidget"), { ssr: false });
