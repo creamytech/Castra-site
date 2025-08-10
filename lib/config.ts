@@ -24,6 +24,15 @@ export const config = {
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
   },
 
+  // DocuSign Configuration
+  docusign: {
+    integratorKey: process.env.DOCUSIGN_INTEGRATOR_KEY,
+    userId: process.env.DOCUSIGN_USER_ID, // API User GUID
+    accountId: process.env.DOCUSIGN_ACCOUNT_ID,
+    privateKey: process.env.DOCUSIGN_PRIVATE_KEY, // base64 or raw
+    basePath: process.env.DOCUSIGN_BASE_PATH || 'https://demo.docusign.net/restapi',
+  },
+
   // Azure AD Configuration
   azure: {
     clientId: process.env.AZURE_AD_CLIENT_ID,
@@ -41,7 +50,6 @@ export const config = {
 export function validateRequiredEnvVars() {
   const errors: string[] = []
 
-  // Required for all deployments
   if (!config.database.url) {
     errors.push('DATABASE_URL or POSTGRES_URL is required')
   }
@@ -50,15 +58,6 @@ export function validateRequiredEnvVars() {
   }
   if (!config.openai.apiKey) {
     errors.push('OPENAI_API_KEY is required')
-  }
-
-  // At least one auth provider is required
-  const hasOkta = config.okta.clientId && config.okta.clientSecret && config.okta.issuer
-  const hasGoogle = config.google.clientId && config.google.clientSecret
-  const hasAzure = config.azure.clientId && config.azure.clientSecret && config.azure.tenantId
-
-  if (!hasOkta && !hasGoogle && !hasAzure) {
-    errors.push('At least one authentication provider (Okta, Google, or Azure AD) is required')
   }
 
   return errors
@@ -82,13 +81,15 @@ export function getAuthProviders() {
   return providers
 }
 
-export function isFeatureEnabled(feature: 'gmail' | 'calendar' | 'crm'): boolean {
+export function isFeatureEnabled(feature: 'gmail' | 'calendar' | 'crm' | 'docusign'): boolean {
   switch (feature) {
     case 'gmail':
     case 'calendar':
       return !!(config.google.clientId && config.google.clientSecret)
     case 'crm':
       return !!config.database.url
+    case 'docusign':
+      return !!(config.docusign.integratorKey && config.docusign.userId && config.docusign.accountId && config.docusign.privateKey)
     default:
       return false
   }

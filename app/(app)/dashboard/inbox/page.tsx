@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { RefreshCw, Search, Mail } from 'lucide-react'
 
@@ -19,6 +19,7 @@ export default function InboxPage() {
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [didAutoSync, setDidAutoSync] = useState(false)
   const router = useRouter()
 
   const fetchMessages = async (query = '') => {
@@ -27,9 +28,12 @@ export default function InboxPage() {
       if (response.ok) {
         const data = await response.json()
         setMessages(data.messages || [])
+        return (data.messages || []).length as number
       }
+      return 0
     } catch (error) {
       console.error('Failed to fetch messages:', error)
+      return 0
     } finally {
       setLoading(false)
     }
@@ -50,10 +54,20 @@ export default function InboxPage() {
   }
 
   useEffect(() => {
-    fetchMessages()
+    let mounted = true
+    ;(async () => {
+      const count = await fetchMessages()
+      // If no messages and we haven't auto-synced yet, trigger a sync
+      if (mounted && count === 0 && !didAutoSync) {
+        setDidAutoSync(true)
+        await syncMessages()
+      }
+    })()
+    return () => { mounted = false }
   }, [])
 
   const handleSearch = () => {
+    setLoading(true)
     fetchMessages(searchQuery)
   }
 
@@ -105,7 +119,7 @@ export default function InboxPage() {
             placeholder="Search emails..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             className="w-full pl-10 pr-4 py-2 bg-input border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Calendar, User, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Calendar, User, RefreshCw, Send } from 'lucide-react'
 
 interface Message {
   id: string
@@ -21,16 +21,24 @@ export default function MessageDetailPage() {
   const [message, setMessage] = useState<Message | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [draftTo, setDraftTo] = useState('')
+  const [draftSubject, setDraftSubject] = useState('')
+  const [draftBody, setDraftBody] = useState('')
+  const [drafting, setDrafting] = useState(false)
+  const [draftPreview, setDraftPreview] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchMessage = async () => {
       try {
-        // Fetch message by database ID
         const response = await fetch(`/api/gmail/sync?q=id:${params.id}`)
         if (response.ok) {
           const data = await response.json()
           if (data.messages && data.messages.length > 0) {
             setMessage(data.messages[0])
+            // Set defaults for draft
+            const fromEmail = data.messages[0].from?.match(/<([^>]+)>/)?.[1] || data.messages[0].from
+            setDraftTo(fromEmail || '')
+            setDraftSubject(`Re: ${data.messages[0].subject || ''}`.trim())
           } else {
             setError("Message not found. It may have been unsynced. Try syncing your inbox.")
           }
@@ -67,7 +75,6 @@ export default function MessageDetailPage() {
     try {
       const response = await fetch('/api/gmail/sync', { method: 'POST' })
       if (response.ok) {
-        // Retry fetching the message
         const messageResponse = await fetch(`/api/gmail/sync?q=id:${params.id}`)
         if (messageResponse.ok) {
           const data = await messageResponse.json()
@@ -82,6 +89,34 @@ export default function MessageDetailPage() {
       setError("Failed to sync inbox")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const createDraft = async () => {
+    if (!draftTo || !draftSubject || !draftBody || !message) return
+    setDrafting(true)
+    setDraftPreview(null)
+    try {
+      const res = await fetch('/api/email/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          threadId: message.threadId,
+          to: draftTo,
+          subject: draftSubject,
+          content: draftBody
+        })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setDraftPreview(data.html)
+      } else {
+        setError(data.error || 'Failed to create draft')
+      }
+    } catch (e) {
+      setError('Network error creating draft')
+    } finally {
+      setDrafting(false)
     }
   }
 
@@ -129,10 +164,10 @@ export default function MessageDetailPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="max-w-4xl mx-auto p-6 space-y-6">
       <button
         onClick={() => router.back()}
-        className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6"
+        className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
         Back to inbox
@@ -177,6 +212,25 @@ export default function MessageDetailPage() {
                 </span>
               ))}
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* AI Reply Composer */}
+      <div className="bg-card border border-border rounded-lg p-6">
+        <h2 className="text-lg font-semibold mb-3">Draft a reply</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+          <input value={draftTo} onChange={(e)=>setDraftTo(e.target.value)} className="px-3 py-2 bg-input border border-input rounded" placeholder="To" />
+          <input value={draftSubject} onChange={(e)=>setDraftSubject(e.target.value)} className="px-3 py-2 bg-input border border-input rounded" placeholder="Subject" />
+        </div>
+        <textarea value={draftBody} onChange={(e)=>setDraftBody(e.target.value)} className="w-full h-32 px-3 py-2 bg-input border border-input rounded mb-3" placeholder="Write your reply..." />
+        <button onClick={createDraft} disabled={drafting || !draftTo || !draftSubject || !draftBody} className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50">
+          <Send className="w-4 h-4" />
+          {drafting ? 'Drafting...' : 'Create Draft'}
+        </button>
+        {draftPreview && (
+          <div className="mt-4 border-t border-border pt-4">
+            <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: draftPreview }} />
           </div>
         )}
       </div>

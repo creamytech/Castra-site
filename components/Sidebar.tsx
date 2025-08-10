@@ -4,7 +4,6 @@ import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
-import { CastraWordmark } from '@/components/brand/CastraWordmark'
 
 interface NavItem {
   id: string
@@ -39,11 +38,12 @@ export default function Sidebar() {
       {/* Header */}
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
-          {!isCollapsed ? (
-            <CastraWordmark size="md" />
-          ) : (
-            <Link href="/dashboard" className="text-2xl" aria-label="Castra Home">✨</Link>
-          )}
+          <Link href="/dashboard" aria-label="Castra Home" className="flex items-center gap-2">
+            <span className="text-2xl">✨</span>
+            {!isCollapsed && (
+              <span className="font-bold text-lg text-foreground">Castra</span>
+            )}
+          </Link>
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
             className="p-2 rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors"
@@ -59,15 +59,14 @@ export default function Sidebar() {
         <ul className="space-y-2">
           {navItems.map((item) => {
             const isActive = pathname === item.href
+            const baseClasses = 'flex items-center rounded-lg transition-colors w-full'
+            const spacing = isCollapsed ? 'justify-center py-3' : 'space-x-3 px-3 py-2'
+            const activeClasses = isActive ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-accent hover:text-accent-foreground'
             return (
               <li key={item.id}>
                 <Link
                   href={item.href}
-                  className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
-                    isActive
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-foreground hover:bg-accent hover:text-accent-foreground'
-                  }`}
+                  className={`${baseClasses} ${spacing} ${activeClasses}`}
                 >
                   <span className="text-xl">{item.icon}</span>
                   {!isCollapsed && (
