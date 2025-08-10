@@ -60,6 +60,15 @@ export async function POST(
       .filter(m => m.role === "user" || m.role === "assistant")
       .map(m => ({ role: m.role as "user" | "assistant", content: m.content }));
 
+    // Fetch user memories (tone, signature, etc.)
+    const memories = await prisma.memory.findMany({ where: { userId: session.user.id } });
+    const tone = memories.find(m => m.key === "tone")?.value || "professional";
+    const signature = memories.find(m => m.key === "signature")?.value || "";
+    const userPrefs = memories
+      .filter(m => m.key !== "tone" && m.key !== "signature")
+      .map(m => `${m.key}: ${m.value}`)
+      .join("\n");
+
     // Define tools available to the assistant
     const functions = [
       {
@@ -97,6 +106,10 @@ export async function POST(
     ];
 
     const systemPrompt = `You are Castra, an AI-powered realtor co-pilot. You help real estate professionals manage their business efficiently.
+
+User tone: ${tone}
+Signature: ${signature}
+${userPrefs ? `Preferences:\n${userPrefs}` : ""}
 
 - Email: draft replies (never send), summarize threads, sync/search inbox
 - Calendar: create/manage events with validation (RFC3339 with timezone)

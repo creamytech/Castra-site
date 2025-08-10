@@ -35,6 +35,7 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [selecting, setSelecting] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [editingTitle, setEditingTitle] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState("");
@@ -53,9 +54,7 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+  useEffect(() => { scrollToBottom(); }, [messages]);
 
   // Load chat sessions on mount
   useEffect(() => {
@@ -67,11 +66,15 @@ export default function ChatPage() {
   const loadSessions = async () => {
     try {
       const response = await fetch("/api/chat/sessions");
-      if (response.ok) {
-        const data = await response.json();
-        setSessions(data.sessions || []);
-      } else {
-        addToast("Failed to load chat sessions");
+      if (!response.ok) throw new Error("Failed to load chat sessions");
+      const data = await response.json();
+      const loaded: ChatSession[] = data.sessions || [];
+      setSessions(loaded);
+      if (loaded.length > 0) {
+        // Auto-select the most recent session if none selected
+        if (!currentSession) {
+          await selectSession(loaded[0]);
+        }
       }
     } catch (error) {
       addToast("Network error loading sessions");
@@ -103,18 +106,18 @@ export default function ChatPage() {
     }
   };
 
-  const selectSession = async (session: ChatSession) => {
+  const selectSession = async (sessionItem: ChatSession) => {
+    setSelecting(true);
     try {
-      const response = await fetch(`/api/chat/sessions/${session.id}/messages`);
-      if (response.ok) {
-        const data = await response.json();
-        setCurrentSession(session);
-        setMessages(data.messages || []);
-      } else {
-        addToast("Failed to load session messages");
-      }
+      const response = await fetch(`/api/chat/sessions/${sessionItem.id}/messages`);
+      if (!response.ok) throw new Error("Failed to load session messages");
+      const data = await response.json();
+      setCurrentSession(sessionItem);
+      setMessages(data.messages || []);
     } catch (error) {
-      addToast("Network error loading messages");
+      addToast("Unable to open this chat. Please try again.");
+    } finally {
+      setSelecting(false);
     }
   };
 
