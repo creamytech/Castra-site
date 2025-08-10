@@ -2,12 +2,17 @@
 
 import { useEffect, useState } from 'react'
 import DealCard from './DealCard'
+import DraggableCard from './DraggableCard'
+import { useDroppable } from '@dnd-kit/core'
+import EmptyStage from './EmptyStage'
 
 export default function StageColumn({ stage, filters, onMove }: { stage: string; filters: any; onMove: (dealId: string, toStage: string) => void }) {
   const [items, setItems] = useState<any[]>([])
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [total, setTotal] = useState(0)
+
+  const { isOver, setNodeRef } = useDroppable({ id: stage })
 
   const load = async (reset = false) => {
     setLoading(true)
@@ -25,13 +30,15 @@ export default function StageColumn({ stage, filters, onMove }: { stage: string;
   useEffect(() => { if (page > 1) load(false) }, [page])
 
   return (
-    <div className="bg-card border border-border rounded-lg p-3 flex flex-col">
+    <div ref={setNodeRef} className={`bg-card border border-border rounded-lg p-3 flex flex-col ${isOver ? 'ring-2 ring-primary' : ''}`}>
       <div className="text-sm font-semibold mb-2">{stage} <span className="text-xs text-muted-foreground">{total}</span></div>
       <div className="space-y-2 flex-1">
         {items.map((d: any) => (
-          <DealCard key={d.id} deal={d} onMove={(id, next) => onMove(id, next)} onEmail={() => {}} onSMS={() => {}} onSchedule={() => {}} />
+          <DraggableCard key={d.id} id={d.id}>
+            <DealCard deal={d} onMove={(id, next) => onMove(id, next)} onEmail={() => {}} onSMS={() => {}} onSchedule={() => {}} />
+          </DraggableCard>
         ))}
-        {!loading && items.length === 0 && <div className="text-xs text-muted-foreground">No deals in {stage} yet.</div>}
+        {!loading && items.length === 0 && <EmptyStage stage={stage} />}
       </div>
       {loading && <div className="text-xs text-muted-foreground mt-2">Loading…</div>}
       {!loading && items.length < total && (

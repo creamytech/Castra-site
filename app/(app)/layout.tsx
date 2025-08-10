@@ -3,7 +3,6 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import dynamic from "next/dynamic";
 import Sidebar from "@/components/Sidebar";
 import TransitionProvider from "./motion/TransitionProvider";
 import AssistantDock from "@/components/AssistantDock";
@@ -13,6 +12,7 @@ import { FloatingThemeToggle } from "@/components/theme/floating-toggle";
 import { applyTheme, getInitialTheme } from "@/lib/ui/theme";
 import { CastraWordmark } from "@/components/brand/CastraWordmark";
 import NotificationsBell from "@/components/NotificationsBell";
+import dynamic from "next/dynamic";
 
 export default function AppLayout({
   children,
@@ -154,6 +154,9 @@ export default function AppLayout({
       {/* Global Assistant Dock */}
       <AssistantDock />
 
+      {/* Global Agent Panel */}
+      {isClient && <DynamicAgent />}
+
       {/* Global Command Palette */}
       <CommandPalette 
         isOpen={isCommandPaletteOpen}
@@ -165,5 +168,6 @@ export default function AppLayout({
     </div>
   );
 }
+const DynamicAgent = dynamic(() => import("@/components/agent/GlobalAgentPanel"), { ssr: false });
 
 const DynamicVoice = dynamic(() => import("@/components/voice/FloatingVoiceWidget"), { ssr: false });
