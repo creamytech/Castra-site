@@ -31,8 +31,11 @@ export default function InboxList({ q, filter, onSelect, filters }: { q: string;
       {threads.map((t: any) => (
         <div
           key={t.id}
-          className="p-3 border rounded bg-card hover:bg-muted/50 cursor-pointer flex flex-col gap-1"
+          className="p-3 border rounded bg-card hover:bg-muted/50 cursor-pointer flex flex-col gap-1 touch-manipulation"
           onClick={() => onSelect(t.id)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e)=>{ if(e.key==='Enter' || e.key===' '){ onSelect(t.id) } }}
         >
           <div className="flex items-center gap-2 min-w-0">
             <ScoreRing score={typeof t.score === 'number' ? t.score : 0} />

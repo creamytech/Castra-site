@@ -20,7 +20,12 @@ export default function PipelineBoard() {
 
   useEffect(() => { setLoading(false) }, [])
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 2,
+        tolerance: 8
+      }
+    })
   )
 
   const moveStage = async (dealId: string, nextStage: string) => {

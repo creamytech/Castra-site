@@ -40,7 +40,7 @@ export default function InboxThread({ threadId }: { threadId: string }) {
       </div>
       <div className="space-y-2">
         {(thread.messages || []).map((m: any) => (
-          <div key={m.id} className="p-2 border rounded bg-background">
+          <div key={m.id} className="p-2 border rounded bg-background overflow-auto">
             <div className="text-xs text-muted-foreground">{m.from} • {new Date(m.date || m.internalDate).toLocaleString()}</div>
             {m.bodyHtml ? (
               <div className="prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(m.bodyHtml) }} />
