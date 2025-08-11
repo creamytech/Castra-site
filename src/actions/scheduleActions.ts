@@ -1,6 +1,6 @@
 "use client";
 import { mutate } from 'swr'
-import { apiPOST } from '@/src/lib/http'
+import { apiPOST } from '@/lib/http'
 import { useToast } from '@/components/ui/ToastProvider'
 
 export function useBookSlot(leadId: string) {
