@@ -50,7 +50,11 @@ export default function ChatPage() {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   };
 
-  // Auto-scroll disabled as requested
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => { scrollToBottom(); }, [messages]);
 
   // Load chat sessions on mount
   useEffect(() => {
@@ -141,26 +145,6 @@ export default function ChatPage() {
       }
     } catch (error) {
       addToast("Network error renaming session");
-    }
-  };
-
-  const deleteSession = async (sessionId: string) => {
-    try {
-      if (!confirm('Delete this chat?')) return;
-      const res = await fetch(`/api/chat/sessions/${sessionId}`, { method: 'DELETE' });
-      if (!res.ok) {
-        const j = await res.json().catch(()=>({}));
-        addToast(j.error || 'Failed to delete session');
-        return;
-      }
-      setSessions(prev => prev.filter(s => s.id !== sessionId));
-      if (currentSession?.id === sessionId) {
-        setCurrentSession(null);
-        setMessages([]);
-      }
-      addToast('Chat deleted', 'success');
-    } catch {
-      addToast('Network error deleting session');
     }
   };
 
@@ -351,13 +335,6 @@ export default function ChatPage() {
                             title="Rename session"
                           >
                             ✎
-                          </button>
-                          <button
-                            onClick={() => deleteSession(session.id)}
-                            className="ml-1 p-1 text-xs opacity-70 hover:opacity-100 transition-opacity"
-                            title="Delete session"
-                          >
-                            🗑
                           </button>
                         </div>
                       )}
