@@ -37,6 +37,14 @@ const VENDOR_KEYWORDS = [
   'sponsorship',
 ]
 
+const JOB_PITCH_KEYWORDS = [
+  'resume', 'cv', 'candidate', 'job', 'position', 'apply', 'application', 'hiring'
+]
+
+const RECEIPT_NOTIFICATION_KEYWORDS = [
+  'receipt', 'notification', 'no-reply', 'noreply', 'do-not-reply'
+]
+
 const TIME_KEYWORDS = [
   'tour',
   'showing',
@@ -101,6 +109,12 @@ export function applyInboxRules(input: {
   const vendorHit = VENDOR_KEYWORDS.some(k => subject.includes(k) || text.includes(k))
   if (vendorHit) reasons.push('vendor/newsletter-signals')
 
+  const jobPitchHit = JOB_PITCH_KEYWORDS.some(k => subject.includes(k) || text.includes(k))
+  if (jobPitchHit) reasons.push('job-pitch')
+
+  const receiptHit = RECEIPT_NOTIFICATION_KEYWORDS.some(k => subject.includes(k) || text.includes(k))
+  if (receiptHit) reasons.push('receipt/notification')
+
   // Time ask heuristics
   const timeAsk = TIME_KEYWORDS.some(k => subject.includes(k) || text.includes(k))
   if (timeAsk) {
@@ -127,19 +141,32 @@ export function applyInboxRules(input: {
     conflicts.push('vendor+lead-signals')
   }
 
-  // Compute simple rules score 0-100
+  // Compute rules score per spec
   let rulesScore = 0
-  if (portal) rulesScore += 35
-  if (timeAsk) rulesScore += 25
-  if (phone) rulesScore += 20
+  // Additives
+  const tourVerb = /(tour|showing|schedule|see|view)/.test(subject) || /(tour|showing|schedule|see|view)/.test(text)
+  if (tourVerb) rulesScore += 25
   if (address) rulesScore += 10
-  if (price) rulesScore += 5
-  if (vendorHit) rulesScore -= 35
+  if (timeAsk) rulesScore += 10
+  if (price) rulesScore += 10
+  if (phone) rulesScore += 15
+  if (portal) rulesScore += 15
+  // Demoters
+  if (vendorHit) rulesScore -= 25
+  if (jobPitchHit) rulesScore -= 20
+  if (receiptHit) rulesScore -= 20
   rulesScore = Math.max(0, Math.min(100, rulesScore))
 
-  // Decide isLead based on signals
-  const isLead = rulesScore >= 50 && !vendorHit
-  const uncertainty = conflicts.length > 0 || (rulesScore >= 40 && rulesScore < 60)
+  // Force override: tour/showing verb and any context
+  const anyContext = !!(address || timeAsk || price || phone)
+  if (tourVerb && anyContext) {
+    rulesScore = Math.max(85, rulesScore)
+    reasons.push('override:tour+context')
+  }
+
+  // Decide isLead based on thresholds
+  const isLead = rulesScore >= 80 && !vendorHit
+  const uncertainty = conflicts.length > 0 || (rulesScore >= 58 && rulesScore <= 62)
 
   return { isLead, reasons, extracted, conflicts, rulesScore, uncertainty }
 }
