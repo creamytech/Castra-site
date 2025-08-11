@@ -2,6 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useState, useEffect, useRef } from "react";
+import { apiFetch } from '@/lib/http'
 import Toast from "@/components/Toast";
 import FadeIn from "@/components/ui/FadeIn";
 import { motion, AnimatePresence } from "framer-motion";
@@ -50,11 +51,7 @@ export default function ChatPage() {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   };
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => { scrollToBottom(); }, [messages]);
+  // Disable auto-scroll to bottom
 
   // Load chat sessions on mount
   useEffect(() => {
@@ -65,17 +62,12 @@ export default function ChatPage() {
 
   const loadSessions = async () => {
     try {
-      const response = await fetch("/api/chat/sessions");
+      const response = await apiFetch("/api/chat/sessions");
       if (!response.ok) throw new Error("Failed to load chat sessions");
       const data = await response.json();
       const loaded: ChatSession[] = data.sessions || [];
       setSessions(loaded);
-      if (loaded.length > 0) {
-        // Auto-select the most recent session if none selected
-        if (!currentSession) {
-          await selectSession(loaded[0]);
-        }
-      }
+      // Do not auto-select; wait for user to choose
     } catch (error) {
       addToast("Network error loading sessions");
     }
@@ -83,7 +75,7 @@ export default function ChatPage() {
 
   const createNewSession = async (title: string = "Draft...") => {
     try {
-      const response = await fetch("/api/chat/sessions", {
+      const response = await apiFetch("/api/chat/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title })
@@ -109,7 +101,7 @@ export default function ChatPage() {
   const selectSession = async (sessionItem: ChatSession) => {
     setSelecting(true);
     try {
-      const response = await fetch(`/api/chat/sessions/${sessionItem.id}/messages`);
+      const response = await apiFetch(`/api/chat/sessions/${sessionItem.id}/messages`);
       if (!response.ok) throw new Error("Failed to load session messages");
       const data = await response.json();
       setCurrentSession(sessionItem);
@@ -123,7 +115,7 @@ export default function ChatPage() {
 
   const renameSession = async (sessionId: string, newTitle: string) => {
     try {
-      const response = await fetch(`/api/chat/sessions/${sessionId}`, {
+      const response = await apiFetch(`/api/chat/sessions/${sessionId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: newTitle })
@@ -197,7 +189,7 @@ export default function ChatPage() {
 
     try {
       // Call the session-specific message API
-      const response = await fetch(`/api/chat/sessions/${sessionToUse.id}/message`, {
+      const response = await apiFetch(`/api/chat/sessions/${sessionToUse.id}/message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -335,6 +327,21 @@ export default function ChatPage() {
                             title="Rename session"
                           >
                             ✎
+                          </button>
+                          <button
+                            onClick={async()=>{
+                              if (!confirm('Delete this chat?')) return;
+                              try {
+                                const res = await apiFetch(`/api/chat/sessions/${session.id}`, { method: 'DELETE' });
+                                if (!res.ok) { const j = await res.json().catch(()=>({})); addToast(j.error||'Failed to delete'); return; }
+                                setSessions(prev=>prev.filter(s=>s.id!==session.id));
+                                if (currentSession?.id===session.id){ setCurrentSession(null); setMessages([]); }
+                              } catch { addToast('Network error deleting session'); }
+                            }}
+                            className="ml-1 p-1 text-xs opacity-70 hover:opacity-100 transition-opacity"
+                            title="Delete session"
+                          >
+                            🗑
                           </button>
                         </div>
                       )}
