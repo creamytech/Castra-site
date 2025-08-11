@@ -22,7 +22,6 @@ export default function Sidebar() {
     { id: 'dashboard', label: 'Dashboard', icon: '🏠', href: '/dashboard' },
     { id: 'chat', label: 'AI Chat', icon: '💬', href: '/chat' },
     { id: 'inbox', label: 'Inbox', icon: '📧', href: '/dashboard/inbox' },
-    { id: 'smart', label: 'Smart Inbox', icon: '✨', href: '/dashboard/inbox/smart' },
     { id: 'crm', label: 'CRM', icon: '👥', href: '/crm' },
     { id: 'calendar', label: 'Calendar', icon: '📅', href: '/calendar' },
     { id: 'marketing', label: 'Marketing', icon: '📣', href: '/marketing' },

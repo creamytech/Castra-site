@@ -75,10 +75,19 @@ export default function CalendarPage() {
     setEventsLoading(true);
     setEventsError(null);
     try {
-      const response = await fetch("/api/calendar/upcoming");
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York'
+      const response = await fetch(`/api/calendar/upcoming?max=50&tz=${encodeURIComponent(tz)}`);
       if (response.ok) {
         const data = await response.json();
-        setEvents(data.events || []);
+        const mapped = (data.events || []).map((i: any) => ({
+          id: i.id,
+          summary: i.summary || '(no title)',
+          startISO: i.start?.dateTime || i.start?.date || '',
+          endISO: i.end?.dateTime || i.end?.date || '',
+          attendees: [],
+          description: ''
+        }))
+        setEvents(mapped);
       } else {
         setEventsError("Failed to fetch events");
         addToast("Failed to fetch upcoming events");
