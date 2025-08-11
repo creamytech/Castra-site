@@ -29,7 +29,7 @@ export const GET = withAuth(async ({ req, ctx }) => {
           orderBy: { lastSyncedAt: 'desc' },
           skip: (page - 1) * limit,
           take: limit,
-          include: { deal: true, messages: { select: { intent: true, snippet: true, bodyText: true, from: true, date: true }, orderBy: { date: 'desc' }, take: 1 } },
+          include: { deal: true, messages: { select: { intent: true, snippet: true, bodyText: true, from: true, date: true, internalRefs: true }, orderBy: { date: 'desc' }, take: 1 } },
         })
       ])
       const mapIntentToStatus = (intent?: string | null) => {
@@ -53,7 +53,9 @@ export const GET = withAuth(async ({ req, ctx }) => {
         const combined = `${last?.snippet || ''} ${last?.bodyText || ''}`
         const extracted = t.extracted || extract(combined)
         const reasons = (Array.isArray(t.reasons) ? t.reasons : [t.reasons]).filter(Boolean)
-        return { id: t.id, userId: t.userId, subject: t.subject, lastSyncedAt: t.lastSyncedAt, lastMessageAt: last?.date ?? t.lastSyncedAt, deal: t.deal || null, status, score, reasons, extracted, preview: last?.snippet || last?.bodyText || '' }
+        const labelIds = (last?.internalRefs as any)?.labelIds || []
+        const unread = Array.isArray(labelIds) ? labelIds.includes('UNREAD') : false
+        return { id: t.id, userId: t.userId, subject: t.subject, lastSyncedAt: t.lastSyncedAt, lastMessageAt: last?.date ?? t.lastSyncedAt, deal: t.deal || null, status, score, reasons, extracted, preview: last?.snippet || last?.bodyText || '', unread }
       }).sort((a: any, b: any) => new Date(b.lastMessageAt || b.lastSyncedAt).getTime() - new Date(a.lastMessageAt || a.lastSyncedAt).getTime())
       return NextResponse.json({ total, page, limit, threads })
     }

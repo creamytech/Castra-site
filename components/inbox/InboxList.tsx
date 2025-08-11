@@ -18,8 +18,13 @@ export default function InboxList({ q, filter, onSelect, filters }: { q: string;
   if (typeof filters?.minScore === 'number') threads = threads.filter((t: any) => (t.score ?? 0) >= filters.minScore)
   if (filters?.hasPhone) threads = threads.filter((t: any) => !!t.extracted?.phone)
   if (filters?.hasPrice) threads = threads.filter((t: any) => !!t.extracted?.price)
-  // ensure most recent first on client too, in case
-  threads.sort((a: any, b: any) => new Date(b.lastMessageAt || b.lastSyncedAt).getTime() - new Date(a.lastMessageAt || a.lastSyncedAt).getTime())
+  // Sorting: latest (default), best score
+  const sortBy = filters?.sortBy || 'latest'
+  if (sortBy === 'latest') {
+    threads.sort((a: any, b: any) => new Date(b.lastMessageAt || b.lastSyncedAt).getTime() - new Date(a.lastMessageAt || a.lastSyncedAt).getTime())
+  } else if (sortBy === 'score') {
+    threads.sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0))
+  }
 
   return (
     <div className="space-y-2">
@@ -33,7 +38,7 @@ export default function InboxList({ q, filter, onSelect, filters }: { q: string;
       {threads.map((t: any) => (
         <div
           key={t.id}
-          className="p-3 border rounded bg-card hover:bg-muted/50 cursor-pointer flex flex-col gap-1 touch-manipulation"
+          className={`p-3 border rounded cursor-pointer flex flex-col gap-1 touch-manipulation ${t.unread ? 'bg-primary/5 hover:bg-primary/10 border-primary/30' : 'bg-card hover:bg-muted/50'}`}
           onClick={() => onSelect(t.id)}
           role="button"
           tabIndex={0}
