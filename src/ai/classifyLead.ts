@@ -23,7 +23,7 @@ const LeadSchema = z.object({
 export async function classifyLead(input: { subject: string; body: string; headers?: Record<string, string> }) {
   const system = 'You classify REAL ESTATE EMAILS. Determine if it\'s a buyer/seller/renter lead vs vendor/newsletter/other. Extract fields. Return STRICT JSON only.'
   const examples = [
-    { isLead: true, score: 92, reason: 'tour request; phone; budget; address', fields: { phone: '(555) 202-8899', address: '123 Maple St', price: '950k', sourceType: 'buyer' } },
+    { isLead: true, score: 92, reason: 'tour request; address; budget', fields: { address: '220 SE 2nd St', price: '100,000', sourceType: 'buyer' } },
     { isLead: false, score: 5, reason: 'vendor pitch/newsletter', fields: {} }
   ]
   const prompt = `Subject: ${input.subject}\n\n${input.body}\n\nReturn JSON only. Examples:\n${examples.map((e) => JSON.stringify(e)).join('\n')}`

@@ -18,7 +18,22 @@ export function blend(rule: number, llm: number) {
   return Math.round(Math.min(100, rule + Math.round(llm * 0.4)))
 }
 
-export function decideStatus({ score, llmReason }: { score: number; llmReason?: string }) {
+export function hasTourIntent(text: string) {
+  return /\b(schedule|tour|showing|see|view)\b/i.test(text)
+}
+
+export function hasAnyContext(text: string) {
+  const addr = /\b\d+\s+[A-Za-z].+?\b(St|Ave|Rd|Blvd|Dr|Ln|Ct)\b/i.test(text)
+  const time = /(today|tomorrow|sat|sun|mon|tue|wed|thu|fri|weekend|\b\d{1,2}(:\d{2})?\s?(am|pm)\b)/i.test(text)
+  const budget = /(\$?\d[\d,]*\s?(k|mm|million)?|\$\d[\d,]*)/i.test(text)
+  const phone = /\b\d{3}[-.)\s]?\d{3}[-.\s]?\d{4}\b/.test(text)
+  return addr || time || budget || phone
+}
+
+export function decideStatus({ score, llmReason, subject = '', body = '' }: { score: number; llmReason?: string; subject?: string; body?: string }) {
+  const txt = `${subject}\n${body}`
+  // Intent override: explicit tour/showing with context becomes lead regardless of score
+  if (hasTourIntent(txt) && hasAnyContext(txt)) return 'lead'
   const reason = (llmReason || '').toLowerCase()
   if (/vendor|newsletter/.test(reason) && score < 60) return 'no_lead'
   if (score >= 80) return 'lead'
