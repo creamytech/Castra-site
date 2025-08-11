@@ -2,7 +2,7 @@
 import React from 'react'
 import { STATUS_LABEL, type Status } from './InboxNew'
 
-type Filter = Partial<{ status: Status[]; source: string[]; minScore: number; unreadOnly: boolean; hasPhone: boolean; hasPrice: boolean }>
+type Filter = Partial<{ status: Status[]; source: string[]; minScore: number; unreadOnly: boolean; hasPhone: boolean; hasPrice: boolean; sortBy: 'latest' | 'score' }>
 
 export default function FiltersSidebar({ value, onChange }: { value: Filter; onChange: (f: Filter) => void }) {
   const toggleArray = (key: keyof Filter, v: string) => {
