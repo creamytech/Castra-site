@@ -1,5 +1,5 @@
 import useSWR from 'swr'
-import { apiGET } from '@/src/lib/http'
+import { apiGET } from '@/lib/http'
 
 export type ThreadBundle = {
   lead: any
