@@ -19,6 +19,11 @@ export default function PipelineBoard() {
   const [drawerData, setDrawerData] = useState<{ emails: any[]; events: any[] }>({ emails: [], events: [] })
 
   useEffect(() => { setLoading(false) }, [])
+  useEffect(() => {
+    const onRefresh = () => setRefreshKey(Date.now())
+    if (typeof window !== 'undefined') window.addEventListener('deals:refresh', onRefresh)
+    return () => { if (typeof window !== 'undefined') window.removeEventListener('deals:refresh', onRefresh) }
+  }, [])
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {

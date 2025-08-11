@@ -17,7 +17,7 @@ export default function InboxThread({ threadId }: { threadId: string }) {
   const aiDraft = async () => {
     const lastId = thread?.messages?.slice(-1)?.[0]?.id
     if (!lastId) return
-    const res = await apiFetch(`/api/inbox/messages/${lastId}/ai-draft`, { method: 'POST' })
+    const res = await apiFetch(`/api/inbox/messages/${lastId}/ai-draft`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) })
     const j = await res.json()
     if (res.ok) setDraft(j.draft || '')
   }
@@ -25,7 +25,8 @@ export default function InboxThread({ threadId }: { threadId: string }) {
   const sendEmail = async () => {
     const lastId = thread?.messages?.slice(-1)?.[0]?.id
     if (!lastId) return
-    await apiFetch(`/api/inbox/messages/${lastId}/reply`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel: 'email', draft, to, subject, dealId: thread?.dealId }) })
+    const res = await apiFetch(`/api/inbox/messages/${lastId}/reply`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel: 'email', draft, to, subject, dealId: thread?.dealId }) })
+    if (res.ok) setDraft('')
     mutate()
   }
 

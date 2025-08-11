@@ -28,6 +28,7 @@ export default function DailyBrief() {
     const res = await fetch('/api/daily-brief', { cache: 'no-store' })
     const data = await res.json()
     if (res.ok) setDrafts(data.items || [])
+    else setDrafts([])
     setLoading(false)
   }
 

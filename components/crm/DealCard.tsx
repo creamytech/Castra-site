@@ -32,7 +32,7 @@ export default function DealCard({ deal, onMove, onEmail, onSMS, onSchedule, onO
         <button onClick={async () => { try { const r = await fetch(`/api/deals/${deal.id}/quick-action`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'AI_SUGGEST_NEXT' }) }); const j = await r.json(); if (r.ok) alert(`Suggestion: ${j.suggestion}`) } catch {} }} className="text-xs px-2 py-1 rounded bg-muted hover:bg-muted/80 inline-flex items-center gap-1"><Sparkles className="w-3 h-3" /> AI</button>
         <div className="ml-auto" />
         <button disabled={deal.stage === 'CLOSED' || deal.stage === 'LOST'} onClick={(e)=>{ e.stopPropagation(); onMove?.(deal.id, nextStage) }} className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center gap-1"><ArrowRight className="w-3 h-3" /> {nextStage}</button>
-        <button onClick={async (e)=>{ e.stopPropagation(); if (!confirm('Delete deal?')) return; await fetch(`/api/deals/${deal.id}`, { method: 'DELETE' }); }} className="text-xs px-2 py-1 rounded bg-destructive text-destructive-foreground inline-flex items-center gap-1"><Trash2 className="w-3 h-3" /> Delete</button>
+        <button onClick={async (e)=>{ e.stopPropagation(); if (!confirm('Delete deal?')) return; const r = await fetch(`/api/deals/${deal.id}`, { method: 'DELETE' }); if (r.ok && typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('deals:refresh')); }} className="text-xs px-2 py-1 rounded bg-destructive text-destructive-foreground inline-flex items-center gap-1"><Trash2 className="w-3 h-3" /> Delete</button>
       </div>
     </div>
   )
