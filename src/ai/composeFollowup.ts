@@ -12,8 +12,8 @@ const DraftOut = z.object({
   proposedTimes: z.array(z.object({ start: z.string(), end: z.string() })).max(3)
 })
 
-export async function composeFollowup(input: { subject: string; snippet: string; fields: any; agent?: { name?: string; phone?: string }; styleGuide?: any }) {
-  const sys = `You draft follow-up emails for real-estate inquiries. Be brief, professional, action-oriented. No promises or legal advice. Only include links if explicitly present and safe in the original. Avoid echoing sensitive data. Use this style guide if provided: ${JSON.stringify(input.styleGuide||{})}. Return STRICT JSON.`
+export async function composeFollowup(input: { subject: string; snippet: string; fields: any; agent?: { name?: string; phone?: string } }) {
+  const sys = 'You draft follow-up emails for real-estate inquiries. Be brief, professional, action-oriented. No promises or legal advice. Only include links if explicitly present and safe in the original. Avoid echoing sensitive data. Return STRICT JSON.'
   const ctx = `Original Subject: ${input.subject}\nSnippet: ${input.snippet}\nExtracted: ${JSON.stringify(input.fields || {})}\nAgent: ${JSON.stringify(input.agent || {})}`
 
   const resp = await (client as any).responses.create({ model: 'gpt-5.1', input: [{ role: 'system', content: sys }, { role: 'user', content: ctx }], temperature: 0.3 })
