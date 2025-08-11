@@ -29,6 +29,7 @@ export default function Sidebar() {
     { id: 'documents', label: 'Documents', icon: '📄', href: '/documents' },
     { id: 'reports', label: 'Reports', icon: '📊', href: '/reports' },
     { id: 'brief', label: 'Daily Brief', icon: '🗒', href: '/daily-brief' },
+    { id: 'profile', label: 'Profile', icon: '👤', href: '/settings/profile' },
     { id: 'admin', label: 'Admin', icon: '⚙️', href: '/admin' },
   ]
 
