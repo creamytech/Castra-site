@@ -2,7 +2,7 @@
 
 import useSWR from 'swr'
 import { apiFetch } from '@/lib/http'
-import { STATUS_LABEL } from './InboxNew'
+import { STATUS_LABEL, ScoreRing } from './InboxNew'
 
 const fetcher = (url: string) => apiFetch(url).then(r => r.json())
 
@@ -29,19 +29,27 @@ export default function InboxList({ q, filter, onSelect, filters }: { q: string;
         </div>
       )}
       {threads.map((t: any) => (
-        <div key={t.id} className="p-3 border rounded bg-card hover:bg-muted/50 cursor-pointer" onClick={() => onSelect(t.id)}>
-          <div className="flex items-center gap-2">
+        <div
+          key={t.id}
+          className="p-3 border rounded bg-card hover:bg-muted/50 cursor-pointer flex flex-col gap-1"
+          onClick={() => onSelect(t.id)}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <ScoreRing score={typeof t.score === 'number' ? t.score : 0} />
             <div className="font-medium text-sm truncate flex-1">{t.subject || '(No subject)'}</div>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
             {t.status && (
               <span className="badge" data-status={t.status}>
                 {STATUS_LABEL[t.status as keyof typeof STATUS_LABEL] || t.status}
               </span>
             )}
-            {typeof t.score === 'number' && (
-              <span className="chip">Score {t.score}</span>
-            )}
+            {t.source && <span className="chip">{t.source}</span>}
+            {(t.reasons || []).slice(0, 3).map((r: string, i: number) => (
+              <span key={i} className="chip">{String(r).toLowerCase()}</span>
+            ))}
           </div>
-          <div className="text-xs text-muted-foreground">{t.preview || ''}</div>
+          {!!t.preview && <div className="text-xs text-muted-foreground truncate">{t.preview}</div>}
           <div className="text-[10px] text-muted-foreground">{new Date(t.lastSyncedAt).toLocaleString()}</div>
         </div>
       ))}
