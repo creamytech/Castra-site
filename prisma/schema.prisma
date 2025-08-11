@@ -241,6 +241,10 @@ model EmailThread {
   subject      String?
   lastSyncedAt DateTime      @default(now())
   dealId       String?
+  status       String?
+  score        Int?
+  reasons      Json?
+  extracted    Json?
   messages     EmailMessage[]
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)

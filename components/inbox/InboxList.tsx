@@ -2,6 +2,7 @@
 
 import useSWR from 'swr'
 import { apiFetch } from '@/lib/http'
+import { STATUS_LABEL } from './InboxNew'
 
 const fetcher = (url: string) => apiFetch(url).then(r => r.json())
 
@@ -10,7 +11,7 @@ export default function InboxList({ q, filter, onSelect }: { q: string; filter: 
   if (q) params.set('q', q)
   if (filter === 'hasDeal') params.set('hasDeal', 'true')
   if (filter === 'unlinked') params.set('hasDeal', 'false')
-  const { data, mutate, isLoading } = useSWR(`/api/inbox/threads?${params.toString()}`, fetcher, { refreshInterval: 60000, revalidateOnFocus: true })
+  const { data, mutate, isLoading } = useSWR(`/api/inbox/threads?${params.toString()}`, fetcher, { refreshInterval: 30000, revalidateOnFocus: true })
   const threads = data?.threads || []
 
   return (
@@ -20,10 +21,13 @@ export default function InboxList({ q, filter, onSelect }: { q: string; filter: 
         <div key={t.id} className="p-3 border rounded bg-card hover:bg-muted/50 cursor-pointer" onClick={() => onSelect(t.id)}>
           <div className="flex items-center gap-2">
             <div className="font-medium text-sm truncate flex-1">{t.subject || '(No subject)'}</div>
-            {t.lastIntent && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-foreground">
-                {t.lastIntent.replaceAll('_',' ').toLowerCase()}
+            {t.status && (
+              <span className="badge" data-status={t.status}>
+                {STATUS_LABEL[t.status as keyof typeof STATUS_LABEL] || t.status}
               </span>
+            )}
+            {typeof t.score === 'number' && (
+              <span className="chip">Score {t.score}</span>
             )}
           </div>
           <div className="text-xs text-muted-foreground">{new Date(t.lastSyncedAt).toLocaleString()}</div>

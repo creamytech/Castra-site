@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import InboxList from '@/components/inbox/InboxList'
 import InboxThread from '@/components/inbox/InboxThread'
 import ThreadSidebar from '@/components/inbox/ThreadSidebar'
@@ -9,6 +9,8 @@ export default function DashboardInboxPage() {
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState('all')
   const [threadId, setThreadId] = useState<string>('')
+  // Auto-sync when tab opens
+  useEffect(() => { fetch('/api/inbox/sync', { method: 'POST' }) }, [])
 
   return (
     <div className="p-6 grid grid-cols-1 md:grid-cols-5 gap-4">

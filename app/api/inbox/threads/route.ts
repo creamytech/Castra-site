@@ -29,17 +29,32 @@ export const GET = withAuth(async ({ req, ctx }) => {
           orderBy: { lastSyncedAt: 'desc' },
           skip: (page - 1) * limit,
           take: limit,
-          include: { deal: true, messages: { select: { intent: true }, orderBy: { date: 'desc' }, take: 1 } },
+          include: { deal: true, messages: { select: { intent: true, snippet: true, bodyText: true, from: true, date: true }, orderBy: { date: 'desc' }, take: 1 } },
         })
       ])
-      const threads = rows.map((t: any) => ({
-        id: t.id,
-        userId: t.userId,
-        subject: t.subject,
-        lastSyncedAt: t.lastSyncedAt,
-        deal: t.deal || null,
-        lastIntent: t.messages?.[0]?.intent || null,
-      }))
+      const mapIntentToStatus = (intent?: string | null) => {
+        const i = (intent || '').toUpperCase()
+        if (i.includes('OFFER')) return 'lead'
+        if (i.includes('SHOWING') || i.includes('INTEREST')) return 'potential'
+        if (i.includes('SPAM') || i.includes('UNSUB')) return 'no_lead'
+        return 'follow_up'
+      }
+      const scoreFor = (status: string) => status === 'lead' ? 85 : status === 'potential' ? 70 : status === 'no_lead' ? 10 : 55
+      const extract = (txt: string) => {
+        const phone = (txt.match(/\b\+?1?\s*\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/) || [])[0]
+        const price = (txt.match(/\b(?:\$\s?)?\d{2,3}(?:,\d{3})*(?:\s?k|\s?mm|\s?million)?\b/i) || [])[0]
+        const addr = (txt.match(/\b\d+\s+[A-Za-z].+?(St|Ave|Rd|Blvd|Dr|Ln|Ct)\b/i) || [])[0]
+        return { phone, price, address: addr }
+      }
+      const threads = rows.map((t: any) => {
+        const last = t.messages?.[0]
+        const status = t.status || mapIntentToStatus(last?.intent)
+        const score = typeof t.score === 'number' ? t.score : scoreFor(status)
+        const combined = `${last?.snippet || ''} ${last?.bodyText || ''}`
+        const extracted = t.extracted || extract(combined)
+        const reasons = (Array.isArray(t.reasons) ? t.reasons : [t.reasons]).filter(Boolean)
+        return { id: t.id, userId: t.userId, subject: t.subject, lastSyncedAt: t.lastSyncedAt, deal: t.deal || null, status, score, reasons, extracted }
+      })
       return NextResponse.json({ total, page, limit, threads })
     }
 

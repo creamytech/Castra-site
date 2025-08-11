@@ -60,6 +60,15 @@ export const POST = withAuth(async ({ ctx }) => {
       })
 
       const intent = classify(subject || '', snippet || '')
+      const status = intent.includes('OFFER') ? 'lead' : intent.includes('SHOWING') || intent.includes('INTEREST') ? 'potential' : intent.includes('SPAM') ? 'no_lead' : 'follow_up'
+      const score = status === 'lead' ? 85 : status === 'potential' ? 70 : status === 'no_lead' ? 10 : 55
+      const extracted = (() => {
+        const phone = (snippet.match(/\b\+?1?\s*\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/) || [])[0]
+        const price = (snippet.match(/\b(?:\$\s?)?\d{2,3}(?:,\d{3})*(?:\s?k|\s?mm|\s?million)?\b/i) || [])[0]
+        const addr = (snippet.match(/\b\d+\s+[A-Za-z].+?(St|Ave|Rd|Blvd|Dr|Ln|Ct)\b/i) || [])[0]
+        return { phone, price, address: addr }
+      })()
+
       await prisma.emailMessage.upsert({
         where: { id: id! },
         create: {
@@ -69,6 +78,9 @@ export const POST = withAuth(async ({ ctx }) => {
         },
         update: { snippet, bodyHtml: bodyHtml || null, bodyText: bodyText || null, internalRefs: JSON.parse(JSON.stringify({ labelIds: data.labelIds })), intent },
       })
+
+      // Persist computed status/score on thread for UI badges
+      await prisma.emailThread.update({ where: { id: threadId }, data: { status, score, reasons: [intent], extracted } })
     }
 
     const counts = {
