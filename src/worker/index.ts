@@ -68,7 +68,7 @@ createWorker(async (job) => {
     const { leadId } = job.data as { leadId: string }
     const lead = await (prisma as any).lead.findUnique({ where: { id: leadId }, include: { user: true } })
     if (!lead) return { ok: false }
-    const composed = await (await import('../ai/composeFollowup')).composeFollowup({ subject: lead.subject ?? lead.title ?? '', snippet: lead.bodySnippet ?? lead.description ?? '', fields: (lead as any).attrs ?? {}, agent: { name: (lead.user as any)?.meta?.agentName, phone: (lead.user as any)?.phone } })
+    const composed = await (await import('../ai/composeFollowup')).composeFollowup({ subject: lead.subject ?? lead.title ?? '', snippet: lead.bodySnippet ?? lead.description ?? '', fields: (lead as any).attrs ?? {}, agent: { name: (lead.user as any)?.fullName || (lead.user as any)?.name, phone: (lead.user as any)?.phone }, styleGuide: (lead.user as any)?.styleGuide })
     await (prisma as any).draft.create({ data: { userId: lead.userId, leadId: lead.id, threadId: lead.threadId ?? '', subject: composed.subject, bodyText: composed.bodyText, followupType: composed.followupType, tone: composed.tone, callToAction: composed.callToAction, proposedTimes: composed.proposedTimes as any, meta: { model: composed.model, reasons: (lead as any).reasons, score: (lead as any).score } } })
     await (prisma as any).eventLog?.create?.({ data: { userId: lead.userId, type: 'draft_created', meta: { leadId } } })
     return { ok: true }
