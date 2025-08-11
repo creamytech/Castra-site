@@ -45,7 +45,9 @@ export function extractEntities(subject: string, body: string): ExtractedEntitie
   const address = hay.match(addressHint)?.[0]?.trim()
   const beds = (() => { const m = hay.match(bedsRegex); return m ? Number(m[1]) : undefined })()
   const baths = (() => { const m = hay.match(bathsRegex); return m ? Number(m[1]) : undefined })()
-  const tokens = [...hay.matchAll(timeToken)].map(m => m[0])
+  const mm = hay.matchAll(timeToken)
+  const tokens: string[] = []
+  for (const m of mm as any) { tokens.push(m[0]) }
   const windows = tokens.length ? [{ text: tokens.join(' ') }] : []
   return { email, phone, price, address, beds, baths, timeline: tokens.join(' ') || undefined, windows }
 }

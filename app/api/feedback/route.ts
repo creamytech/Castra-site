@@ -7,18 +7,31 @@ export const dynamic = 'force-dynamic'
 // Accepts free-text improvements and binary signals
 export const POST = withAuth(async ({ req, ctx }) => {
   try {
-    const { threadId, messageId, kind, good, bad, note } = await req.json().catch(() => ({}))
+    const { threadId, messageId, kind, good, bad, note, dealId } = await req.json().catch(() => ({}))
     if (!threadId && !messageId && !note) return NextResponse.json({ error: 'missing payload' }, { status: 400 })
-    await prisma.activity.create({ data: {
-      userId: ctx.session.user.id,
-      orgId: ctx.orgId,
-      dealId: null,
-      kind: 'AI_SUMMARY',
-      channel: 'feedback',
-      subject: kind || (good ? 'good' : (bad ? 'bad' : 'note')),
-      body: note || '',
-      meta: { threadId, messageId, good: !!good, bad: !!bad }
-    } })
+
+    if (dealId && typeof dealId === 'string') {
+      await prisma.activity.create({ data: {
+        userId: ctx.session.user.id,
+        orgId: ctx.orgId,
+        dealId,
+        kind: 'AI_SUMMARY',
+        channel: 'feedback',
+        subject: kind || (good ? 'good' : (bad ? 'bad' : 'note')),
+        body: note || '',
+        meta: { threadId, messageId, good: !!good, bad: !!bad }
+      } })
+    } else {
+      // Store as a notification when no deal context is available
+      await prisma.notification.create({ data: {
+        userId: ctx.session.user.id,
+        orgId: ctx.orgId,
+        type: 'feedback',
+        title: kind || (good ? 'good' : (bad ? 'bad' : 'note')),
+        body: note || undefined,
+        link: threadId ? `/dashboard/inbox/${threadId}` : undefined
+      } })
+    }
     return NextResponse.json({ ok: true })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'failed' }, { status: 500 })

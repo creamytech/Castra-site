@@ -26,7 +26,7 @@ export function filterUnsafeLinks(htmlOrText: string): string {
       try {
         const u = new URL(url)
         const host = (u.hostname || '').toLowerCase()
-        if ([...ALLOW_DOMAINS].some(d => host === d || host.endsWith(`.${d}`))) return url
+        if (isAllowlistedHost(host)) return url
         if (DENY_PATTERNS.some(rx => rx.test(host) || rx.test(url))) return ''
         return ''
       } catch { return '' }
@@ -35,6 +35,16 @@ export function filterUnsafeLinks(htmlOrText: string): string {
   } catch {
     return htmlOrText
   }
+}
+
+function isAllowlistedHost(host: string): boolean {
+  if (ALLOW_DOMAINS.has(host)) return true
+  const arr = Array.from(ALLOW_DOMAINS)
+  for (let i = 0; i < arr.length; i++) {
+    const d = arr[i]
+    if (host.endsWith('.' + d)) return true
+  }
+  return false
 }
 
 export async function getStyleGuide(userId: string) {
