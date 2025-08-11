@@ -72,6 +72,33 @@
     --ring: 263.4 70% 50.4%;
   }
 
+  /* Theme palettes (using data-theme) */
+  :root[data-theme="classic"] { }
+  :root[data-theme="sunset"] {
+    --primary: 20 90% 55%;
+    --ring: 20 90% 55%;
+    --background: 20 20% 6%;
+    --card: 20 20% 8%;
+  }
+  :root[data-theme="ocean"] {
+    --primary: 199 89% 48%;
+    --ring: 199 89% 48%;
+    --background: 210 40% 6%;
+    --card: 210 40% 8%;
+  }
+  :root[data-theme="forest"] {
+    --primary: 142 72% 35%;
+    --ring: 142 72% 35%;
+    --background: 140 30% 6%;
+    --card: 140 30% 8%;
+  }
+  :root[data-theme="lux"] {
+    --primary: 45 93% 47%;
+    --ring: 256 83% 57%;
+    --background: 240 22% 6%;
+    --card: 240 22% 8%;
+  }
+
   * {
     @apply border-border;
   }

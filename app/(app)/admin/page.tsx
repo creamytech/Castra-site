@@ -2,6 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
+import { THEMES, applyTheme, getInitialTheme } from '@/src/lib/ui/theme'
 import Toast from "@/components/Toast";
 import FadeIn from "@/components/ui/FadeIn";
 import { motion } from "framer-motion";
@@ -35,6 +36,7 @@ export default function AdminPage() {
   const [sendEnabled, setSendEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [theme, setTheme] = useState<string>(getInitialTheme())
 
   const addToast = (message: string, type: "error" | "success" | "info" = "error") => {
     const id = Date.now().toString();
@@ -250,6 +252,23 @@ export default function AdminPage() {
         <div className="card mb-6">
           <h2 className="h2 mb-4">System Settings</h2>
           <div className="space-y-4">
+            {/* Theme selection */}
+            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h3 className="font-medium text-gray-800 dark:text-white">Theme</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Choose a color palette and gradient accents</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                {THEMES.map(t => (
+                  <button key={t.id} onClick={()=>{ setTheme(t.id); applyTheme(t.id as any) }} className={`p-3 rounded border text-left ${theme===t.id?'ring-2 ring-ring':''}`}>
+                    <div className="text-sm font-medium">{t.name}</div>
+                    <div className="h-8 rounded mt-2" style={{ background: t.preview }} />
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
               <div>
                 <h3 className="font-medium text-gray-800 dark:text-white">Email Sending</h3>
