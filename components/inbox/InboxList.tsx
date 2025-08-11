@@ -21,12 +21,13 @@ function formatListTime(value?: string) {
   return d.toLocaleDateString()
 }
 
-export default function InboxList({ q, filter, onSelect, filters, folder }: { q: string; filter: string; onSelect: (id: string) => void; filters?: any, folder?: string }) {
+export default function InboxList({ q, filter, onSelect, filters, folder, category }: { q: string; filter: string; onSelect: (id: string) => void; filters?: any, folder?: string, category?: string }) {
   const params = new URLSearchParams()
   if (q) params.set('q', q)
   if (filter === 'hasDeal') params.set('hasDeal', 'true')
   if (filter === 'unlinked') params.set('hasDeal', 'false')
   if (folder) params.set('folder', folder)
+  if (category) params.set('category', category)
   const { data, mutate, isLoading } = useSWR(`/api/inbox/threads?${params.toString()}`, fetcher, { refreshInterval: 30000, revalidateOnFocus: true })
   let threads = data?.threads || []
   // client-side filter for status/minScore/fields

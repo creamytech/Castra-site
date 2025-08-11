@@ -13,6 +13,7 @@ export default function DashboardInboxPage() {
   const [filter, setFilter] = useState('all')
   const [folder, setFolder] = useState<'inbox'|'unread'|'starred'|'spam'|'trash'|'drafts'|'all'>('inbox')
   const [filters, setFilters] = useState<any>({ status: [], minScore: 0, unreadOnly: false, hasPhone: false, hasPrice: false })
+  const [category, setCategory] = useState<'primary'|'promotions'|'social'|'updates'|'forums'|'all'>('primary')
   const [syncing, setSyncing] = useState(false)
   const [toast, setToast] = useState<string>('')
   const [threadId, setThreadId] = useState<string>('')
@@ -58,8 +59,16 @@ export default function DashboardInboxPage() {
             ))}
           </div>
         </div>
+        <div className="p-3 border rounded bg-card">
+          <div className="text-xs text-muted-foreground mb-1">Categories</div>
+          <div className="grid grid-cols-3 gap-2 text-xs">
+            {['primary','promotions','social','updates','forums','all'].map((c)=> (
+              <button key={c} onClick={()=>setCategory(c as any)} className={`px-2 py-1 rounded border ${category===c? 'bg-primary text-primary-foreground':''}`}>{c[0].toUpperCase()+c.slice(1)}</button>
+            ))}
+          </div>
+        </div>
         <FiltersSidebar value={filters} onChange={setFilters} />
-        <InboxList q={q} filter={filter} onSelect={(id)=>setThreadId(id)} filters={filters} folder={folder} />
+        <InboxList q={q} filter={filter} onSelect={(id)=>setThreadId(id)} filters={filters} folder={folder} category={category} />
         {!!toast && <div className="text-xs text-muted-foreground">{toast}</div>}
       </div>
       <div className="order-3 md:order-none md:col-span-3 min-h-[60vh]">

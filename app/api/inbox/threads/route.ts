@@ -12,6 +12,7 @@ export const GET = withAuth(async ({ req, ctx }) => {
     const unread = searchParams.get('unread')
     const hasDeal = searchParams.get('hasDeal')
     const folder = (searchParams.get('folder') || 'inbox').toLowerCase()
+    const category = (searchParams.get('category') || 'primary').toLowerCase()
     const page = Math.max(parseInt(searchParams.get('page') || '1'), 1)
     const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100)
 
@@ -89,8 +90,28 @@ export const GET = withAuth(async ({ req, ctx }) => {
         }
       }
 
+      const matchCategory = (tr: any) => {
+        const labels: string[] = Array.isArray(tr.labelIds) ? tr.labelIds : []
+        const isPromotions = labels.includes('CATEGORY_PROMOTIONS')
+        const isSocial = labels.includes('CATEGORY_SOCIAL')
+        const isUpdates = labels.includes('CATEGORY_UPDATES')
+        const isForums = labels.includes('CATEGORY_FORUMS')
+        const isOther = !isPromotions && !isSocial && !isUpdates && !isForums
+        switch (category) {
+          case 'promotions': return isPromotions
+          case 'social': return isSocial
+          case 'updates': return isUpdates
+          case 'forums': return isForums
+          case 'all': return true
+          case 'primary':
+          default:
+            return isOther || labels.includes('CATEGORY_PERSONAL')
+        }
+      }
+
       const threads = threadsRaw
         .filter(matchFolder)
+        .filter(matchCategory)
         // Stable, strict sort by last message time only
         .sort((a: any, b: any) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime())
       return NextResponse.json({ total, page, limit, threads })
