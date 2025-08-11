@@ -12,9 +12,13 @@ export const POST = withAuth(async ({ ctx }) => {
     const { oauth2 } = await getGoogleAuthForUser(ctx.session.user.id)
     const gmail = gmailClient(oauth2)
 
-    // List recent messages (last 60 days)
-    const q = 'newer_than:60d in:anywhere'
-    const list = await gmail.users.messages.list({ userId: 'me', q, maxResults: 50 })
+    // List recent messages prefer inbox last 14 days; fallback to 60d anywhere
+    let q = 'newer_than:14d in:inbox'
+    let list = await gmail.users.messages.list({ userId: 'me', q, maxResults: 50 })
+    if (!list.data.messages?.length) {
+      q = 'newer_than:60d in:anywhere'
+      list = await gmail.users.messages.list({ userId: 'me', q, maxResults: 50 })
+    }
     const ids = (list.data.messages || []).map(m => m.id!).filter(Boolean)
     if (ids.length === 0) {
       return NextResponse.json({ ok: true, synced: 0, counts: { threads: 0, messages: 0 }, note: 'No messages matched query' })
@@ -29,6 +33,9 @@ export const POST = withAuth(async ({ ctx }) => {
       return 'GENERAL'
     }
 
+    let fetched = 0
+    let upsertedThreads = 0
+    let upsertedMessages = 0
     for (const id of ids) {
       const m = await gmail.users.messages.get({ userId: 'me', id: id!, format: 'full' })
       const data = m.data
@@ -56,11 +63,12 @@ export const POST = withAuth(async ({ ctx }) => {
         if (p.mimeType?.includes('text/html')) bodyHtml += text
       }
 
-      await prisma.emailThread.upsert({
+      const upThread = await prisma.emailThread.upsert({
         where: { id: threadId },
         create: { id: threadId, userId: ctx.session.user.id, orgId: ctx.orgId, subject, lastSyncedAt: new Date() },
         update: { subject, lastSyncedAt: new Date() },
       })
+      if (upThread) upsertedThreads++
 
       const intent = classify(subject || '', snippet || '')
       const status = intent.includes('OFFER') ? 'lead' : intent.includes('SHOWING') || intent.includes('INTEREST') ? 'potential' : intent.includes('SPAM') ? 'no_lead' : 'follow_up'
@@ -72,7 +80,7 @@ export const POST = withAuth(async ({ ctx }) => {
         return { phone, price, address: addr }
       })()
 
-      await prisma.emailMessage.upsert({
+      const upMsg = await prisma.emailMessage.upsert({
         where: { id: id! },
         create: {
           id: id!, threadId, userId: ctx.session.user.id, orgId: ctx.orgId, from, to, cc, date, snippet, bodyHtml: bodyHtml || null, bodyText: bodyText || null,
@@ -81,16 +89,18 @@ export const POST = withAuth(async ({ ctx }) => {
         },
         update: { snippet, bodyHtml: bodyHtml || null, bodyText: bodyText || null, internalRefs: JSON.parse(JSON.stringify({ labelIds: data.labelIds })), intent },
       })
+      if (upMsg) upsertedMessages++
 
       // Persist computed status/score on thread for UI badges
       await prisma.emailThread.update({ where: { id: threadId }, data: { status, score, reasons: [intent], extracted } })
+      fetched++
     }
 
     const counts = {
       threads: await prisma.emailThread.count({ where: { userId: ctx.session.user.id, orgId: ctx.orgId } }),
       messages: await prisma.emailMessage.count({ where: { userId: ctx.session.user.id, orgId: ctx.orgId } }),
     }
-    return NextResponse.json({ ok: true, synced: ids.length, counts })
+    return NextResponse.json({ ok: true, synced: ids.length, fetched, upsertedThreads, upsertedMessages, queryUsed: q, counts })
   } catch (e: any) {
     console.error('[inbox sync]', e)
     return NextResponse.json({ error: 'Sync failed', detail: e?.message || String(e) }, { status: 500 })

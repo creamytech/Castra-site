@@ -59,7 +59,8 @@ export const GET = withAuth(async ({ req, ctx }) => {
     }
 
     // Fallback: group by Message.threadId
-    const messages = await prisma.message.findMany({ where: { userId: ctx.session.user.id }, orderBy: { internalDate: 'desc' }, take: 500 })
+    // Fallback to raw Gmail messages cache if threads not materialized
+    const messages = await prisma.message.findMany({ where: { userId: ctx.session.user.id }, orderBy: { internalDate: 'desc' }, take: 200 })
     const map = new Map<string, any>()
     for (const m of messages) {
       if (q && !(m.subject?.toLowerCase().includes(q.toLowerCase()) || m.from?.toLowerCase().includes(q.toLowerCase()))) continue

@@ -20,8 +20,9 @@ export default function DashboardInboxPage() {
     try {
       setSyncing(true)
       const res = await apiFetch('/api/inbox/sync', { method: 'POST' })
-      if (res.ok) setToast('Inbox synced')
-      else setToast('Sync failed')
+      const j = await res.json().catch(() => ({}))
+      if ((res as any).ok) setToast(`Inbox synced • ${j.synced ?? 0} messages (query: ${j.queryUsed || 'n/a'})`)
+      else setToast(`Sync failed: ${j?.detail || j?.error || res.status}`)
       await mutate((key: any) => typeof key === 'string' && key.startsWith('/api/inbox/threads'))
       setTimeout(() => setToast(''), 2500)
     } catch (e) {
