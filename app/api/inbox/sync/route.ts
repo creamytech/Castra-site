@@ -26,11 +26,41 @@ export const POST = withAuth(async ({ ctx }) => {
 
     const classify = (subject: string, snippet: string) => {
       const text = `${subject} ${snippet}`.toLowerCase()
-      if (/tour|showing|visit|view(ing)?/.test(text)) return 'SHOWING_REQUEST'
-      if (/offer|counter|contract/.test(text)) return 'OFFER_DISCUSSION'
-      if (/interested|looking|buy|rent|sell/.test(text)) return 'LEAD_INTEREST'
-      if (/unsubscribe|promo|sale/.test(text)) return 'POSSIBLE_SPAM'
-      return 'GENERAL'
+      const hasTour = /(tour|showing|visit|view(ing)?)/.test(text)
+      const hasOffer = /(offer|counter|contract)/.test(text)
+      const hasInterest = /(interested|looking|buy|rent|sell)/.test(text)
+      const isSpam = /(unsubscribe|promo|sale)/.test(text)
+      const phone = (snippet.match(/\b\+?1?\s*\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/) || [])[0]
+      const price = (snippet.match(/\b(?:\$\s?)?\d{2,3}(?:,\d{3})*(?:\s?k|\s?mm|\s?million)?\b/i) || [])[0]
+      const addr = (snippet.match(/\b\d+\s+[A-Za-z].+?(St|Ave|Rd|Blvd|Dr|Ln|Ct)\b/i) || [])[0]
+      const timePhrase = /(today|tomorrow|sat|sun|mon|tue|wed|thu|fri|weekend|\b\d{1,2}(:\d{2})?\s?(am|pm)\b)/i.test(snippet)
+
+      // Intent string
+      let intent = 'GENERAL'
+      if (hasTour) intent = 'SHOWING_REQUEST'
+      else if (hasOffer) intent = 'OFFER_DISCUSSION'
+      else if (hasInterest) intent = 'LEAD_INTEREST'
+      else if (isSpam) intent = 'POSSIBLE_SPAM'
+
+      // Lead override: tour intent with context
+      const hasContext = !!(addr || price || phone || timePhrase)
+      const reasons: string[] = []
+      if (hasTour) reasons.push('tour_request')
+      if (addr) reasons.push('address')
+      if (price) reasons.push('budget')
+      if (phone) reasons.push('phone')
+      if (timePhrase) reasons.push('time_window')
+
+      let status: 'lead'|'potential'|'no_lead'|'follow_up' = 'follow_up'
+      if (hasOffer) status = 'lead'
+      else if (hasTour && hasContext) status = 'lead'
+      else if (hasTour || hasInterest) status = 'potential'
+      else if (isSpam) status = 'no_lead'
+
+      let score = status === 'lead' ? 85 : status === 'potential' ? 70 : status === 'no_lead' ? 10 : 55
+      if (status === 'lead' && hasTour && hasContext) score = Math.max(score, 85)
+
+      return { intent, status, score, reasons, extracted: { phone, price, address: addr } }
     }
 
     let fetched = 0
@@ -70,29 +100,21 @@ export const POST = withAuth(async ({ ctx }) => {
       })
       if (upThread) upsertedThreads++
 
-      const intent = classify(subject || '', snippet || '')
-      const status = intent.includes('OFFER') ? 'lead' : intent.includes('SHOWING') || intent.includes('INTEREST') ? 'potential' : intent.includes('SPAM') ? 'no_lead' : 'follow_up'
-      const score = status === 'lead' ? 85 : status === 'potential' ? 70 : status === 'no_lead' ? 10 : 55
-      const extracted = (() => {
-        const phone = (snippet.match(/\b\+?1?\s*\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/) || [])[0]
-        const price = (snippet.match(/\b(?:\$\s?)?\d{2,3}(?:,\d{3})*(?:\s?k|\s?mm|\s?million)?\b/i) || [])[0]
-        const addr = (snippet.match(/\b\d+\s+[A-Za-z].+?(St|Ave|Rd|Blvd|Dr|Ln|Ct)\b/i) || [])[0]
-        return { phone, price, address: addr }
-      })()
+      const c = classify(subject || '', snippet || '')
 
       const upMsg = await prisma.emailMessage.upsert({
         where: { id: id! },
         create: {
           id: id!, threadId, userId: ctx.session.user.id, orgId: ctx.orgId, from, to, cc, date, snippet, bodyHtml: bodyHtml || null, bodyText: bodyText || null,
           internalRefs: JSON.parse(JSON.stringify({ labelIds: data.labelIds })),
-          intent,
+          intent: c.intent,
         },
-        update: { snippet, bodyHtml: bodyHtml || null, bodyText: bodyText || null, internalRefs: JSON.parse(JSON.stringify({ labelIds: data.labelIds })), intent },
+        update: { snippet, bodyHtml: bodyHtml || null, bodyText: bodyText || null, internalRefs: JSON.parse(JSON.stringify({ labelIds: data.labelIds })), intent: c.intent },
       })
       if (upMsg) upsertedMessages++
 
       // Persist computed status/score on thread for UI badges
-      await prisma.emailThread.update({ where: { id: threadId }, data: { status, score, reasons: [intent], extracted } })
+      await prisma.emailThread.update({ where: { id: threadId }, data: { status: c.status, score: c.score, reasons: c.reasons, extracted: c.extracted } })
       fetched++
     }
 
