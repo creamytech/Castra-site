@@ -1,3 +1,22 @@
+## Ops Optimization (Prisma)
+
+This branch introduces caching and batching to reduce Postgres operations by ~60–80%:
+
+- Redis read caching via `lib/cache.ts` with TTLs and pattern invalidation
+- Lead list endpoint now caches per filter/page and invalidates on writes
+- Indices migration `20250812000000_ops_indices` adds hot-path indexes
+- Metrics at `GET /api/admin/metrics` report ops/request p50/p95 and cache hit rate
+
+Env:
+
+```
+REDIS_URL=...
+S3_ENDPOINT=...
+S3_ACCESS_KEY=...
+S3_SECRET_KEY=...
+CRON_SECRET=...
+```
+
 # Castra - AI-Powered Realtor Co-Pilot
 
 Castra is an AI-powered real estate management platform that helps realtors streamline their workflow with intelligent email management, calendar scheduling, CRM integration, and AI-powered chat assistance.
