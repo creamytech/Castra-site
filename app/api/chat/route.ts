@@ -29,12 +29,14 @@ export const POST = withAuth(async ({ req, ctx }) => {
       if (events.length > 0) {
         contextInfo += '\n\n**Upcoming Calendar Events:**\n'
         events.forEach(event => {
-          const date = new Date(event.startISO || '').toLocaleString()
-          contextInfo += `- ${event.summary} (${date})\n`
+          const dateISO = event.startISO || ''
+          const dateStr = dateISO ? new Date(dateISO).toLocaleString() : '(no date)'
+          contextInfo += `- ${event.summary} (${dateStr})\n`
         })
       }
     } catch (error) {
-      console.error('Failed to fetch calendar context:', error)
+      // Keep silent in reply; tools can still list via list_upcoming_events
+      console.warn('Calendar context unavailable')
     }
 
     // Add context to the last user message

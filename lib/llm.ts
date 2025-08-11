@@ -320,16 +320,15 @@ async function listUpcomingEventsTool(args: any): Promise<string> {
 async function getRecentEmails(args: any): Promise<string> {
   try {
     const { q = '', limit = 10 } = args
-    const response = await fetch(`/api/gmail/sync?q=${encodeURIComponent(q)}&limit=${limit}`, { cache: 'no-store' })
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}))
-      throw new Error(error.error || 'Failed to fetch emails')
-    }
+    // Prefer inbox threads API which is integrated with Gmail
+    const url = `/api/inbox/threads?limit=${encodeURIComponent(String(limit))}${q ? `&q=${encodeURIComponent(q)}` : ''}`
+    const response = await fetch(url, { cache: 'no-store' })
+    if (!response.ok) throw new Error(await response.text())
     const result = await response.json()
-    const emails = result.messages || []
-    if (emails.length === 0) return 'No emails found matching your search criteria.'
-    const emailList = emails.map((email: any) => ({ from: email.from, subject: email.subject || '(No subject)', date: new Date(email.internalDate).toLocaleDateString(), snippet: email.snippet }))
-    return `Found ${emails.length} recent emails:\n\n${emailList.map((email: any) => `📧 **${email.subject}**\nFrom: ${email.from}\nDate: ${email.date}\n${email.snippet}\n`).join('\n')}`
+    const threads = (result.threads || []) as any[]
+    if (threads.length === 0) return 'No emails found matching your search criteria.'
+    const lines = threads.map((t: any) => `📧 ${t.subject || '(No subject)'} — ${t.fromName || t.fromEmail || 'Unknown'} — ${new Date(t.lastMessageAt || t.updatedAt || Date.now()).toLocaleString()}\n${t.preview || t.snippet || ''}`)
+    return `Found ${threads.length} recent emails:\n\n${lines.join('\n\n')}`
   } catch (error) {
     console.error('Get recent emails error:', error)
     throw new Error(`Failed to fetch emails: ${error instanceof Error ? error.message : 'Unknown error'}`)
