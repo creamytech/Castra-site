@@ -202,9 +202,11 @@
 .row[aria-selected="true"]{ outline:2px solid var(--ring); outline-offset:-2px; }
 
 .reasons { display:flex; gap:6px; flex-wrap:wrap; }
-.chip { font-size:.68rem; padding:.15rem .45rem; border-radius:.5rem; border:1px solid var(--chip-br); background:var(--chip-bg); color:var(--muted); }
+.chip { font-size:.68rem; padding:.15rem .45rem; border-radius:.5rem; border:1px solid var(--chip-br); background:var(--chip-bg); color:var(--muted); transition: transform .12s ease; }
+.chip:active { transform: scale(0.98); }
 
-.scoreRing { width:22px; height:22px; border-radius:999px; border:2px solid var(--muted); display:inline-grid; place-items:center; font-size:.7rem; }
+.scoreRing { width:22px; height:22px; border-radius:999px; border:2px solid var(--muted); display:inline-grid; place-items:center; font-size:.7rem; position:relative; overflow:hidden; }
+.scoreRing::after { content:""; position:absolute; inset:0; border-radius:999px; border:2px solid currentColor; transform: rotate(-90deg); -webkit-mask: conic-gradient(#000 var(--sweep,0%), transparent 0); mask: conic-gradient(#000 var(--sweep,0%), transparent 0); opacity:.25; }
 .scoreRing[data-color="good"]{ border-color:var(--lead); color:var(--lead); }
 .scoreRing[data-color="warn"]{ border-color:var(--potential); color:var(--potential); }
 .scoreRing[data-color="dim"]{ opacity:.7; }
