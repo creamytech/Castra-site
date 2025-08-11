@@ -50,7 +50,7 @@ export default function InboxList({ q, filter, onSelect, filters }: { q: string;
             ))}
           </div>
           {!!t.preview && <div className="text-xs text-muted-foreground truncate">{t.preview}</div>}
-          <div className="text-[10px] text-muted-foreground">{new Date(t.lastSyncedAt).toLocaleString()}</div>
+          <div className="text-[10px] text-muted-foreground">{new Date(t.lastMessageAt || t.lastSyncedAt).toLocaleString()}</div>
         </div>
       ))}
       {threads.length === 0 && !isLoading && (

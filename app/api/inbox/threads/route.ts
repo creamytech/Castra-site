@@ -53,7 +53,7 @@ export const GET = withAuth(async ({ req, ctx }) => {
         const combined = `${last?.snippet || ''} ${last?.bodyText || ''}`
         const extracted = t.extracted || extract(combined)
         const reasons = (Array.isArray(t.reasons) ? t.reasons : [t.reasons]).filter(Boolean)
-        return { id: t.id, userId: t.userId, subject: t.subject, lastSyncedAt: t.lastSyncedAt, deal: t.deal || null, status, score, reasons, extracted, preview: last?.snippet || last?.bodyText || '' }
+        return { id: t.id, userId: t.userId, subject: t.subject, lastSyncedAt: t.lastSyncedAt, lastMessageAt: last?.date ?? t.lastSyncedAt, deal: t.deal || null, status, score, reasons, extracted, preview: last?.snippet || last?.bodyText || '' }
       })
       return NextResponse.json({ total, page, limit, threads })
     }
@@ -64,10 +64,11 @@ export const GET = withAuth(async ({ req, ctx }) => {
     const map = new Map<string, any>()
     for (const m of messages) {
       if (q && !(m.subject?.toLowerCase().includes(q.toLowerCase()) || m.from?.toLowerCase().includes(q.toLowerCase()))) continue
-      const t = map.get(m.threadId) || { id: m.threadId, userId: ctx.session.user.id, subject: m.subject, lastSyncedAt: m.internalDate, preview: m.snippet }
+      const t = map.get(m.threadId) || { id: m.threadId, userId: ctx.session.user.id, subject: m.subject, lastSyncedAt: m.internalDate, lastMessageAt: m.internalDate, preview: m.snippet }
       if (new Date(m.internalDate) > new Date(t.lastSyncedAt)) {
         t.subject = m.subject
         t.lastSyncedAt = m.internalDate
+        t.lastMessageAt = m.internalDate
         t.preview = m.snippet
       }
       map.set(m.threadId, t)
