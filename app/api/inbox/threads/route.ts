@@ -54,7 +54,7 @@ export const GET = withAuth(async ({ req, ctx }) => {
         const extracted = t.extracted || extract(combined)
         const reasons = (Array.isArray(t.reasons) ? t.reasons : [t.reasons]).filter(Boolean)
         return { id: t.id, userId: t.userId, subject: t.subject, lastSyncedAt: t.lastSyncedAt, lastMessageAt: last?.date ?? t.lastSyncedAt, deal: t.deal || null, status, score, reasons, extracted, preview: last?.snippet || last?.bodyText || '' }
-      })
+      }).sort((a: any, b: any) => new Date(b.lastMessageAt || b.lastSyncedAt).getTime() - new Date(a.lastMessageAt || a.lastSyncedAt).getTime())
       return NextResponse.json({ total, page, limit, threads })
     }
 
@@ -73,7 +73,7 @@ export const GET = withAuth(async ({ req, ctx }) => {
       }
       map.set(m.threadId, t)
     }
-    const all = Array.from(map.values())
+    const all = Array.from(map.values()).sort((a: any, b: any) => new Date(b.lastMessageAt || b.lastSyncedAt).getTime() - new Date(a.lastMessageAt || a.lastSyncedAt).getTime())
     const total = all.length
     const threads = all.slice((page - 1) * limit, (page - 1) * limit + limit)
     return NextResponse.json({ total, page, limit, threads })

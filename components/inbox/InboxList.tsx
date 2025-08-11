@@ -18,6 +18,8 @@ export default function InboxList({ q, filter, onSelect, filters }: { q: string;
   if (typeof filters?.minScore === 'number') threads = threads.filter((t: any) => (t.score ?? 0) >= filters.minScore)
   if (filters?.hasPhone) threads = threads.filter((t: any) => !!t.extracted?.phone)
   if (filters?.hasPrice) threads = threads.filter((t: any) => !!t.extracted?.price)
+  // ensure most recent first on client too, in case
+  threads.sort((a: any, b: any) => new Date(b.lastMessageAt || b.lastSyncedAt).getTime() - new Date(a.lastMessageAt || a.lastSyncedAt).getTime())
 
   return (
     <div className="space-y-2">
