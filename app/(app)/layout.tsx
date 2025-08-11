@@ -13,7 +13,7 @@ import { applyTheme, getInitialTheme } from "@/lib/ui/theme";
 import { CastraWordmark } from "@/components/brand/CastraWordmark";
 import NotificationsBell from "@/components/NotificationsBell";
 import dynamic from "next/dynamic";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter as useNextRouter } from "next/navigation";
 import { apiFetch } from "@/lib/http";
 
 export default function AppLayout({
@@ -25,7 +25,7 @@ export default function AppLayout({
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const pathname = usePathname();
-  const router = useRouter();
+  const router = useNextRouter();
 
   useEffect(() => {
     setIsClient(true);
