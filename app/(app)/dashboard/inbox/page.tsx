@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useSWRConfig } from 'swr'
-import { InboxFilterBar } from '@/components/inbox/InboxNew'
+import FiltersSidebar from '@/components/inbox/FiltersSidebar'
 import { apiFetch } from '@/lib/http'
 import InboxList from '@/components/inbox/InboxList'
 import InboxThread from '@/components/inbox/InboxThread'
@@ -49,7 +49,7 @@ export default function DashboardInboxPage() {
         <div className="flex gap-2">
           <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search…" className="w-full border rounded px-2 py-1 bg-background" />
         </div>
-        <InboxFilterBar value={filters} onChange={setFilters} />
+        <FiltersSidebar value={filters} onChange={setFilters} />
         <InboxList q={q} filter={filter} onSelect={(id)=>setThreadId(id)} filters={filters} />
         {!!toast && <div className="text-xs text-muted-foreground">{toast}</div>}
       </div>
