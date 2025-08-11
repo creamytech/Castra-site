@@ -110,6 +110,14 @@ export const POST = withAuth(async ({ req, ctx }) => {
         }
       },
       {
+        name: "list_upcoming_events",
+        description: "List upcoming calendar events (next few items)",
+        parameters: {
+          type: "object",
+          properties: { max: { type: "number", description: "Max items (default 5)" } }
+        }
+      },
+      {
         name: "get_recent_emails",
         description: "Get recent emails from Gmail inbox",
         parameters: {

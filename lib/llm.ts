@@ -217,6 +217,8 @@ async function executeTool(name: string, args: any): Promise<string> {
         return await createCalendarEvent(args)
       case 'book_calendar_event':
         return await bookCalendarEvent(args)
+      case 'list_upcoming_events':
+        return await listUpcomingEventsTool(args)
       case 'get_recent_emails':
         return await getRecentEmails(args)
       default:
@@ -236,6 +238,8 @@ async function executeTool(name: string, args: any): Promise<string> {
         return JSON.stringify({ html: '<p>Sample email content</p>', preview: true })
       case 'create_calendar_event':
         return 'Calendar event creation failed. Please try again or create the event manually.'
+      case 'list_upcoming_events':
+        return 'Could not read your calendar. Please reconnect Google in Settings → Profile.'
       case 'get_recent_emails':
         return 'Email access failed. Please check your Gmail connection.'
       default:
@@ -295,6 +299,21 @@ async function bookCalendarEvent(args: any): Promise<string> {
   } catch (error) {
     console.error('Schedule booking error:', error)
     throw new Error(`Failed to book event: ${error instanceof Error ? error.message : 'Unknown error'}`)
+  }
+}
+
+async function listUpcomingEventsTool(args: any): Promise<string> {
+  try {
+    const { max = 5 } = args || {}
+    const resp = await fetch(`/api/calendar/upcoming?max=${encodeURIComponent(String(max))}`, { cache: 'no-store' })
+    if (!resp.ok) throw new Error(await resp.text())
+    const j = await resp.json()
+    const events = (j.events || []) as any[]
+    if (!events.length) return 'No upcoming events found.'
+    const lines = events.map((e: any) => `• ${e.summary || '(no title)'} — ${new Date(e.start?.dateTime || e.start?.date || '').toLocaleString()}`)
+    return `Upcoming events:\n${lines.join('\n')}`
+  } catch (e: any) {
+    return 'Could not read your calendar. Please reconnect Google in Settings → Profile.'
   }
 }
 
