@@ -23,7 +23,7 @@ function formatListTime(value?: string) {
   return d.toLocaleDateString()
 }
 
-export default function InboxList({ q, filter, onSelect, filters, folder, category }: { q: string; filter: string; onSelect: (id: string) => void; filters?: any, folder?: string, category?: string }) {
+export default function InboxList({ q, filter, onSelect, filters, folder, category, onItems, selectedId }: { q: string; filter: string; onSelect: (id: string) => void; filters?: any, folder?: string, category?: string, onItems?: (items: any[]) => void, selectedId?: string }) {
   const params = new URLSearchParams()
   if (q) params.set('q', q)
   if (filter === 'hasDeal') params.set('hasDeal', 'true')
@@ -48,6 +48,7 @@ export default function InboxList({ q, filter, onSelect, filters, folder, catego
 
   const rowHeight = 76
   const items = threads
+  if (onItems) onItems(items)
 
   function Row({ index, style }: any) {
     const t: any = items[index]
@@ -59,6 +60,7 @@ export default function InboxList({ q, filter, onSelect, filters, folder, catego
           onClick={() => onSelect(t.id)}
           role="button"
           tabIndex={0}
+          aria-selected={selectedId === t.id}
           onKeyDown={(e)=>{ if(e.key==='Enter' || e.key===' '){ onSelect(t.id) } }}
         >
           <div className="pt-1"><ScoreRing score={typeof t.score === 'number' ? t.score : 0} /></div>

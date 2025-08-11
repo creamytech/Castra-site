@@ -44,6 +44,20 @@ createWorker(async (job) => {
     const score = blend(rules, llm.score)
     const status = decideStatus({ score, llmReason: llm.reason, subject, body })
 
+    // Per-user allow/deny lists
+    const prefs = (user as any)?.preferences || {}
+    const denyDomains: string[] = prefs.denyDomains || []
+    const allowDomains: string[] = prefs.allowDomains || []
+    const domain = (fromEmail || '').split('@')[1] || ''
+    if (denyDomains.includes(domain)) {
+      await (prisma as any).lead.upsert({ where: { providerMsgId: messageId, userId: user.id } as any, update: { status: 'no_lead' }, create: { userId: user.id, providerMsgId: messageId, threadId, subject, bodySnippet: snippet, fromEmail, fromName, source: 'gmail', attrs: llm.fields, reasons: ['deny_list'], score: 0, status: 'no_lead' } })
+      return { filtered: true }
+    }
+    if (allowDomains.includes(domain) && score < 80) {
+      // boost
+      (llm as any).reason += '; allow_list'
+    }
+
     const existing = await (prisma as any).lead?.findFirst?.({ where: { providerMsgId: messageId, userId: user.id } })
     let lead
     if (existing) {

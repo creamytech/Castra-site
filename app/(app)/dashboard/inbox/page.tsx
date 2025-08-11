@@ -11,6 +11,7 @@ import SidebarNav from '@/components/inbox/SidebarNav'
 
 export default function DashboardInboxPage() {
   const [q, setQ] = useState('')
+  const [debouncedQ, setDebouncedQ] = useState('')
   const [filter, setFilter] = useState('all')
   const [folder, setFolder] = useState<'inbox'|'unread'|'starred'|'spam'|'trash'|'drafts'|'all'>('all')
   const [filters, setFilters] = useState<any>({ status: [], minScore: 0, unreadOnly: false, hasPhone: false, hasPrice: false })
@@ -46,6 +47,12 @@ export default function DashboardInboxPage() {
   }
   // Auto-sync when tab opens
   useEffect(() => { sync() }, [])
+
+  // Debounce search
+  useEffect(() => {
+    const t = setTimeout(()=> setDebouncedQ(q), 250)
+    return ()=> clearTimeout(t)
+  }, [q])
 
   // When a thread opens, fetch AI summary
   useEffect(() => {
@@ -93,7 +100,7 @@ export default function DashboardInboxPage() {
     <div className="p-0 sm:p-0 grid grid-cols-1 md:grid-cols-5 gap-0">
       <div className="order-1 md:order-none md:col-span-1 space-y-3 md:sticky md:top-16 md:self-start p-4 border-r bg-background/60 backdrop-blur animate-slide-in">
         <div className="flex gap-2">
-          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search…" className="w-full border rounded px-2 py-1 bg-background" />
+          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search…" className="w-full border rounded px-2 py-1 bg-background" aria-label="Search inbox" />
         </div>
         <SidebarNav
           folder={folder}
@@ -111,7 +118,7 @@ export default function DashboardInboxPage() {
       <div className="order-3 md:order-none md:col-span-3 min-h-[70vh] p-4 relative">
         {/* Email list column */}
         <div className="space-y-2">
-          <InboxList q={q} filter={filter} onSelect={openThread} filters={filters} folder={folder} category={category} />
+          <InboxList q={debouncedQ} filter={filter} onSelect={openThread} filters={filters} folder={folder} category={category} selectedId={threadId} />
         </div>
         {/* Overlay detail replaces the list until closed */}
         {overlayOpen && (
