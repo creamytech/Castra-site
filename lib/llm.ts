@@ -19,8 +19,7 @@ export interface GenerateReplyParams {
 
 export async function generateReply({ threadSummary, lastMessage, agentProfile }: GenerateReplyParams): Promise<string> {
   if (!openai) {
-    console.error('OpenAI API key not configured')
-    return 'OpenAI is not configured.'
+    throw new Error('OpenAI API key not configured')
   }
 
   const systemPrompt = `You are Castra, an AI-powered realtor co-pilot. Your communication style is:
@@ -57,8 +56,7 @@ Always respond in HTML format for better email presentation.`
 
 export async function generateChatReply(messages: any[], functions: any[], systemPrompt: string): Promise<string> {
   if (!openai) {
-    console.error('OpenAI API key not configured')
-    return 'Sorry, AI is not configured.'
+    throw new Error('OpenAI API key not configured')
   }
 
   try {
