@@ -29,6 +29,13 @@ export async function cacheSet<T>(key: string, value: T, ttlSeconds: number) {
   } catch {}
 }
 
+export async function bundleCacheGet(threadId: string) {
+  return cacheGet<any>(`bundle:${threadId}`)
+}
+export async function bundleCacheSet(threadId: string, data: any, ttlSeconds = 120) {
+  return cacheSet(`bundle:${threadId}`, data, ttlSeconds)
+}
+
 export async function invalidate(pattern: string) {
   const r = getClient()
   if (!r) return

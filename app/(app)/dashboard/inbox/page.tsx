@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSWRConfig } from 'swr'
 import FiltersSidebar from '@/components/inbox/FiltersSidebar'
 import { apiFetch } from '@/lib/http'
@@ -11,6 +11,8 @@ import SidebarNav from '@/components/inbox/SidebarNav'
 
 export default function DashboardInboxPage() {
   const [q, setQ] = useState('')
+  const [debouncedQ, setDebouncedQ] = useState('')
+  const itemsRef = useRef<any[]>([])
   const [debouncedQ, setDebouncedQ] = useState('')
   const [filter, setFilter] = useState('all')
   const [folder, setFolder] = useState<'inbox'|'unread'|'starred'|'spam'|'trash'|'drafts'|'all'>('all')
@@ -47,6 +49,46 @@ export default function DashboardInboxPage() {
   }
   // Auto-sync when tab opens
   useEffect(() => { sync() }, [])
+  // Debounce search
+  useEffect(() => {
+    const t = setTimeout(()=> setDebouncedQ(q), 250)
+    return ()=> clearTimeout(t)
+  }, [q])
+  // Keyboard shortcuts (list/thread)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!overlayOpen) {
+        if (e.key.toLowerCase()==='j' || e.key.toLowerCase()==='k') {
+          e.preventDefault()
+          const list = itemsRef.current
+          const idx = list.findIndex(t=>t.id===threadId)
+          const nextIdx = e.key.toLowerCase()==='j' ? Math.min(list.length-1, idx+1) : Math.max(0, idx-1)
+          const next = list[nextIdx]
+          if (next) openThread(next.id)
+        }
+      } else {
+        const lower = e.key.toLowerCase()
+        if (lower==='escape') { closeThread(); return }
+        if (['l','p','n','s'].includes(lower)) {
+          e.preventDefault()
+          if (!threadId) return
+          if (lower==='s') {
+            // Snooze: best-effort; UI page will pick current draft
+            fetch('/api/daily-brief', { method:'GET', credentials:'include' })
+          } else {
+            const map: any = { l: 'lead', p: 'potential', n: 'no_lead' }
+            apiFetch(`/api/inbox/threads/${threadId}/status`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: map[lower] }) })
+          }
+        }
+        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+          const btn = document.querySelector('#smart-reply-send') as HTMLButtonElement | null
+          btn?.click()
+        }
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return ()=> document.removeEventListener('keydown', onKey)
+  }, [overlayOpen, threadId])
 
   // Debounce search
   useEffect(() => {
@@ -118,7 +160,7 @@ export default function DashboardInboxPage() {
       <div className="order-3 md:order-none md:col-span-3 min-h-[70vh] p-4 relative">
         {/* Email list column */}
         <div className="space-y-2">
-          <InboxList q={debouncedQ} filter={filter} onSelect={openThread} filters={filters} folder={folder} category={category} selectedId={threadId} />
+          <InboxList q={debouncedQ} filter={filter} onSelect={openThread} filters={filters} folder={folder} category={category} selectedId={threadId} onItems={(it)=>{ itemsRef.current = it }} />
         </div>
         {/* Overlay detail replaces the list until closed */}
         {overlayOpen && (
