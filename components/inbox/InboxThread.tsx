@@ -17,17 +17,43 @@ export default function InboxThread({ threadId }: { threadId: string }) {
   const aiDraft = async () => {
     const lastId = thread?.messages?.slice(-1)?.[0]?.id
     if (!lastId) return
-    const res = await apiFetch(`/api/inbox/messages/${lastId}/ai-draft`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) })
+    const res = await apiFetch(`/api/inbox/messages/${lastId}/ai-draft`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tone: 'friendly' }) })
     const j = await res.json()
-    if (res.ok) setDraft(j.draft || '')
+    if (res.ok) {
+      if (j.subject && !subject) setSubject(j.subject)
+      setDraft(j.draft || '')
+    }
   }
 
   const sendEmail = async () => {
     const lastId = thread?.messages?.slice(-1)?.[0]?.id
     if (!lastId) return
-    const res = await apiFetch(`/api/inbox/messages/${lastId}/reply`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel: 'email', draft, to, subject, dealId: thread?.dealId }) })
+    const res = await apiFetch(`/api/inbox/messages/${lastId}/reply`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel: 'email', draft, to, subject, threadId: thread?.id, dealId: thread?.dealId }) })
     if (res.ok) setDraft('')
     mutate()
+  }
+
+  const replyAll = async () => {
+    const last = thread?.messages?.slice(-1)?.[0]
+    if (!last) return
+    const toAll = [to, ...(last?.cc || [])].filter(Boolean).join(', ')
+    const res = await apiFetch(`/api/inbox/messages/${last.id}/reply`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel: 'email', draft, to: toAll, subject, threadId: thread?.id }) })
+    if (res.ok) setDraft('')
+    mutate()
+  }
+
+  const markReadUnread = async (unread: boolean) => {
+    // optimistic UI only; label change would be via Gmail modify API in a follow-up
+    await mutate()
+  }
+
+  const deleteThread = async () => {
+    // UI only for now; server delete can be added via Gmail trash
+    // eslint-disable-next-line no-alert
+    if (confirm('Move this conversation to trash?')) {
+      // optimistic: clear draft
+      setDraft('')
+    }
   }
 
   if (!threadId) return <div className="text-sm text-muted-foreground">Select a thread from the left to view</div>
@@ -52,7 +78,14 @@ export default function InboxThread({ threadId }: { threadId: string }) {
         ))}
       </div>
       <div className="p-3 border rounded bg-card space-y-2 sticky bottom-0 z-20 bg-card/95 backdrop-blur">
-        <div className="text-sm font-semibold">Quick Reply</div>
+        <div className="text-sm font-semibold flex items-center gap-2">
+          Quick Reply
+          <div className="ml-auto flex items-center gap-2 text-xs">
+            <button onClick={()=>markReadUnread(false)} className="px-2 py-1 border rounded">Mark read</button>
+            <button onClick={()=>markReadUnread(true)} className="px-2 py-1 border rounded">Mark unread</button>
+            <button onClick={deleteThread} className="px-2 py-1 border rounded">Delete</button>
+          </div>
+        </div>
         <div className="grid grid-cols-3 gap-2">
           <input value={to} onChange={e=>setTo(e.target.value)} placeholder="To" className="border rounded px-2 py-1 bg-background" />
           <input value={subject} onChange={e=>setSubject(e.target.value)} placeholder="Subject" className="border rounded px-2 py-1 bg-background col-span-2" />
@@ -61,6 +94,8 @@ export default function InboxThread({ threadId }: { threadId: string }) {
         <div className="flex gap-2">
           <button onClick={aiDraft} className="px-3 py-1 rounded border text-xs">AI Draft</button>
           <button onClick={sendEmail} disabled={!to || !subject || !draft} className="px-3 py-1 rounded bg-primary text-primary-foreground text-xs">Send Email</button>
+          <button onClick={replyAll} disabled={!to || !subject || !draft} className="px-3 py-1 rounded border text-xs">Reply All</button>
+          <button onClick={() => { navigator.clipboard.writeText(`${subject}\n\n${draft}`)}} className="px-3 py-1 rounded border text-xs">Copy</button>
         </div>
       </div>
     </div>
