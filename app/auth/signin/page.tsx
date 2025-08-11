@@ -23,8 +23,8 @@ export default function SignInPage() {
   const handleGoogleSignIn = () => {
     console.log('Google sign-in clicked')
     setLoading(true)
-    // Use default redirect behavior
-    signIn('google', { callbackUrl: '/dashboard' }).then((result) => {
+    // Use default redirect behavior; pass redirect:false to capture provider errors
+    signIn('google', { callbackUrl: '/dashboard', redirect: false }).then((result) => {
       console.log('Google sign-in result:', result)
       if (result?.error) {
         setError(result.error)

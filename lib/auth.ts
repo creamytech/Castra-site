@@ -70,6 +70,7 @@ console.log("Configured providers:", providers.map(p => p.id));
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   debug: true,
+  trustHost: true,
   callbacks: {
     async signIn({ user, account, profile, email }: any) {
       console.log("SignIn Callback:", { 
@@ -159,6 +160,8 @@ export const authOptions: NextAuthOptions = {
     },
   },
   providers,
+  // Ensure correct URL in server-side flows
+  // NEXTAUTH_URL must be set in production to https://castra-site.vercel.app
   session: {
     strategy: "database",
   },
