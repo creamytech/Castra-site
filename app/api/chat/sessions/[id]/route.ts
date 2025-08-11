@@ -27,7 +27,7 @@ export const GET = withAuth(async ({ ctx }, { params }: any) => {
 
 export const PATCH = withAuth(async ({ req, ctx }, { params }: any) => {
   try {
-    const body = await req.json()
+    const body = await req.json().catch(() => ({}))
     const validationResult = RenameSessionSchema.safeParse(body)
     
     if (!validationResult.success) {

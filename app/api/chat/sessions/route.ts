@@ -10,7 +10,7 @@ const CreateSessionSchema = z.object({
 export const POST = withAuth(async ({ req, ctx }) => {
   try {
 
-    const body = await req.json()
+    const body = await req.json().catch(() => ({}))
     const validationResult = CreateSessionSchema.safeParse(body)
     
     if (!validationResult.success) {

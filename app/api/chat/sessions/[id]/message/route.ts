@@ -12,7 +12,10 @@ export const dynamic = "force-dynamic";
 
 export const POST = withAuth(async ({ req, ctx }, { params }: any) => {
   try {
-    const { role, content } = await req.json();
+    const { role, content } = await req.json().catch(() => ({} as any));
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('OPENAI_API_KEY missing')
+    }
 
     if (!role || !content) {
       return NextResponse.json({ error: "Role and content are required" }, { status: 400 });
