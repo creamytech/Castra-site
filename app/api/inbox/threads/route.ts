@@ -11,6 +11,7 @@ export const GET = withAuth(async ({ req, ctx }) => {
     const q = searchParams.get('q') || ''
     const unread = searchParams.get('unread')
     const hasDeal = searchParams.get('hasDeal')
+    const folder = (searchParams.get('folder') || 'inbox').toLowerCase()
     const page = Math.max(parseInt(searchParams.get('page') || '1'), 1)
     const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100)
 
@@ -46,7 +47,7 @@ export const GET = withAuth(async ({ req, ctx }) => {
         const addr = (txt.match(/\b\d+\s+[A-Za-z].+?(St|Ave|Rd|Blvd|Dr|Ln|Ct)\b/i) || [])[0]
         return { phone, price, address: addr }
       }
-      const threads = rows.map((t: any) => {
+      const threadsRaw = rows.map((t: any) => {
         const last = t.messages?.[0]
         const status = t.status || mapIntentToStatus(last?.intent)
         const score = typeof t.score === 'number' ? t.score : scoreFor(status)
@@ -54,9 +55,26 @@ export const GET = withAuth(async ({ req, ctx }) => {
         const extracted = t.extracted || extract(combined)
         const reasons = (Array.isArray(t.reasons) ? t.reasons : [t.reasons]).filter(Boolean)
         const labelIds = (last?.internalRefs as any)?.labelIds || []
-        const unread = Array.isArray(labelIds) ? labelIds.includes('UNREAD') : false
-        return { id: t.id, userId: t.userId, subject: t.subject, lastSyncedAt: t.lastSyncedAt, lastMessageAt: last?.date ?? t.lastSyncedAt, deal: t.deal || null, status, score, reasons, extracted, preview: last?.snippet || last?.bodyText || '', unread }
-      }).sort((a: any, b: any) => new Date(b.lastMessageAt || b.lastSyncedAt).getTime() - new Date(a.lastMessageAt || a.lastSyncedAt).getTime())
+        const unreadFlag = Array.isArray(labelIds) ? labelIds.includes('UNREAD') : false
+        return { id: t.id, userId: t.userId, subject: t.subject, lastSyncedAt: t.lastSyncedAt, lastMessageAt: last?.date ?? t.lastSyncedAt, deal: t.deal || null, status, score, reasons, extracted, preview: last?.snippet || last?.bodyText || '', unread: unreadFlag, labelIds }
+      })
+
+      const matchFolder = (tr: any) => {
+        const labels: string[] = Array.isArray(tr.labelIds) ? tr.labelIds : []
+        switch (folder) {
+          case 'all': return true
+          case 'unread': return tr.unread
+          case 'starred': return labels.includes('STARRED')
+          case 'spam': return labels.includes('SPAM')
+          case 'trash': return labels.includes('TRASH')
+          case 'drafts': return labels.includes('DRAFT')
+          case 'inbox':
+          default:
+            return labels.includes('INBOX') || (!labels.includes('SPAM') && !labels.includes('TRASH'))
+        }
+      }
+
+      const threads = threadsRaw.filter(matchFolder).sort((a: any, b: any) => new Date(b.lastMessageAt || b.lastSyncedAt).getTime() - new Date(a.lastMessageAt || a.lastSyncedAt).getTime())
       return NextResponse.json({ total, page, limit, threads })
     }
 

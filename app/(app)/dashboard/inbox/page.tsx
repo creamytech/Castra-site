@@ -11,6 +11,7 @@ import ThreadSidebar from '@/components/inbox/ThreadSidebar'
 export default function DashboardInboxPage() {
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState('all')
+  const [folder, setFolder] = useState<'inbox'|'unread'|'starred'|'spam'|'trash'|'drafts'|'all'>('inbox')
   const [filters, setFilters] = useState<any>({ status: [], minScore: 0, unreadOnly: false, hasPhone: false, hasPrice: false })
   const [syncing, setSyncing] = useState(false)
   const [toast, setToast] = useState<string>('')
@@ -49,8 +50,16 @@ export default function DashboardInboxPage() {
         <div className="flex gap-2">
           <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search…" className="w-full border rounded px-2 py-1 bg-background" />
         </div>
+        <div className="p-3 border rounded bg-card">
+          <div className="text-xs text-muted-foreground mb-1">Folders</div>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            {['inbox','unread','starred','drafts','spam','trash','all'].map((f)=> (
+              <button key={f} onClick={()=>setFolder(f as any)} className={`px-2 py-1 rounded border ${folder===f? 'bg-primary text-primary-foreground':''}`}>{f[0].toUpperCase()+f.slice(1)}</button>
+            ))}
+          </div>
+        </div>
         <FiltersSidebar value={filters} onChange={setFilters} />
-        <InboxList q={q} filter={filter} onSelect={(id)=>setThreadId(id)} filters={filters} />
+        <InboxList q={q} filter={filter} onSelect={(id)=>setThreadId(id)} filters={filters} folder={folder} />
         {!!toast && <div className="text-xs text-muted-foreground">{toast}</div>}
       </div>
       <div className="order-3 md:order-none md:col-span-3 min-h-[60vh]">

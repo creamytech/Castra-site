@@ -6,11 +6,12 @@ import { STATUS_LABEL, ScoreRing } from './InboxNew'
 
 const fetcher = (url: string) => apiFetch(url).then(r => r.json())
 
-export default function InboxList({ q, filter, onSelect, filters }: { q: string; filter: string; onSelect: (id: string) => void; filters?: any }) {
+export default function InboxList({ q, filter, onSelect, filters, folder }: { q: string; filter: string; onSelect: (id: string) => void; filters?: any, folder?: string }) {
   const params = new URLSearchParams()
   if (q) params.set('q', q)
   if (filter === 'hasDeal') params.set('hasDeal', 'true')
   if (filter === 'unlinked') params.set('hasDeal', 'false')
+  if (folder) params.set('folder', folder)
   const { data, mutate, isLoading } = useSWR(`/api/inbox/threads?${params.toString()}`, fetcher, { refreshInterval: 30000, revalidateOnFocus: true })
   let threads = data?.threads || []
   // client-side filter for status/minScore/fields
