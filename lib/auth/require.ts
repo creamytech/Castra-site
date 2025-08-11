@@ -18,7 +18,8 @@ export async function requireSession(): Promise<LoadedContext> {
     })
     member = { ...created.m, org: created.org } as any
   }
-  return { session, orgId: member.orgId, role: member.role as any }
+  const ensured = member as unknown as { orgId: string; role: any }
+  return { session, orgId: ensured.orgId, role: ensured.role as any }
 }
 
 export async function requireRole(orgId: string, userId: string, allowed: LoadedContext['role'][]): Promise<boolean> {
