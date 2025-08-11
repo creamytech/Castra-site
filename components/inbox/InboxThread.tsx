@@ -35,7 +35,7 @@ export default function InboxThread({ threadId }: { threadId: string }) {
 
   return (
     <div className="space-y-3">
-      <div className="p-3 border rounded bg-card sticky top-0 z-10 bg-card/95 backdrop-blur">
+      <div className="p-3 border rounded bg-card sticky top-0 z-20 bg-card/95 backdrop-blur">
         <div className="font-semibold">{thread.subject || '(No subject)'}</div>
       </div>
       <div className="space-y-2">
@@ -50,7 +50,7 @@ export default function InboxThread({ threadId }: { threadId: string }) {
           </div>
         ))}
       </div>
-      <div className="p-3 border rounded bg-card space-y-2 sticky bottom-0 bg-card/95 backdrop-blur">
+      <div className="p-3 border rounded bg-card space-y-2 sticky bottom-0 z-20 bg-card/95 backdrop-blur">
         <div className="text-sm font-semibold">Quick Reply</div>
         <div className="grid grid-cols-3 gap-2">
           <input value={to} onChange={e=>setTo(e.target.value)} placeholder="To" className="border rounded px-2 py-1 bg-background" />

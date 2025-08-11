@@ -38,7 +38,7 @@ export default function InboxList({ q, filter, onSelect, filters }: { q: string;
             <ScoreRing score={typeof t.score === 'number' ? t.score : 0} />
             <div className="font-medium text-sm truncate flex-1">{t.subject || '(No subject)'}</div>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap no-scrollbar">
             {t.status && (
               <span className="badge" data-status={t.status}>
                 {STATUS_LABEL[t.status as keyof typeof STATUS_LABEL] || t.status}
@@ -46,7 +46,7 @@ export default function InboxList({ q, filter, onSelect, filters }: { q: string;
             )}
             {t.source && <span className="chip">{t.source}</span>}
             {(t.reasons || []).slice(0, 3).map((r: string, i: number) => (
-              <span key={i} className="chip">{String(r).toLowerCase()}</span>
+              <span key={i} className="chip shrink-0">{String(r).toLowerCase()}</span>
             ))}
           </div>
           {!!t.preview && <div className="text-xs text-muted-foreground truncate">{t.preview}</div>}

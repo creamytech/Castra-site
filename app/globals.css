@@ -215,6 +215,10 @@
 .preview { color:var(--muted); font-size:.85rem; }
 .meta { color:var(--muted); font-size:.78rem; display:flex; gap:10px; align-items:center; }
 
+/* Hide scrollbars on horizontal badge rows */
+.no-scrollbar::-webkit-scrollbar{display:none}
+.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
+
 @layer components {
   /* Card component */
   .card {
