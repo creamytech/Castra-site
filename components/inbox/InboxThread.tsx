@@ -4,6 +4,10 @@ import useSWR from 'swr'
 import { useState } from 'react'
 import { apiFetch } from '@/lib/http'
 import DOMPurify from 'dompurify'
+import { ThreadHeader } from '@/components/inbox/ThreadHeader'
+import { ThreadSummaryChips } from '@/components/inbox/ThreadSummaryChips'
+import { AiDraftBox } from '@/components/inbox/AiDraftBox'
+import { ScheduleBox } from '@/components/inbox/ScheduleBox'
 
 const fetcher = (url: string) => apiFetch(url).then(r => r.json())
 
@@ -62,8 +66,14 @@ export default function InboxThread({ threadId }: { threadId: string }) {
 
   return (
     <div className="space-y-3">
-      <div className="p-3 border rounded bg-card sticky top-0 z-20 bg-card/95 backdrop-blur">
-        <div className="font-semibold">{thread.subject || '(No subject)'}</div>
+      <div className="sticky top-0 z-20 bg-card/95 backdrop-blur">
+        <ThreadHeader lead={{ status: thread.status, score: thread.score ?? 0, reasons: thread.reasons || [] }} onStatusChange={async (s)=>{
+          await apiFetch(`/api/leads/${thread.dealId || ''}/status`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: s }) }).catch(()=>{})
+        }}/>
+        <div className="px-3 py-2 border-b">
+          <div className="font-semibold">{thread.subject || '(No subject)'}</div>
+          <ThreadSummaryChips lead={{ extracted: thread.extracted }} />
+        </div>
       </div>
       <div className="space-y-2">
         {(thread.messages || []).map((m: any) => (
@@ -78,6 +88,15 @@ export default function InboxThread({ threadId }: { threadId: string }) {
         ))}
       </div>
       <div className="p-3 border rounded bg-card space-y-2 sticky bottom-0 z-20 bg-card/95 backdrop-blur">
+        <AiDraftBox draft={{ subject, bodyText: draft }} onInsert={()=>{ /* insert into textarea already */ }} onEdit={()=>{ /* focus */ }} onRegenerate={aiDraft} />
+        <div>
+          <div className="text-sm font-semibold mb-1">Schedule</div>
+          <ScheduleBox schedule={undefined as any} onGenerate={async()=>{
+            // Could call /api/schedule/propose with a bound leadId if available
+          }} onBook={(start,end)=>{
+            // call /api/schedule/book
+          }} />
+        </div>
         <div className="text-sm font-semibold flex items-center gap-2">
           Quick Reply
           <div className="ml-auto flex items-center gap-2 text-xs">
