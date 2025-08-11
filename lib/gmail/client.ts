@@ -1,6 +1,6 @@
 import { google } from 'googleapis'
 import { prisma } from '@/lib/prisma'
-import { decryptField } from '@/src/lib/crypto/field'
+import { decryptField, encryptField } from '@/src/lib/crypto/field'
 
 export async function getGoogleAuthForUser(userId: string) {
   const account = await prisma.account.findFirst({ where: { userId, provider: 'google' } })
@@ -16,8 +16,8 @@ export async function getGoogleAuthForUser(userId: string) {
   })
   oauth2.on('tokens', async (tokens) => {
     const updates: any = {}
-    if (tokens.access_token) updates.access_token = tokens.access_token
-    if (tokens.refresh_token) updates.refresh_token = tokens.refresh_token
+    if (tokens.access_token) updates.access_token = await maybeEncrypt(tokens.access_token)
+    if (tokens.refresh_token) updates.refresh_token = await maybeEncrypt(tokens.refresh_token)
     if (tokens.expiry_date) updates.expires_at = Math.floor(tokens.expiry_date / 1000)
     if (Object.keys(updates).length) await prisma.account.update({ where: { id: account.id }, data: updates })
   })
@@ -32,6 +32,12 @@ async function maybeDecrypt(val?: string | null): Promise<string | null> {
   if (!val) return val ?? null
   if (val.startsWith('enc:')) return decryptField(val.slice(4))
   return val
+}
+
+async function maybeEncrypt(val?: string | null): Promise<string | null> {
+  if (!val) return val ?? null
+  if (val.startsWith('enc:')) return val
+  return 'enc:' + await encryptField(val)
 }
 
 
