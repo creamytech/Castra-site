@@ -97,6 +97,19 @@ export const POST = withAuth(async ({ req, ctx }) => {
         }
       },
       {
+        name: "book_calendar_event",
+        description: "Book a proposed time for a lead and send an invite + reply in-thread",
+        parameters: {
+          type: "object",
+          properties: {
+            leadId: { type: "string", description: "Lead ID associated with the thread" },
+            start: { type: "string", description: "Start time RFC3339" },
+            end: { type: "string", description: "End time RFC3339" }
+          },
+          required: ["leadId","start","end"]
+        }
+      },
+      {
         name: "get_recent_emails",
         description: "Get recent emails from Gmail inbox",
         parameters: {

@@ -215,6 +215,8 @@ async function executeTool(name: string, args: any): Promise<string> {
         return JSON.stringify(result)
       case 'create_calendar_event':
         return await createCalendarEvent(args)
+      case 'book_calendar_event':
+        return await bookCalendarEvent(args)
       case 'get_recent_emails':
         return await getRecentEmails(args)
       default:
@@ -266,6 +268,33 @@ async function createCalendarEvent(args: any): Promise<string> {
   } catch (error) {
     console.error('Calendar event creation error:', error)
     throw new Error(`Failed to create calendar event: ${error instanceof Error ? error.message : 'Unknown error'}`)
+  }
+}
+
+async function bookCalendarEvent(args: any): Promise<string> {
+  try {
+    const { leadId, start, end } = args
+    if (!leadId || !start || !end) {
+      throw new Error('Missing required booking details: leadId, start, end')
+    }
+
+    const response = await fetch(`/api/schedule/book`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+      body: JSON.stringify({ leadId, start, end })
+    })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      throw new Error(error.error || 'Failed to book schedule')
+    }
+
+    const result = await response.json()
+    return `Invite sent and event booked. Event link: ${result.event?.htmlLink || 'created'}`
+  } catch (error) {
+    console.error('Schedule booking error:', error)
+    throw new Error(`Failed to book event: ${error instanceof Error ? error.message : 'Unknown error'}`)
   }
 }
 
