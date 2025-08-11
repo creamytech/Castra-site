@@ -7,6 +7,7 @@ import { apiFetch } from '@/lib/http'
 import InboxList from '@/components/inbox/InboxList'
 import InboxThread from '@/components/inbox/InboxThread'
 import ThreadSidebar from '@/components/inbox/ThreadSidebar'
+import SidebarNav from '@/components/inbox/SidebarNav'
 
 export default function DashboardInboxPage() {
   const [q, setQ] = useState('')
@@ -41,32 +42,18 @@ export default function DashboardInboxPage() {
   return (
     <div className="p-0 sm:p-0 grid grid-cols-1 md:grid-cols-5 gap-0">
       <div className="order-1 md:order-none md:col-span-1 space-y-3 md:sticky md:top-16 md:self-start p-4 border-r bg-background/60 backdrop-blur animate-slide-in">
-        <div className="flex items-center justify-between">
-          <div className="text-sm font-semibold">Inbox</div>
-          <button onClick={sync} className="text-xs px-2 py-1 rounded border flex items-center gap-2">
-            {syncing && <span className="inline-block w-3 h-3 border-2 border-border border-t-transparent rounded-full animate-spin"/>}
-            Sync
-          </button>
-        </div>
         <div className="flex gap-2">
           <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search…" className="w-full border rounded px-2 py-1 bg-background" />
         </div>
-        <div className="p-3 border rounded bg-card">
-          <div className="text-xs text-muted-foreground mb-1">Folders</div>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            {['inbox','unread','starred','drafts','spam','trash','all'].map((f)=> (
-              <button key={f} onClick={()=>setFolder(f as any)} className={`px-2 py-1 rounded border ${folder===f? 'bg-primary text-primary-foreground':''}`}>{f[0].toUpperCase()+f.slice(1)}</button>
-            ))}
-          </div>
-        </div>
-        <div className="p-3 border rounded bg-card">
-          <div className="text-xs text-muted-foreground mb-1">Categories</div>
-          <div className="grid grid-cols-3 gap-2 text-xs">
-            {['primary','promotions','social','updates','forums','all'].map((c)=> (
-              <button key={c} onClick={()=>setCategory(c as any)} className={`px-2 py-1 rounded border ${category===c? 'bg-primary text-primary-foreground':''}`}>{c[0].toUpperCase()+c.slice(1)}</button>
-            ))}
-          </div>
-        </div>
+        <SidebarNav
+          folder={folder}
+          onChangeFolder={(f)=>setFolder(f)}
+          category={category}
+          onChangeCategory={(c)=>setCategory(c)}
+          onCompose={()=>setToast('Compose coming soon')}
+          syncing={syncing}
+          onSync={sync}
+        />
         <FiltersSidebar value={filters} onChange={setFilters} />
         <InboxList q={q} filter={filter} onSelect={(id)=>setThreadId(id)} filters={filters} folder={folder} category={category} />
         {!!toast && <div className="text-xs text-muted-foreground">{toast}</div>}
