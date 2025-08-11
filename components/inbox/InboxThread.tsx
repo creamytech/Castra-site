@@ -7,7 +7,7 @@ import { apiFetch } from '@/lib/http'
 const fetcher = (url: string) => apiFetch(url).then(r => r.json())
 
 export default function InboxThread({ threadId }: { threadId: string }) {
-  const { data, mutate } = useSWR(threadId ? `/api/inbox/threads/${threadId}` : null, fetcher)
+  const { data, mutate, isLoading } = useSWR(threadId ? `/api/inbox/threads/${threadId}` : null, fetcher)
   const thread = data?.thread
   const [draft, setDraft] = useState('')
   const [to, setTo] = useState('')
@@ -28,7 +28,9 @@ export default function InboxThread({ threadId }: { threadId: string }) {
     mutate()
   }
 
-  if (!thread) return <div className="text-sm text-muted-foreground">No thread selected</div>
+  if (!threadId) return <div className="text-sm text-muted-foreground">Select a thread from the left to view</div>
+  if (isLoading) return <div className="space-y-2"><div className="h-6 rounded skeleton"/><div className="h-24 rounded skeleton"/></div>
+  if (!thread) return <div className="text-sm text-muted-foreground">Thread not found</div>
 
   return (
     <div className="space-y-3">

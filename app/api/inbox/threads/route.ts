@@ -53,7 +53,7 @@ export const GET = withAuth(async ({ req, ctx }) => {
         const combined = `${last?.snippet || ''} ${last?.bodyText || ''}`
         const extracted = t.extracted || extract(combined)
         const reasons = (Array.isArray(t.reasons) ? t.reasons : [t.reasons]).filter(Boolean)
-        return { id: t.id, userId: t.userId, subject: t.subject, lastSyncedAt: t.lastSyncedAt, deal: t.deal || null, status, score, reasons, extracted }
+        return { id: t.id, userId: t.userId, subject: t.subject, lastSyncedAt: t.lastSyncedAt, deal: t.deal || null, status, score, reasons, extracted, preview: last?.snippet || last?.bodyText || '' }
       })
       return NextResponse.json({ total, page, limit, threads })
     }
