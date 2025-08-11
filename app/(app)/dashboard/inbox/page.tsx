@@ -13,7 +13,6 @@ export default function DashboardInboxPage() {
   const [q, setQ] = useState('')
   const [debouncedQ, setDebouncedQ] = useState('')
   const itemsRef = useRef<any[]>([])
-  const [debouncedQ, setDebouncedQ] = useState('')
   const [filter, setFilter] = useState('all')
   const [folder, setFolder] = useState<'inbox'|'unread'|'starred'|'spam'|'trash'|'drafts'|'all'>('all')
   const [filters, setFilters] = useState<any>({ status: [], minScore: 0, unreadOnly: false, hasPhone: false, hasPrice: false })
