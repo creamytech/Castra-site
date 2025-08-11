@@ -16,6 +16,9 @@ export const POST = withAuth(async ({ ctx }) => {
     const q = 'newer_than:60d in:anywhere'
     const list = await gmail.users.messages.list({ userId: 'me', q, maxResults: 50 })
     const ids = (list.data.messages || []).map(m => m.id!).filter(Boolean)
+    if (ids.length === 0) {
+      return NextResponse.json({ ok: true, synced: 0, counts: { threads: 0, messages: 0 }, note: 'No messages matched query' })
+    }
 
     const classify = (subject: string, snippet: string) => {
       const text = `${subject} ${snippet}`.toLowerCase()
