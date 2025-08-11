@@ -7,7 +7,8 @@ import DOMPurify from 'dompurify'
 import { ThreadHeader } from '@/components/inbox/ThreadHeader'
 import { ThreadSummaryChips } from '@/components/inbox/ThreadSummaryChips'
 import { AiDraftBox } from '@/components/inbox/AiDraftBox'
-import { ScheduleBox } from '@/components/inbox/ScheduleBox'
+// Removed separate ScheduleBox; integrated into AiDraftBox
+import { useBookSlot } from '@/src/actions/scheduleActions'
 
 const fetcher = (url: string) => apiFetch(url).then(r => r.json())
 
@@ -18,6 +19,7 @@ export default function InboxThread({ threadId }: { threadId: string }) {
   const [draft, setDraft] = useState('')
   const [to, setTo] = useState('')
   const [subject, setSubject] = useState('')
+  const [picked, setPicked] = useState<{start:string,end:string}|null>(null)
 
   const aiDraft = async () => {
     const lastId = thread?.messages?.slice(-1)?.[0]?.id
@@ -26,7 +28,7 @@ export default function InboxThread({ threadId }: { threadId: string }) {
     const j = await res.json()
     if (res.ok) {
       if (j.subject && !subject) setSubject(j.subject)
-      setDraft(j.draft || '')
+      setDraft(j.draft || j.bodyText || '')
     }
   }
 
@@ -65,6 +67,8 @@ export default function InboxThread({ threadId }: { threadId: string }) {
   if (isLoading) return <div className="space-y-2"><div className="h-6 rounded skeleton"/><div className="h-24 rounded skeleton"/></div>
   if (!thread) return <div className="text-sm text-muted-foreground">Thread not found</div>
 
+  const leadId = bundle?.lead?.id as string | undefined
+  const { book } = useBookSlot(leadId || '')
   return (
     <div className="space-y-3">
       <div className="sticky top-0 z-20 bg-card/95 backdrop-blur">
@@ -89,36 +93,19 @@ export default function InboxThread({ threadId }: { threadId: string }) {
         ))}
       </div>
       <div className="p-3 border rounded bg-card space-y-2 sticky bottom-0 z-20 bg-card/95 backdrop-blur">
-        <AiDraftBox draft={bundle?.draft || { subject, bodyText: draft }} onInsert={()=>{ if (bundle?.draft?.bodyText) setDraft(bundle.draft.bodyText) }} onEdit={()=>{ /* focus */ }} onRegenerate={aiDraft} />
-        <div>
-          <div className="text-sm font-semibold mb-1">Schedule</div>
-          <ScheduleBox schedule={bundle?.schedule} onGenerate={async()=>{
-            if (!bundle?.lead?.id) return
-            await apiFetch('/api/schedule/propose', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ leadId: bundle.lead.id }) })
-          }} onBook={async (start,end)=>{
-            if (!bundle?.lead?.id) return
-            await apiFetch('/api/schedule/book', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ leadId: bundle.lead.id, start, end }) })
-          }} />
-        </div>
-        <div className="text-sm font-semibold flex items-center gap-2">
-          Quick Reply
-          <div className="ml-auto flex items-center gap-2 text-xs">
-            <button onClick={()=>markReadUnread(false)} className="px-2 py-1 border rounded">Mark read</button>
-            <button onClick={()=>markReadUnread(true)} className="px-2 py-1 border rounded">Mark unread</button>
-            <button onClick={deleteThread} className="px-2 py-1 border rounded">Delete</button>
-          </div>
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          <input value={to} onChange={e=>setTo(e.target.value)} placeholder="To" className="border rounded px-2 py-1 bg-background" />
-          <input value={subject} onChange={e=>setSubject(e.target.value)} placeholder="Subject" className="border rounded px-2 py-1 bg-background col-span-2" />
-        </div>
-        <textarea value={draft} onChange={e=>setDraft(e.target.value)} className="w-full h-28 border rounded px-2 py-1 bg-background" placeholder="Write a reply…" />
-        <div className="flex gap-2">
-          <button onClick={aiDraft} className="px-3 py-1 rounded border text-xs">AI Draft</button>
-          <button onClick={sendEmail} disabled={!to || !subject || !draft} className="px-3 py-1 rounded bg-primary text-primary-foreground text-xs">Send Email</button>
-          <button onClick={replyAll} disabled={!to || !subject || !draft} className="px-3 py-1 rounded border text-xs">Reply All</button>
-          <button onClick={() => { navigator.clipboard.writeText(`${subject}\n\n${draft}`)}} className="px-3 py-1 rounded border text-xs">Copy</button>
-        </div>
+        <AiDraftBox 
+          draft={bundle?.draft}
+          subject={subject}
+          body={draft}
+          setSubject={setSubject}
+          setBody={setDraft}
+          onInsert={()=>{ if (bundle?.draft?.bodyText) setDraft(bundle.draft.bodyText) }}
+          onRegenerate={aiDraft}
+          onSend={sendEmail}
+          onPickTime={(start,end)=> setPicked({start,end})}
+          onSendInvite={(start,end)=>{ if (leadId) book(start,end) }}
+          proposed={bundle?.schedule?.proposedWindows || []}
+        />
       </div>
     </div>
   )

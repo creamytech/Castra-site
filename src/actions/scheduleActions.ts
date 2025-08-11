@@ -22,7 +22,14 @@ export function useBookSlot(leadId: string) {
       const res = await apiPOST<{ ok: boolean; event: { id: string; htmlLink: string } }>(`/api/schedule/book`, { leadId, start, end })
       mutate(key, (prev: any) => ({ ...prev, schedule: { ...(prev?.schedule||{}), event: res.event } }), false)
       dismiss(toastId)
-      push({ variant: 'success', message: 'Invite sent', actionLabel: 'Open', onAction: ()=> window.open(res.event.htmlLink, '_blank') })
+      const successId = push({ variant: 'success', message: 'Invite sent', ttlMs: 10000, actionLabel: 'Undo', onAction: async ()=>{
+        try {
+          await apiPOST('/api/schedule/cancel', { leadId, eventId: res.event.id })
+        } finally {
+          dismiss(successId)
+          await mutate(key)
+        }
+      } })
     } catch (e: any) {
       await mutate(key)
       dismiss(toastId)
