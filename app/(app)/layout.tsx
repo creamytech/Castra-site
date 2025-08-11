@@ -14,6 +14,7 @@ import { CastraWordmark } from "@/components/brand/CastraWordmark";
 import NotificationsBell from "@/components/NotificationsBell";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter as useNextRouter } from "next/navigation";
+import { apiFetch } from "@/lib/http";
 
 export default function AppLayout({
   children,
@@ -34,7 +35,21 @@ export default function AppLayout({
     applyTheme(theme);
   }, []);
 
-  // Avoid heavy client-side redirects here to not interfere with auth/login flow
+  // Lightweight onboarding gate on client (middleware also recommended server-side)
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const res = await apiFetch('/api/memory', { method: 'GET' }).catch(() => null)
+        // If server exposes user profile in session somewhere else, replace this
+        const onboardCookie = typeof window !== 'undefined' ? window.localStorage.getItem('onboardedAt') : null
+        if (!onboardCookie && pathname && pathname.startsWith('/dashboard')) {
+          // best-effort redirect; real guard should be in middleware or server layout
+          router.replace('/onboarding')
+        }
+      } catch {}
+    }
+    check()
+  }, [pathname, router]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
