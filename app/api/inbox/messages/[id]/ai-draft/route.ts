@@ -31,7 +31,8 @@ export const POST = withAuth(async ({ req, ctx }, { params }: any) => {
     ], temperature: 0.3 })
     const body = completion.choices[0]?.message?.content?.trim() || ''
     // Subject heuristic: reuse thread subject or a minimal prefix
-    const subject = 'Re: ' + (await prisma.emailThread.findUnique({ where: { id: msg.threadId } }))?.subject ?? 'Re:'
+    const th = await prisma.emailThread.findUnique({ where: { id: msg.threadId } })
+    const subject = 'Re: ' + (th?.subject || '') || 'Re:'
     const parsed = ReplyOut.safeParse({ subject, body })
     if (!parsed.success) return NextResponse.json({ error: 'LLM failed' }, { status: 500 })
     return NextResponse.json({ draft: parsed.data.body, subject: parsed.data.subject })
