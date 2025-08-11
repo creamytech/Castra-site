@@ -70,7 +70,6 @@ console.log("Configured providers:", providers.map(p => p.id));
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   debug: true,
-  trustHost: true,
   callbacks: {
     async signIn({ user, account, profile, email }: any) {
       console.log("SignIn Callback:", { 
