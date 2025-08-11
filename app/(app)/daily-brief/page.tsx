@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { apiFetch } from '@/lib/http'
+import { useToast } from '@/components/ui/ToastProvider'
 
 type Draft = {
   id: string
@@ -23,14 +25,20 @@ export default function DailyBrief() {
   const [drafts, setDrafts] = useState<Draft[]>([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<Record<string, { subject: string; bodyText: string }>>({})
+  const { push, dismiss } = useToast()
 
   const load = async () => {
     setLoading(true)
-    const res = await fetch('/api/daily-brief', { cache: 'no-store' })
-    const data = await res.json()
-    if (res.ok) setDrafts(data.items || [])
-    else setDrafts([])
-    setLoading(false)
+    try {
+      const res = await apiFetch('/api/daily-brief')
+      const data = await res.json().catch(()=>({ items: [] }))
+      if ((res as any).ok) setDrafts(data.items || [])
+      else setDrafts([])
+    } catch (e) {
+      setDrafts([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { load(); const t = setInterval(load, 15000); return ()=> clearInterval(t) }, [])
@@ -47,16 +55,41 @@ export default function DailyBrief() {
 
   const send = async (d: Draft) => {
     const payload = editing[d.id] ? editing[d.id] : { subject: d.subject, bodyText: d.bodyText }
-    const res = await fetch(`/api/daily-brief/${d.id}/send`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-    if (res.ok) load()
+    const toastId = push({ message: 'Sending…', variant: 'info', ttlMs: 5000 })
+    try {
+      const res = await apiFetch(`/api/daily-brief/${d.id}/send`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      if ((res as any).ok) {
+        dismiss(toastId)
+        push({ message: 'Sent', variant: 'success', ttlMs: 3000 })
+        load()
+      } else {
+        dismiss(toastId)
+        push({ message: 'Send failed', variant: 'error' })
+      }
+    } catch {
+      dismiss(toastId)
+      push({ message: 'Send failed', variant: 'error' })
+    }
   }
   const snooze = async (d: Draft, minutes = 60) => {
-    const res = await fetch(`/api/daily-brief/${d.id}/snooze`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ minutes }) })
-    if (res.ok) load()
+    const toastId = push({ message: `Snoozed for ${minutes} min`, variant: 'success', ttlMs: 10000, actionLabel: 'Undo', onAction: async ()=>{
+      await apiFetch(`/api/daily-brief/${d.id}/snooze`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ minutes: 0 }) })
+      dismiss(toastId)
+      load()
+    } })
+    await apiFetch(`/api/daily-brief/${d.id}/snooze`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ minutes }) })
+    load()
   }
-  const dismiss = async (d: Draft) => {
-    const res = await fetch(`/api/daily-brief/${d.id}/dismiss`, { method: 'POST' })
-    if (res.ok) load()
+  const doDismiss = async (d: Draft) => {
+    await apiFetch(`/api/daily-brief/${d.id}/dismiss`, { method: 'POST' })
+    load()
+  }
+  const regenerate = async (d: Draft) => {
+    const toastId = push({ message: 'Regenerating…', variant: 'info', ttlMs: 5000 })
+    await apiFetch(`/api/drafts/${d.id}/regenerate`, { method: 'POST' })
+    dismiss(toastId)
+    push({ message: 'Updated', variant: 'success', ttlMs: 2500 })
+    load()
   }
 
   return (
@@ -103,7 +136,8 @@ export default function DailyBrief() {
                       <div className="flex items-center gap-2">
                         <button onClick={() => send(d)} className="px-3 py-1.5 rounded bg-primary text-primary-foreground text-xs">Approve & Send</button>
                         <button onClick={() => snooze(d, 60)} className="px-3 py-1.5 rounded border text-xs">Snooze 1h</button>
-                        <button onClick={() => dismiss(d)} className="px-3 py-1.5 rounded border text-xs">Dismiss</button>
+                        <button onClick={() => regenerate(d)} className="px-3 py-1.5 rounded border text-xs">Regenerate</button>
+                        <button onClick={() => doDismiss(d)} className="px-3 py-1.5 rounded border text-xs">Dismiss</button>
                         <Link href={`/dashboard/inbox/${d.threadId}`} className="px-3 py-1.5 rounded border text-xs">Open Thread</Link>
                       </div>
                       <textarea
