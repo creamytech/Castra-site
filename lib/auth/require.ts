@@ -7,8 +7,17 @@ export type LoadedContext = { session: any; orgId: string; role: 'OWNER'|'ADMIN'
 export async function requireSession(): Promise<LoadedContext> {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) throw new Error('Unauthorized')
-  const member = await prisma.orgMember.findFirst({ where: { userId: session.user.id }, include: { org: true } })
-  if (!member?.orgId) throw new Error('No organization')
+  let member = await prisma.orgMember.findFirst({ where: { userId: session.user.id }, include: { org: true } })
+  if (!member?.orgId) {
+    // Auto-provision a default organization for first-time users
+    const orgName = session.user.name || session.user.email || 'My Organization'
+    const created = await prisma.$transaction(async (tx) => {
+      const org = await tx.org.create({ data: { name: orgName } })
+      const m = await tx.orgMember.create({ data: { orgId: org.id, userId: session.user.id, role: 'OWNER' as any } })
+      return { org, m }
+    })
+    member = { ...created.m, org: created.org } as any
+  }
   return { session, orgId: member.orgId, role: member.role as any }
 }
 
