@@ -38,6 +38,7 @@ createWorker(async (job) => {
     const { connectionId, messageId, normalized } = job.data as ClassifyJob
     const { connection, user } = await getAuthorizedGmail(connectionId)
     const { subject, body, headers, threadId, fromEmail, fromName, snippet } = normalized
+    const { extractEntities } = await import('../ai/entities')
 
     const llm = await classifyLead({ subject, body, headers })
     const rules = ruleScore({ subject, body, from: fromEmail ?? '', headers })
@@ -61,9 +62,9 @@ createWorker(async (job) => {
     const existing = await (prisma as any).lead?.findFirst?.({ where: { providerMsgId: messageId, userId: user.id } })
     let lead
     if (existing) {
-      lead = await (prisma as any).lead.update({ where: { id: existing.id }, data: { subject, bodySnippet: snippet, threadId, fromEmail, fromName, source: 'gmail', attrs: llm.fields, reasons: llm.reason.split(';').slice(0, 3), score, status } })
+      lead = await (prisma as any).lead.update({ where: { id: existing.id }, data: { subject, bodySnippet: snippet, threadId, fromEmail, fromName, source: 'gmail', attrs: { ...(llm.fields||{}), extracted: extractEntities(subject||'', body||'') }, reasons: llm.reason.split(';').slice(0, 3), score, status } })
     } else {
-      lead = await (prisma as any).lead.create({ data: { userId: user.id, providerMsgId: messageId, threadId, subject, bodySnippet: snippet, fromEmail, fromName, source: 'gmail', attrs: llm.fields, reasons: llm.reason.split(';').slice(0, 3), score, status } })
+      lead = await (prisma as any).lead.create({ data: { userId: user.id, providerMsgId: messageId, threadId, subject, bodySnippet: snippet, fromEmail, fromName, source: 'gmail', attrs: { ...(llm.fields||{}), extracted: extractEntities(subject||'', body||'') }, reasons: llm.reason.split(';').slice(0, 3), score, status } })
     }
 
     if (score >= ((user as any).threshold ?? 70)) {
