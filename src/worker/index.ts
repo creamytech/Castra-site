@@ -42,25 +42,22 @@ createWorker(async (job) => {
     const llm = await classifyLead({ subject, body, headers })
     const rules = ruleScore({ subject, body, from: fromEmail ?? '', headers })
     const score = blend(rules, llm.score)
-    const status = decideStatus({ score, llmReason: llm.reason })
+    const status = decideStatus({ score, llmReason: llm.reason, subject, body })
 
     const existing = await (prisma as any).lead?.findFirst?.({ where: { providerMsgId: messageId, userId: user.id } })
     let lead
     if (existing) {
-      lead = await (prisma as any).lead.update({ where: { id: existing.id }, data: { subject, bodySnippet: snippet, threadId, fromEmail, fromName, source: 'gmail', attrs: llm.fields, reasons: llm.reason.split(';').slice(0, 4), score, status } })
+      lead = await (prisma as any).lead.update({ where: { id: existing.id }, data: { subject, bodySnippet: snippet, threadId, fromEmail, fromName, source: 'gmail', attrs: llm.fields, reasons: llm.reason.split(';').slice(0, 3), score, status } })
     } else {
-      lead = await (prisma as any).lead.create({ data: { userId: user.id, providerMsgId: messageId, threadId, subject, bodySnippet: snippet, fromEmail, fromName, source: 'gmail', attrs: llm.fields, reasons: llm.reason.split(';').slice(0, 4), score, status } })
+      lead = await (prisma as any).lead.create({ data: { userId: user.id, providerMsgId: messageId, threadId, subject, bodySnippet: snippet, fromEmail, fromName, source: 'gmail', attrs: llm.fields, reasons: llm.reason.split(';').slice(0, 3), score, status } })
     }
 
     if (score >= ((user as any).threshold ?? 70)) {
       await job.queue.add('notify', { leadId: lead.id }, { jobId: `notify-${lead.id}` })
     }
-    if (status === 'potential') {
-      const open = await (prisma as any).draft?.findFirst?.({ where: { userId: user.id, leadId: lead.id, threadId, status: { in: ['queued','snoozed'] } } })
-      if (!open) {
-        await job.queue.add('prepare-draft', { leadId: lead.id }, { jobId: `draft-${lead.id}` })
-      }
-    }
+    // Always enqueue scheduling and draft prep
+    await job.queue.add('prepare-schedule', { leadId: lead.id }, { jobId: `sched-${lead.id}` })
+    await job.queue.add('prepare-draft', { leadId: lead.id }, { jobId: `draft-${lead.id}` })
     return { score, status }
   }
 
@@ -68,9 +65,35 @@ createWorker(async (job) => {
     const { leadId } = job.data as { leadId: string }
     const lead = await (prisma as any).lead.findUnique({ where: { id: leadId }, include: { user: true } })
     if (!lead) return { ok: false }
-    const composed = await (await import('../ai/composeFollowup')).composeFollowup({ subject: lead.subject ?? lead.title ?? '', snippet: lead.bodySnippet ?? lead.description ?? '', fields: (lead as any).attrs ?? {}, agent: { name: (lead.user as any)?.meta?.agentName, phone: (lead.user as any)?.phone } })
-    await (prisma as any).draft.create({ data: { userId: lead.userId, leadId: lead.id, threadId: lead.threadId ?? '', subject: composed.subject, bodyText: composed.bodyText, followupType: composed.followupType, tone: composed.tone, callToAction: composed.callToAction, proposedTimes: composed.proposedTimes as any, meta: { model: composed.model, reasons: (lead as any).reasons, score: (lead as any).score } } })
+    const composed = await (await import('../ai/composeFollowup')).composeFollowup({ subject: lead.subject ?? lead.title ?? '', snippet: lead.bodySnippet ?? lead.description ?? '', fields: (lead as any).attrs ?? {}, agent: { name: (lead.user as any)?.meta?.agentName, phone: (lead.user as any)?.phone }, schedule: (lead as any).attrs?.schedule })
+    const open = await (prisma as any).draft?.findFirst?.({ where: { userId: lead.userId, leadId: lead.id, threadId: lead.threadId ?? '', status: { in: ['queued','snoozed'] } } })
+    if (open) {
+      await prisma.draft.update({ where: { id: open.id }, data: { subject: composed.subject, bodyText: composed.bodyText, proposedTimes: composed.proposedTimes as any } })
+    } else {
+      await (prisma as any).draft.create({ data: { userId: lead.userId, leadId: lead.id, threadId: lead.threadId ?? '', subject: composed.subject, bodyText: composed.bodyText, followupType: composed.followupType, tone: composed.tone, callToAction: composed.callToAction, proposedTimes: composed.proposedTimes as any, meta: { model: composed.model, reasons: (lead as any).reasons, score: (lead as any).score } } })
+    }
     await (prisma as any).eventLog?.create?.({ data: { userId: lead.userId, type: 'draft_created', meta: { leadId } } })
+    return { ok: true }
+  }
+
+  if (job.name === 'prepare-schedule') {
+    const { leadId } = job.data as { leadId: string }
+    const lead = await (prisma as any).lead.findUnique({ where: { id: leadId }, include: { user: true } })
+    if (!lead) return { ok: false }
+    const conn = await (prisma as any).connection.findFirst({ where: { userId: lead.userId, provider: 'google' } })
+    const { getFreeBusy } = await import('../lib/google-calendar')
+    const { parseAndProposeTimes } = await import('../ai/parseAndProposeTimes')
+    const timeMin = new Date().toISOString(); const timeMax = new Date(Date.now()+3*24*3600*1000).toISOString()
+    const busy = conn ? await getFreeBusy({ connectionId: conn.id, timeMin, timeMax }) : []
+    const out = await parseAndProposeTimes({ body: lead.bodySnippet || '', subject: lead.subject || '', userPrefs: { timeZone: 'America/New_York', workHours: { start: 9, end: 18 }, meetingLenMinutes: 60 }, calendarBusy: busy })
+    await (prisma as any).lead.update({ where: { id: lead.id }, data: { attrs: { ...(lead as any).attrs, schedule: out } } })
+    return { ok: true }
+  }
+
+  if (job.name === 'refresh-thread') {
+    const { leadId } = job.data as { leadId: string }
+    await job.queue.add('prepare-schedule', { leadId })
+    await job.queue.add('prepare-draft', { leadId })
     return { ok: true }
   }
 
