@@ -1,6 +1,6 @@
 "use client"
 
-import { cn } from '@/lib/utils'
+const cn = (...cls: Array<string | false | null | undefined>) => cls.filter(Boolean).join(' ')
 import { Inbox, Star, Clock, Send, FileText, Ban, Trash2, Mail } from 'lucide-react'
 
 type FolderKey = 'inbox'|'unread'|'starred'|'drafts'|'spam'|'trash'|'all'
