@@ -2,6 +2,7 @@
 
 import useSWR from 'swr'
 import { useMemo } from 'react'
+import { FixedSizeList as List, ListChildComponentProps } from 'react-window'
 import { apiFetch } from '@/lib/http'
 import { STATUS_LABEL, ScoreRing } from './InboxNew'
 
@@ -45,24 +46,16 @@ export default function InboxList({ q, filter, onSelect, filters, folder, catego
     threads.sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0))
   }
 
-  // Simple virtualization: render only a window around the viewport
-  const rowHeight = 72
-  const maxRows = 1000
-  const items = threads.slice(0, maxRows)
+  const rowHeight = 76
+  const items = threads
 
-  return (
-    <div className="space-y-2 overflow-auto" style={{ maxHeight: 'calc(100vh - 180px)' }}>
-      {isLoading && (
-        <div className="space-y-2">
-          <div className="h-6 rounded skeleton"/>
-          <div className="h-6 rounded skeleton"/>
-          <div className="h-6 rounded skeleton"/>
-        </div>
-      )}
-      {items.map((t: any) => (
+  function Row({ index, style }: ListChildComponentProps) {
+    const t: any = items[index]
+    if (!t) return null
+    return (
+      <div style={style}>
         <div
-          key={t.id}
-          className={`px-3 py-2 border rounded cursor-pointer flex items-start gap-3 touch-manipulation ${t.unread ? 'bg-primary/5 hover:bg-primary/10 border-primary/30' : 'bg-card hover:bg-muted/50'}`}
+          className={`px-3 py-2 border rounded cursor-pointer flex items-start gap-3 touch-manipulation group ${t.unread ? 'bg-primary/5 hover:bg-primary/10 border-primary/30' : 'bg-card hover:bg-muted/50'}`}
           onClick={() => onSelect(t.id)}
           role="button"
           tabIndex={0}
@@ -77,7 +70,6 @@ export default function InboxList({ q, filter, onSelect, filters, folder, catego
                   {STATUS_LABEL[t.status as keyof typeof STATUS_LABEL] || t.status}
                 </span>
               )}
-              {t.source && <span className="chip">{t.source}</span>}
               {(t.reasons || []).slice(0, 2).map((r: string, i: number) => (
                 <span key={i} className="chip shrink-0">{String(r).toLowerCase()}</span>
               ))}
@@ -94,7 +86,22 @@ export default function InboxList({ q, filter, onSelect, filters, folder, catego
             </div>
           </div>
         </div>
-      ))}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-2 overflow-auto" style={{ maxHeight: 'calc(100vh - 180px)' }}>
+      {isLoading && (
+        <div className="space-y-2">
+          <div className="h-6 rounded skeleton"/>
+          <div className="h-6 rounded skeleton"/>
+          <div className="h-6 rounded skeleton"/>
+        </div>
+      )}
+      <List height={Math.max(240, typeof window !== 'undefined' ? window.innerHeight - 180 : 480)} itemCount={items.length} itemSize={rowHeight} width={'100%'}>
+        {Row}
+      </List>
       {threads.length === 0 && !isLoading && (
         <div className="text-sm text-muted-foreground">
           No threads yet. Click Sync to fetch your latest emails.
