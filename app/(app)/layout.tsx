@@ -13,7 +13,6 @@ import { applyTheme, getInitialTheme } from "@/lib/ui/theme";
 import { CastraWordmark } from "@/components/brand/CastraWordmark";
 import NotificationsBell from "@/components/NotificationsBell";
 import dynamic from "next/dynamic";
-import { usePathname, useRouter as useNextRouter } from "next/navigation";
 
 export default function AppLayout({
   children,
@@ -23,8 +22,6 @@ export default function AppLayout({
   const [isClient, setIsClient] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const pathname = usePathname();
-  const router = useNextRouter();
 
   useEffect(() => {
     setIsClient(true);
@@ -33,8 +30,6 @@ export default function AppLayout({
     const theme = getInitialTheme();
     applyTheme(theme);
   }, []);
-
-  // No onboarding redirects here
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

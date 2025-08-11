@@ -159,8 +159,6 @@ export const authOptions: NextAuthOptions = {
     },
   },
   providers,
-  // Ensure correct URL in server-side flows
-  // NEXTAUTH_URL must be set in production to https://castra-site.vercel.app
   session: {
     strategy: "database",
   },

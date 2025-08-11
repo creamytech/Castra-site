@@ -111,17 +111,6 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   image         String?
-  // Onboarding & preferences
-  fullName      String?
-  phone         String?
-  headshotUrl   String?
-  signature     String?
-  quiet         Json?
-  threshold     Int       @default(70)
-  notifChannels String[]  @default([])
-  watchLabels   String[]  @default([])
-  styleGuide    Json?
-  onboardedAt   DateTime?
   // Tenant membership
   orgMembers    OrgMember[]
   auditLogs     AuditLog[]
