@@ -1,9 +1,10 @@
 "use client"
 
 import { useState } from 'react'
+import { apiFetch } from '@/lib/http'
 
 async function createDealFromThread(threadId: string) {
-  const res = await fetch(`/api/inbox/threads/${threadId}/create-deal`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) })
+  const res = await apiFetch(`/api/inbox/threads/${threadId}/create-deal`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) })
   return res.json()
 }
 
@@ -11,7 +12,7 @@ export default function ThreadSidebar({ threadId }: { threadId: string }) {
   const [dealId, setDealId] = useState('')
   const attach = async () => {
     if (!dealId) return
-    await fetch(`/api/inbox/threads/${threadId}/attach`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dealId }) })
+    await apiFetch(`/api/inbox/threads/${threadId}/attach`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dealId }) })
     alert('Attached')
   }
   const createDeal = async () => {

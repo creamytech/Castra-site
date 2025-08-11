@@ -24,6 +24,10 @@ export default function Sidebar() {
     { id: 'inbox', label: 'Inbox', icon: '📧', href: '/dashboard/inbox' },
     { id: 'crm', label: 'CRM', icon: '👥', href: '/crm' },
     { id: 'calendar', label: 'Calendar', icon: '📅', href: '/calendar' },
+    { id: 'marketing', label: 'Marketing', icon: '📣', href: '/marketing' },
+    { id: 'mls', label: 'MLS', icon: '🏷️', href: '/mls' },
+    { id: 'documents', label: 'Documents', icon: '📄', href: '/documents' },
+    { id: 'reports', label: 'Reports', icon: '📊', href: '/reports' },
     { id: 'brief', label: 'Daily Brief', icon: '🗒', href: '/daily-brief' },
     { id: 'admin', label: 'Admin', icon: '⚙️', href: '/admin' },
   ]

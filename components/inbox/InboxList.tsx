@@ -1,8 +1,9 @@
 "use client"
 
 import useSWR from 'swr'
+import { apiFetch } from '@/lib/http'
 
-const fetcher = (url: string) => fetch(url, { cache: 'no-store' }).then(r => r.json())
+const fetcher = (url: string) => apiFetch(url).then(r => r.json())
 
 export default function InboxList({ q, filter, onSelect }: { q: string; filter: string; onSelect: (id: string) => void }) {
   const params = new URLSearchParams()

@@ -319,6 +319,25 @@ export async function createCalendarEvent(
   }
 }
 
+// Returns authorized Gmail for a connectionId (Google provider)
+export async function getAuthorizedGmail(connectionId: string) {
+  const connection = await (prisma as any).connection?.findUnique?.({ where: { id: connectionId }, include: { user: true } })
+  if (!connection) throw new Error('Connection not found')
+  if (connection.provider !== 'google') throw new Error('Not a Google connection')
+
+  const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET
+  )
+  oauth2Client.setCredentials({
+    access_token: connection.accessToken,
+    refresh_token: connection.refreshToken,
+    expiry_date: connection.expiresAt ? Number(connection.expiresAt) * 1000 : undefined,
+  })
+  const gmail = google.gmail({ version: 'v1', auth: oauth2Client })
+  return { gmail, connection, user: connection.user }
+}
+
 export async function listUpcomingEvents(
   userId: string, 
   { max = 10, timeMinISO }: { max?: number; timeMinISO?: string }

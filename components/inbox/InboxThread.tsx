@@ -2,8 +2,9 @@
 
 import useSWR from 'swr'
 import { useState } from 'react'
+import { apiFetch } from '@/lib/http'
 
-const fetcher = (url: string) => fetch(url, { cache: 'no-store' }).then(r => r.json())
+const fetcher = (url: string) => apiFetch(url).then(r => r.json())
 
 export default function InboxThread({ threadId }: { threadId: string }) {
   const { data, mutate } = useSWR(threadId ? `/api/inbox/threads/${threadId}` : null, fetcher)
@@ -15,7 +16,7 @@ export default function InboxThread({ threadId }: { threadId: string }) {
   const aiDraft = async () => {
     const lastId = thread?.messages?.slice(-1)?.[0]?.id
     if (!lastId) return
-    const res = await fetch(`/api/inbox/messages/${lastId}/ai-draft`, { method: 'POST' })
+    const res = await apiFetch(`/api/inbox/messages/${lastId}/ai-draft`, { method: 'POST' })
     const j = await res.json()
     if (res.ok) setDraft(j.draft || '')
   }
@@ -23,7 +24,7 @@ export default function InboxThread({ threadId }: { threadId: string }) {
   const sendEmail = async () => {
     const lastId = thread?.messages?.slice(-1)?.[0]?.id
     if (!lastId) return
-    await fetch(`/api/inbox/messages/${lastId}/reply`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel: 'email', draft, to, subject, dealId: thread?.dealId }) })
+    await apiFetch(`/api/inbox/messages/${lastId}/reply`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel: 'email', draft, to, subject, dealId: thread?.dealId }) })
     mutate()
   }
 

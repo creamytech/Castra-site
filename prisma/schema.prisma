@@ -133,6 +133,7 @@ model User {
   smartReplies  SmartReply[]
   notifications Notification[]
   eventSuggestions EventSuggestion[]
+  drafts        Draft[]
   
   // Gmail Relations
   messages      Message[]
@@ -325,12 +326,16 @@ model Lead {
   source      String?
   value       Float?
   notes       String?
+  // For email linkage (optional, used by drafts)
+  threadId    String?
+  providerMsgId String?
   
   // Relations
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   org         Org?     @relation(fields: [orgId], references: [id])
   contact     Contact? @relation(fields: [contactId], references: [id])
   deals       Deal[]
+  drafts      Draft[]
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -338,6 +343,30 @@ model Lead {
   @@index([userId])
   @@index([contactId])
   @@index([orgId])
+}
+
+model Draft {
+  id           String   @id @default(cuid())
+  userId       String
+  leadId       String
+  threadId     String
+  status       String   @default("queued") // queued | approved | sent | dismissed | snoozed
+  subject      String
+  bodyText     String
+  followupType String?  // buyer | seller | renter | unknown
+  tone         String?  // concise | friendly | formal
+  callToAction String?
+  proposedTimes Json?
+  meta         Json?
+  snoozeUntil  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status, snoozeUntil])
+  @@unique([userId, leadId, threadId, status])
 }
 
 enum DealStage {

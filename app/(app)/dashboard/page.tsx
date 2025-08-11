@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { apiFetch } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +38,7 @@ export default function DashboardPage() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch("/api/stats");
+      const response = await apiFetch("/api/stats");
       if (response.ok) {
         const data = await response.json();
         setStats(data);
@@ -51,7 +52,7 @@ export default function DashboardPage() {
 
   const checkGoogleConnection = async () => {
     try {
-      const response = await fetch("/api/accounts");
+      const response = await apiFetch("/api/accounts");
       if (response.ok) {
         const data = await response.json();
         const googleConnected = data.accounts?.some((acc: any) => acc.provider === "google");
