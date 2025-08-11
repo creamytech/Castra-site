@@ -6,6 +6,8 @@ const LeadSchema = z.object({
   isLead: z.boolean(),
   score: z.number().min(0).max(100),
   reason: z.string(),
+  confidence: z.number().min(0).max(1).optional(),
+  needs_confirmation: z.boolean().optional(),
   fields: z.object({
     name: z.string().optional(),
     email: z.string().optional(),
@@ -36,9 +38,23 @@ export async function classifyLead(input: { subject: string; body: string; heade
   })
 
   const text = (resp.output_text || '{}').trim()
-  const parsed = LeadSchema.safeParse(JSON.parse(text))
+  let raw: any
+  try {
+    raw = JSON.parse(text)
+  } catch {
+    return { isLead: false, score: 0, reason: 'parse_error', fields: {}, confidence: 0, needs_confirmation: true }
+  }
+  // Backfill missing fields
+  if (typeof raw.confidence !== 'number') {
+    const s = typeof raw.score === 'number' ? raw.score : 0
+    raw.confidence = Math.max(0.01, Math.min(0.99, s / 100))
+  }
+  if (typeof raw.needs_confirmation !== 'boolean') {
+    raw.needs_confirmation = raw.confidence < 0.6
+  }
+  const parsed = LeadSchema.safeParse(raw)
   if (!parsed.success) {
-    return { isLead: false, score: 0, reason: 'parse_error', fields: {} }
+    return { isLead: false, score: 0, reason: 'schema_invalid', fields: {}, confidence: 0, needs_confirmation: true }
   }
   return parsed.data
 }

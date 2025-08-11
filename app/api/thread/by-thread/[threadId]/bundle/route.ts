@@ -11,7 +11,10 @@ export async function GET(_: NextRequest, { params }: { params: { threadId: stri
   if (!lead) return NextResponse.json({ lead: null, schedule: null, draft: null })
   const draft = await prisma.draft.findFirst({ where: { leadId: lead.id, status: { in: ['queued','snoozed','approved'] } }, orderBy: { updatedAt: 'desc' } })
   const schedule = (lead as any).attrs?.schedule || null
-  const payload = { lead, schedule, draft }
+  // Fetch the latest classification snapshot from EmailThread
+  const emailThread = await prisma.emailThread.findUnique({ where: { id: lead.threadId || '' } })
+  const confidence = emailThread ? ({ overall: (typeof emailThread.score === 'number' ? Math.min(0.99, Math.max(0.01, emailThread.score / 100)) : 0.6), reasons: Array.isArray(emailThread.reasons) ? emailThread.reasons : (emailThread.reasons ? [emailThread.reasons] : []) }) : null
+  const payload = { lead: { ...lead, status: emailThread?.status, score: emailThread?.score, priority: undefined, reasons: emailThread?.reasons, extracted: emailThread?.extracted }, schedule, draft, confidence }
   await bundleCacheSet(params.threadId, payload)
   return NextResponse.json(payload)
 }

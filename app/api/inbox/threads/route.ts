@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/api'
 import { prisma } from '@/lib/prisma'
 import { getGoogleAuthForUser, gmailClient } from '@/lib/gmail/client'
+import { applyInboxRules } from '@/src/ai/classifier/rules'
+import { classifyLead } from '@/src/ai/classifyLead'
 
 export const dynamic = 'force-dynamic'
 
@@ -93,29 +95,57 @@ export const GET = withAuth(async ({ req, ctx }) => {
           include: { deal: true, messages: { select: { intent: true, snippet: true, bodyText: true, from: true, date: true, internalRefs: true }, orderBy: { date: 'desc' }, take: 1 } },
         })
       ])
-      const mapIntentToStatus = (intent?: string | null) => {
-        const i = (intent || '').toUpperCase()
-        if (i.includes('OFFER')) return 'lead'
-        if (i.includes('SHOWING') || i.includes('INTEREST')) return 'potential'
-        if (i.includes('SPAM') || i.includes('UNSUB')) return 'no_lead'
-        return 'follow_up'
-      }
-      const scoreFor = (status: string) => status === 'lead' ? 85 : status === 'potential' ? 70 : status === 'no_lead' ? 10 : 55
-      const extract = (txt: string) => {
-        const phone = (txt.match(/\b\+?1?\s*\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/) || [])[0]
-        const price = (txt.match(/\b(?:\$\s?)?\d{2,3}(?:,\d{3})*(?:\s?k|\s?mm|\s?million)?\b/i) || [])[0]
-        const addr = (txt.match(/\b\d+\s+[A-Za-z].+?(St|Ave|Rd|Blvd|Dr|Ln|Ct)\b/i) || [])[0]
-        return { phone, price, address: addr }
-      }
-      const threadsRaw = rows.map((t: any) => {
+      let llmBudget = 30
+      const threadsRaw = await Promise.all(rows.map(async (t: any) => {
         const last = t.messages?.[0]
-        const status = t.status || mapIntentToStatus(last?.intent)
-        const score = typeof t.score === 'number' ? t.score : scoreFor(status)
         const combined = `${last?.snippet || ''} ${last?.bodyText || ''}`
-        const extracted = t.extracted || extract(combined)
-        const reasons = (Array.isArray(t.reasons) ? t.reasons : [t.reasons]).filter(Boolean)
         const labelIds = (last?.internalRefs as any)?.labelIds || []
         const unreadFlag = Array.isArray(labelIds) ? labelIds.includes('UNREAD') : false
+
+        // Apply rules layer
+        const rules = applyInboxRules({ subject: t.subject || '', text: combined, headers: { from: last?.from || '' } })
+
+        // Optionally apply LLM layer; guard errors
+        let llm: { isLead: boolean; score: number; reason: string; fields: any; confidence?: number; needs_confirmation?: boolean } | null = null
+        const shouldCallLLM = rules.uncertainty || (rules.rulesScore >= 30 && rules.rulesScore <= 85)
+        if (shouldCallLLM && llmBudget > 0) {
+          try {
+            llm = await classifyLead({ subject: t.subject || '', body: combined })
+            llmBudget -= 1
+          } catch {
+            llm = null
+          }
+        }
+
+        // Blend scoring
+        const llmScore = llm?.score ?? 0
+        const wRules = 0.55
+        const wLlm = 0.45
+        const baseScore = Math.round(wRules * rules.rulesScore + wLlm * llmScore)
+        const bonus = (rules.extracted.phone ? 5 : 0) + (rules.extracted.timeAsk ? 5 : 0)
+        const score = Math.max(0, Math.min(100, baseScore + bonus))
+
+        // Status decision
+        const isLead = typeof llm?.isLead === 'boolean' ? llm!.isLead : rules.isLead
+        const status = isLead ? 'lead' : (vendorOrNoLead(rules, llm) ? 'no_lead' : rules.uncertainty ? 'potential' : 'follow_up')
+
+        // Reasons and extracted
+        const reasons = [
+          ...rules.reasons,
+          ...(rules.conflicts.length ? rules.conflicts.map(c => `conflict:${c}`) : []),
+          ...(llm?.reason ? [ `llm:${llm.reason}` ] : []),
+        ]
+        const extracted = t.extracted || { ...rules.extracted, ...(llm?.fields || {}) }
+
+        // Confidence and needs_confirmation
+        const confidence = llm?.confidence ?? (rules.uncertainty ? 0.55 : 0.75)
+        const needs_confirmation = llm?.needs_confirmation ?? (confidence < 0.6)
+
+        // Persist lightweight updates for this thread
+        try {
+          await prisma.emailThread.update({ where: { id: t.id }, data: { status, score, reasons, extracted } })
+        } catch {}
+
         // Parse from header into name/email if available
         let fromName: string | null = null
         let fromEmail: string | null = null
@@ -127,8 +157,12 @@ export const GET = withAuth(async ({ req, ctx }) => {
           }
         }
         const lastMessageAt = last?.date || t.lastMessageAt || t.updatedAt || t.createdAt || t.lastSyncedAt
-        return { id: t.id, userId: t.userId, subject: t.subject, lastSyncedAt: t.lastSyncedAt, lastMessageAt, deal: t.deal || null, status, score, reasons, extracted, preview: last?.snippet || last?.bodyText || '', unread: unreadFlag, labelIds, fromName, fromEmail }
-      })
+
+        // Compute priority
+        const priority = computePriority(score, unreadFlag, rules, llm)
+
+        return { id: t.id, userId: t.userId, subject: t.subject, lastSyncedAt: t.lastSyncedAt, lastMessageAt, deal: t.deal || null, status, score, priority, reasons, extracted, preview: last?.snippet || last?.bodyText || '', unread: unreadFlag, labelIds, fromName, fromEmail, confidence, needs_confirmation }
+      }))
 
       const matchFolder = (tr: any) => {
         const labels: string[] = Array.isArray(tr.labelIds) ? tr.labelIds : []
@@ -197,3 +231,19 @@ export const GET = withAuth(async ({ req, ctx }) => {
     return NextResponse.json({ error: 'Failed' }, { status: 500 })
   }
 }, { action: 'inbox.threads.list' })
+
+function vendorOrNoLead(rules: ReturnType<typeof applyInboxRules>, llm: any | null): boolean {
+  const vendor = rules.reasons.some(r => r.includes('vendor'))
+  const llmVendor = typeof llm?.fields?.sourceType === 'string' && llm.fields.sourceType === 'vendor'
+  return vendor || llmVendor
+}
+
+function computePriority(score: number, unread: boolean, rules: ReturnType<typeof applyInboxRules>, llm: any | null): number {
+  let p = score
+  if (unread) p += 5
+  if (rules.extracted.timeAsk) p += 7
+  if (rules.extracted.phone) p += 5
+  const llmConf = typeof llm?.confidence === 'number' ? llm.confidence : (rules.uncertainty ? 0.55 : 0.75)
+  p += Math.round((llmConf - 0.5) * 20)
+  return Math.max(0, Math.min(100, p))
+}

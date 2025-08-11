@@ -1,4 +1,5 @@
 import OpenAI from 'openai'
+import { SchedulingPrefs } from '@/lib/personalization'
 
 export type BusySlot = { start: string; end: string }
 
@@ -19,7 +20,7 @@ function isFree(slot: { start: Date; end: Date }, busy: BusySlot[]) {
   })
 }
 
-export async function parseAndProposeTimes(input: { body: string; subject: string; userPrefs: { timeZone: string; workHours: { start: number; end: number }; meetingLenMinutes: number; styleGuide?: any }; calendarBusy: BusySlot[] }) {
+export async function parseAndProposeTimes(input: { body: string; subject: string; userPrefs: SchedulingPrefs & { styleGuide?: any }; calendarBusy: BusySlot[] }) {
   const tz = input.userPrefs.timeZone || 'America/New_York'
   const sys = `Extract requested date/time windows and a property/address from an email. Return STRICT JSON { detectedProperty: string|null, requestedWindows: [{start,end}] }.`
   let requested: { start: string; end: string }[] = []
@@ -33,17 +34,26 @@ export async function parseAndProposeTimes(input: { body: string; subject: strin
       detectedProperty = j.detectedProperty || null
     } catch {}
   }
-  // Propose next 3 free slots within next 3 days
+  // Propose next 3 free slots within next 3 days, respecting quiet/work hours and snapping
   const now = new Date()
   const proposals: { start: string; end: string }[] = []
   const lenMs = (input.userPrefs.meetingLenMinutes || 60) * 60 * 1000
+  const workStart = input.userPrefs.workHours?.start ?? 9
+  const workEnd = input.userPrefs.workHours?.end ?? 18
+  const quietStart = input.userPrefs.quietHours?.start
+  const quietEnd = input.userPrefs.quietHours?.end
   for (let d = 0; d < 3 && proposals.length < 3; d++) {
     const day = new Date(now.getTime() + d * 24 * 60 * 60 * 1000)
-    for (const hh of [11, 14, 17]) {
+    for (let hh = workStart; hh <= workEnd - Math.ceil(lenMs / (60*60*1000)); hh += 1) {
       const start = new Date(day)
       start.setHours(hh, 0, 0, 0)
-      const end = new Date(start.getTime() + lenMs)
-      if (isFree({ start, end }, input.calendarBusy)) proposals.push({ start: start.toISOString(), end: end.toISOString() })
+      // snap to :00 or :30
+      const snapped = snap(start)
+      const end = new Date(snapped.getTime() + lenMs)
+      // avoid quiet hours if configured
+      const isQuiet = typeof quietStart === 'number' && typeof quietEnd === 'number' && (snapped.getHours() < quietStart || end.getHours() >= quietEnd)
+      if (isQuiet) continue
+      if (isFree({ start: snapped, end }, input.calendarBusy)) proposals.push({ start: snapped.toISOString(), end: end.toISOString() })
       if (proposals.length >= 3) break
     }
   }

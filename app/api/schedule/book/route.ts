@@ -13,8 +13,17 @@ export const POST = withAuth(async ({ req, ctx }) => {
     if (!lead) return NextResponse.json({ error: 'not found' }, { status: 404 })
     const conn = await (prisma as any).connection.findFirst({ where: { userId: lead.userId, provider: 'google' } })
     if (!conn) return NextResponse.json({ error: 'no google connection' }, { status: 400 })
-    const evt = await createEvent({ connectionId: conn.id, threadId: (lead as any).threadId, toEmail: (lead as any).fromEmail || '', toName: (lead as any).fromName || '', summary: `Property tour — ${lead.title || ''}`, start, end, location: (lead as any).attrs?.address, description: `Lead ${lead.id}` })
-    await sendReplyFromDraft(conn.id, (lead as any).threadId || '', (lead as any).fromEmail || '', `Re: ${lead.title || 'Tour'}`, `Confirmed ${new Date(start).toLocaleString()}–${new Date(end).toLocaleTimeString()}. Invite: ${evt.htmlLink}`)
+    // Idempotency: check if an event at same time already exists for this lead/thread
+    const existing = await (prisma as any).eventSuggestion?.findFirst?.({ where: { userId: lead.userId, messageId: (lead as any).providerMsgId || '', startISO: start, endISO: end, status: 'created' } })
+    let evt
+    if (existing?.createdEventId) {
+      evt = { id: existing.createdEventId, htmlLink: '' }
+    } else {
+      evt = await createEvent({ connectionId: conn.id, threadId: (lead as any).threadId, toEmail: (lead as any).fromEmail || '', toName: (lead as any).fromName || '', summary: `Property tour — ${lead.title || ''}`, start, end, location: (lead as any).attrs?.address, description: `Lead ${lead.id}` })
+      try { await (prisma as any).eventSuggestion?.create?.({ data: { userId: lead.userId, messageId: (lead as any).providerMsgId || '', summary: `Property tour — ${lead.title || ''}`, startISO: start, endISO: end, status: 'created', createdEventId: evt.id } }) } catch {}
+    }
+    const msg = `Confirmed ${new Date(start).toLocaleString()}–${new Date(end).toLocaleTimeString()}. Invite: ${evt.htmlLink || ''}`
+    await sendReplyFromDraft(conn.id, (lead as any).threadId || '', (lead as any).fromEmail || '', `Re: ${lead.title || 'Tour'}`, msg)
     return NextResponse.json({ ok: true, event: evt })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'failed' }, { status: 500 })

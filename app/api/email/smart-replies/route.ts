@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/api'
 import { prisma } from '@/lib/prisma'
 import OpenAI from 'openai'
+import { filterUnsafeLinks, getStyleGuide, getAcceptedDraftSnippets } from '@/lib/personalization'
 import { google } from 'googleapis'
 
 export const dynamic = 'force-dynamic'
@@ -38,7 +39,14 @@ export const POST = withAuth(async ({ req, ctx }) => {
 
     if (!openai) return NextResponse.json({ error: 'OpenAI not configured' }, { status: 500 })
 
-    const prompt = `Email from: ${message.from}\nSubject: ${message.subject}\nSnippet: ${message.snippet}\n\nDraft a short, helpful reply for a real estate agent. Keep it under 150 words, professional and friendly. Return only the reply body.`
+    const [{ styleGuide, tone, signature }, fewshots] = await Promise.all([
+      getStyleGuide(ctx.session.user.id),
+      getAcceptedDraftSnippets(ctx.session.user.id, 10)
+    ])
+
+    const shotText = fewshots.slice(0, 3).map(s => `Subject: ${s.subject}\nBody:\n${s.bodyText}`).join('\n\n')
+    const styleText = styleGuide ? JSON.stringify(styleGuide) : ''
+    const prompt = `Email from: ${message.from}\nSubject: ${message.subject}\nSnippet: ${message.snippet}\n\nWrite a short, helpful reply for a real estate agent. Keep it under 150 words, professional and friendly.\nConstraints: No legal advice, safe links only, no promises.\n${tone ? `Tone: ${tone}\n` : ''}${signature ? `Signature: ${signature}\n` : ''}${styleText ? `StyleGuide: ${styleText}\n` : ''}${shotText ? `Few-shots:\n${shotText}\n` : ''}\nReturn only the reply body.`
     const completion = await openai.chat.completions.create({
       model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
       messages: [
@@ -49,7 +57,8 @@ export const POST = withAuth(async ({ req, ctx }) => {
       max_tokens: 300
     })
 
-    const body = completion.choices[0]?.message?.content?.trim() || 'Thanks for reaching out!'
+    let body = completion.choices[0]?.message?.content?.trim() || 'Thanks for reaching out!'
+    body = filterUnsafeLinks(body)
     const to = message.from.match(/<([^>]+)>/)?.[1] || message.from
     const subject = `Re: ${message.subject || ''}`.trim()
 
