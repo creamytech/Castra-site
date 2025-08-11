@@ -58,10 +58,10 @@ export default function ChatPage() {
 
   // Load chat sessions on mount
   useEffect(() => {
-    if (session) {
+    if (session?.user?.id) {
       loadSessions();
     }
-  }, [session]);
+  }, [session?.user?.id]);
 
   const loadSessions = async () => {
     try {
