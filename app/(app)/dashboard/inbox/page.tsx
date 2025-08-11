@@ -89,6 +89,7 @@ export default function DashboardInboxPage() {
   }
 
   return (
+    <>
     <div className="p-0 sm:p-0 grid grid-cols-1 md:grid-cols-5 gap-0">
       <div className="order-1 md:order-none md:col-span-1 space-y-3 md:sticky md:top-16 md:self-start p-4 border-r bg-background/60 backdrop-blur animate-slide-in">
         <div className="flex gap-2">
@@ -153,5 +154,6 @@ export default function DashboardInboxPage() {
         </div>
       </div>
     )}
+    </>
   )
 }
