@@ -31,4 +31,13 @@ export async function createEvent({ connectionId, threadId, toEmail, toName, sum
   return { id: data.id!, htmlLink: data.htmlLink || '' }
 }
 
+export async function cancelEvent({ eventId, userId }: { eventId: string; userId: string }) {
+  const conn = await (prisma as any).connection.findFirst({ where: { userId, provider: 'google' } })
+  if (!conn) throw new Error('connection not found')
+  const auth = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET)
+  auth.setCredentials({ access_token: conn.accessToken, refresh_token: conn.refreshToken, expiry_date: conn.expiresAt ? Number(conn.expiresAt) * 1000 : undefined })
+  const calendar = google.calendar({ version: 'v3', auth })
+  await calendar.events.delete({ calendarId: 'primary', eventId })
+}
+
 

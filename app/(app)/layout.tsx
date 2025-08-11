@@ -11,6 +11,7 @@ import { UserMenu } from "@/components/user-menu";
 import { FloatingThemeToggle } from "@/components/theme/floating-toggle";
 import { applyTheme, getInitialTheme } from "@/lib/ui/theme";
 import { CastraWordmark } from "@/components/brand/CastraWordmark";
+import { ToastProvider } from "@/components/ui/ToastProvider";
 import NotificationsBell from "@/components/NotificationsBell";
 import dynamic from "next/dynamic";
 
@@ -84,6 +85,7 @@ export default function AppLayout({
   }
 
   return (
+    <ToastProvider>
     <div className="min-h-screen bg-background">
       {/* Desktop Sidebar */}
       <div className="hidden md:block">
@@ -187,6 +189,7 @@ export default function AppLayout({
       {/* Floating Voice Widget */}
       {isClient && <DynamicVoice />}
     </div>
+    </ToastProvider>
   );
 }
 const DynamicAgent = dynamic(() => import("@/components/agent/GlobalAgentPanel"), { ssr: false });
