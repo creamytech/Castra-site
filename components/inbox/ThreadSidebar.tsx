@@ -35,6 +35,25 @@ export default function ThreadSidebar({ threadId }: { threadId: string }) {
     await apiFetch(`/api/inbox/threads/${threadId}/attach`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dealId }) })
     alert('Attached')
   }
+  const [proposed, setProposed] = useState<string[]>([])
+  const [creating, setCreating] = useState(false)
+  const suggestSlots = async () => {
+    try {
+      setCreating(true)
+      const now = new Date(); const in3d = new Date(now.getTime() + 3*24*60*60*1000)
+      const res = await apiFetch('/api/calendar/suggest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ window: `${now.toISOString()}..${in3d.toISOString()}` }) })
+      const j = await res.json(); if ((res as any).ok) setProposed(j.slots || [])
+    } finally { setCreating(false) }
+  }
+  const createEvent = async (slot: string) => {
+    try {
+      setCreating(true)
+      const start = new Date(slot); const end = new Date(start.getTime() + 60*60*1000)
+      const to = (thread?.messages?.slice(-1)?.[0]?.from || '').match(/<?([^<>\n+\s@]+@[^<>\n+\s]+)>?/)?.[1] || ''
+      const res = await apiFetch('/api/calendar/events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ summary: thread?.subject || 'Showing', description: 'Proposed by Castra', start: start.toISOString(), end: end.toISOString(), timeZone: 'America/New_York', attendees: to ? [to] : [] }) })
+      if ((res as any).ok) { alert('Event created'); setProposed([]) }
+    } finally { setCreating(false) }
+  }
   const createDeal = async () => {
     const r = await createDealFromThread(threadId)
     if (r?.deal?.id) {
@@ -69,6 +88,19 @@ export default function ThreadSidebar({ threadId }: { threadId: string }) {
             <button onClick={send} className="px-2 py-1 rounded border text-xs w-full">Send</button>
           </>
         )}
+      </div>
+      <div className="pt-2 border-t space-y-2">
+        <div className="font-semibold text-sm">Schedule</div>
+        <button onClick={suggestSlots} disabled={creating} className="px-2 py-1 rounded border text-xs w-full">Suggest Times</button>
+        <div className="space-y-1">
+          {proposed.map((s)=> (
+            <div key={s} className="flex items-center justify-between text-xs border rounded px-2 py-1">
+              <span>{new Date(s).toLocaleString()}</span>
+              <button onClick={()=>createEvent(s)} className="px-2 py-0.5 border rounded">Create</button>
+            </div>
+          ))}
+          {!proposed.length && <div className="text-xs text-muted-foreground">No proposals yet</div>}
+        </div>
       </div>
     </div>
   )
