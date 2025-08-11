@@ -219,6 +219,13 @@
 .no-scrollbar::-webkit-scrollbar{display:none}
 .no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
 
+/* Mobile adjustments */
+@media (max-width: 640px) {
+  .row { grid-template-columns: 1fr; align-items: start; }
+  .toolbar { position: static; top: auto; flex-wrap: wrap; gap: 8px; }
+  .scoreRing { width: 28px; height: 28px; font-size: .7rem; }
+}
+
 @layer components {
   /* Card component */
   .card {

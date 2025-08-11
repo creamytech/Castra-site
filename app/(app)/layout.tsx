@@ -21,6 +21,7 @@ export default function AppLayout({
 }) {
   const [isClient, setIsClient] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -84,13 +85,33 @@ export default function AppLayout({
 
   return (
     <div className="min-h-screen bg-background">
-      <Sidebar />
+      {/* Desktop Sidebar */}
+      <div className="hidden md:block">
+        <Sidebar />
+      </div>
+      {/* Mobile Sidebar Drawer */}
+      {mobileSidebarOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setMobileSidebarOpen(false)} />
+          <div className="absolute inset-y-0 left-0 w-64 bg-card border-r shadow-lg overflow-y-auto">
+            <Sidebar />
+          </div>
+        </div>
+      )}
 
-      <div className="ml-64 transition-all duration-300">
+      <div className="md:ml-64 ml-0 transition-all duration-300">
         {/* Header */}
         <header className="bg-card text-card-foreground border-b border-border px-6 py-4 sticky top-0 z-40 backdrop-blur supports-[backdrop-filter]:bg-card/80">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
+              {/* Mobile hamburger */}
+              <button
+                className="md:hidden mr-2 px-2 py-1 border rounded"
+                aria-label="Open menu"
+                onClick={() => setMobileSidebarOpen(true)}
+              >
+                ☰
+              </button>
               <CastraWordmark size="md" />
             </div>
             
@@ -141,7 +162,7 @@ export default function AppLayout({
         </header>
 
         {/* Main Content */}
-        <main className="p-6">
+        <main className="p-4 sm:p-6">
           <TransitionProvider>
             {children}
           </TransitionProvider>

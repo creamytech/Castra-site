@@ -38,7 +38,7 @@ export default function Sidebar() {
   }
 
   return (
-    <div className={`fixed left-0 top-0 h-full bg-card text-card-foreground border-r border-border transition-all duration-300 ${
+    <div className={`fixed left-0 top-0 h-full bg-card text-card-foreground border-r border-border transition-all duration-300 overflow-y-auto ${
       isCollapsed ? 'w-16' : 'w-64'
     }`}>
       {/* Header */}

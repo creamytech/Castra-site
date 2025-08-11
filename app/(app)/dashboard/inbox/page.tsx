@@ -37,8 +37,8 @@ export default function DashboardInboxPage() {
   useEffect(() => { sync() }, [])
 
   return (
-    <div className="p-6 grid grid-cols-1 md:grid-cols-5 gap-4">
-      <div className="md:col-span-1 space-y-3 sticky top-20 self-start">
+    <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="order-1 md:order-none md:col-span-1 space-y-3 md:sticky md:top-24 md:self-start">
         <div className="flex items-center justify-between">
           <div className="text-sm font-semibold">Inbox</div>
           <button onClick={sync} className="text-xs px-2 py-1 rounded border flex items-center gap-2">
@@ -53,10 +53,10 @@ export default function DashboardInboxPage() {
         <InboxList q={q} filter={filter} onSelect={(id)=>setThreadId(id)} filters={filters} />
         {!!toast && <div className="text-xs text-muted-foreground">{toast}</div>}
       </div>
-      <div className="md:col-span-3 min-h-[60vh]">
+      <div className="order-3 md:order-none md:col-span-3 min-h-[60vh]">
         <InboxThread threadId={threadId} />
       </div>
-      <div className="md:col-span-1">
+      <div className="order-2 md:order-none md:col-span-1">
         {threadId && <ThreadSidebar threadId={threadId} />}
       </div>
     </div>
