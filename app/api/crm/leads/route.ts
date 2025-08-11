@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
 
     const leads = await prisma.lead.findMany({
       where,
-      select: { id: true, title: true, status: true, score: true, updatedAt: true },
+      select: { id: true, title: true, status: true, updatedAt: true },
       orderBy: { updatedAt: 'desc' },
       take: 20,
       skip: page * 20,
