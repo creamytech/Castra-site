@@ -6,6 +6,21 @@ import { STATUS_LABEL, ScoreRing } from './InboxNew'
 
 const fetcher = (url: string) => apiFetch(url).then(r => r.json())
 
+function formatListTime(value?: string) {
+  if (!value) return ''
+  const d = new Date(value)
+  const now = new Date()
+  const isToday = d.toDateString() === now.toDateString()
+  if (isToday) {
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
+  const sameYear = d.getFullYear() === now.getFullYear()
+  if (sameYear) {
+    return d.toLocaleDateString([], { month: 'short', day: 'numeric' })
+  }
+  return d.toLocaleDateString()
+}
+
 export default function InboxList({ q, filter, onSelect, filters, folder }: { q: string; filter: string; onSelect: (id: string) => void; filters?: any, folder?: string }) {
   const params = new URLSearchParams()
   if (q) params.set('q', q)
@@ -39,29 +54,32 @@ export default function InboxList({ q, filter, onSelect, filters, folder }: { q:
       {threads.map((t: any) => (
         <div
           key={t.id}
-          className={`p-3 border rounded cursor-pointer flex flex-col gap-1 touch-manipulation ${t.unread ? 'bg-primary/5 hover:bg-primary/10 border-primary/30' : 'bg-card hover:bg-muted/50'}`}
+          className={`px-3 py-2 border rounded cursor-pointer flex items-start gap-3 touch-manipulation ${t.unread ? 'bg-primary/5 hover:bg-primary/10 border-primary/30' : 'bg-card hover:bg-muted/50'}`}
           onClick={() => onSelect(t.id)}
           role="button"
           tabIndex={0}
           onKeyDown={(e)=>{ if(e.key==='Enter' || e.key===' '){ onSelect(t.id) } }}
         >
-          <div className="flex items-center gap-2 min-w-0">
-            <ScoreRing score={typeof t.score === 'number' ? t.score : 0} />
-            <div className="font-medium text-sm truncate flex-1">{t.subject || '(No subject)'}</div>
+          <div className="pt-1"><ScoreRing score={typeof t.score === 'number' ? t.score : 0} /></div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className={`truncate ${t.unread ? 'font-semibold' : 'font-medium'}`}>{t.fromName || t.fromEmail || 'Unknown sender'}</div>
+              {t.status && (
+                <span className="badge" data-status={t.status}>
+                  {STATUS_LABEL[t.status as keyof typeof STATUS_LABEL] || t.status}
+                </span>
+              )}
+              {t.source && <span className="chip">{t.source}</span>}
+              {(t.reasons || []).slice(0, 2).map((r: string, i: number) => (
+                <span key={i} className="chip shrink-0">{String(r).toLowerCase()}</span>
+              ))}
+              <div className="ml-auto text-[10px] text-muted-foreground shrink-0">{formatListTime(t.lastMessageAt || t.lastSyncedAt)}</div>
+            </div>
+            <div className="text-sm truncate">
+              <span className={`${t.unread ? 'font-semibold' : 'font-normal'}`}>{t.subject || '(No subject)'}</span>
+              {t.preview && <span className="text-muted-foreground"> — {t.preview}</span>}
+            </div>
           </div>
-          <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap no-scrollbar">
-            {t.status && (
-              <span className="badge" data-status={t.status}>
-                {STATUS_LABEL[t.status as keyof typeof STATUS_LABEL] || t.status}
-              </span>
-            )}
-            {t.source && <span className="chip">{t.source}</span>}
-            {(t.reasons || []).slice(0, 3).map((r: string, i: number) => (
-              <span key={i} className="chip shrink-0">{String(r).toLowerCase()}</span>
-            ))}
-          </div>
-          {!!t.preview && <div className="text-xs text-muted-foreground truncate">{t.preview}</div>}
-          <div className="text-[10px] text-muted-foreground">{new Date(t.lastMessageAt || t.lastSyncedAt).toLocaleString()}</div>
         </div>
       ))}
       {threads.length === 0 && !isLoading && (

@@ -27,7 +27,11 @@ export const GET = withAuth(async ({ req, ctx }) => {
         prisma.emailThread.count({ where }),
         prisma.emailThread.findMany({
           where,
-          orderBy: { lastSyncedAt: 'desc' },
+          // Prefer latest message date for ordering, fallback to lastSyncedAt
+          orderBy: [
+            { messages: { _max: { date: 'desc' } } as any },
+            { lastSyncedAt: 'desc' }
+          ],
           skip: (page - 1) * limit,
           take: limit,
           include: { deal: true, messages: { select: { intent: true, snippet: true, bodyText: true, from: true, date: true, internalRefs: true }, orderBy: { date: 'desc' }, take: 1 } },
@@ -56,7 +60,18 @@ export const GET = withAuth(async ({ req, ctx }) => {
         const reasons = (Array.isArray(t.reasons) ? t.reasons : [t.reasons]).filter(Boolean)
         const labelIds = (last?.internalRefs as any)?.labelIds || []
         const unreadFlag = Array.isArray(labelIds) ? labelIds.includes('UNREAD') : false
-        return { id: t.id, userId: t.userId, subject: t.subject, lastSyncedAt: t.lastSyncedAt, lastMessageAt: last?.date ?? t.lastSyncedAt, deal: t.deal || null, status, score, reasons, extracted, preview: last?.snippet || last?.bodyText || '', unread: unreadFlag, labelIds }
+        // Parse from header into name/email if available
+        let fromName: string | null = null
+        let fromEmail: string | null = null
+        if (last?.from) {
+          const m = String(last.from).match(/^(.*?)(<([^>]+)>)?$/)
+          if (m) {
+            fromName = (m[1] || '').trim().replace(/"/g, '') || null
+            fromEmail = (m[3] || '').trim() || null
+          }
+        }
+        const lastMessageAt = last?.date || t.lastMessageAt || t.updatedAt || t.createdAt || t.lastSyncedAt
+        return { id: t.id, userId: t.userId, subject: t.subject, lastSyncedAt: t.lastSyncedAt, lastMessageAt, deal: t.deal || null, status, score, reasons, extracted, preview: last?.snippet || last?.bodyText || '', unread: unreadFlag, labelIds, fromName, fromEmail }
       })
 
       const matchFolder = (tr: any) => {
@@ -74,7 +89,10 @@ export const GET = withAuth(async ({ req, ctx }) => {
         }
       }
 
-      const threads = threadsRaw.filter(matchFolder).sort((a: any, b: any) => new Date(b.lastMessageAt || b.lastSyncedAt).getTime() - new Date(a.lastMessageAt || a.lastSyncedAt).getTime())
+      const threads = threadsRaw
+        .filter(matchFolder)
+        // Stable, strict sort by last message time only
+        .sort((a: any, b: any) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime())
       return NextResponse.json({ total, page, limit, threads })
     }
 
