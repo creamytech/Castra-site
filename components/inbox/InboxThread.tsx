@@ -14,6 +14,7 @@ const fetcher = (url: string) => apiFetch(url).then(r => r.json())
 export default function InboxThread({ threadId }: { threadId: string }) {
   const { data, mutate, isLoading } = useSWR(threadId ? `/api/inbox/threads/${threadId}` : null, fetcher)
   const thread = data?.thread
+  const { data: bundle } = useSWR(threadId ? `/api/thread/by-thread/${threadId}/bundle` : null, fetcher)
   const [draft, setDraft] = useState('')
   const [to, setTo] = useState('')
   const [subject, setSubject] = useState('')
@@ -88,13 +89,15 @@ export default function InboxThread({ threadId }: { threadId: string }) {
         ))}
       </div>
       <div className="p-3 border rounded bg-card space-y-2 sticky bottom-0 z-20 bg-card/95 backdrop-blur">
-        <AiDraftBox draft={{ subject, bodyText: draft }} onInsert={()=>{ /* insert into textarea already */ }} onEdit={()=>{ /* focus */ }} onRegenerate={aiDraft} />
+        <AiDraftBox draft={bundle?.draft || { subject, bodyText: draft }} onInsert={()=>{ if (bundle?.draft?.bodyText) setDraft(bundle.draft.bodyText) }} onEdit={()=>{ /* focus */ }} onRegenerate={aiDraft} />
         <div>
           <div className="text-sm font-semibold mb-1">Schedule</div>
-          <ScheduleBox schedule={undefined as any} onGenerate={async()=>{
-            // Could call /api/schedule/propose with a bound leadId if available
-          }} onBook={(start,end)=>{
-            // call /api/schedule/book
+          <ScheduleBox schedule={bundle?.schedule} onGenerate={async()=>{
+            if (!bundle?.lead?.id) return
+            await apiFetch('/api/schedule/propose', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ leadId: bundle.lead.id }) })
+          }} onBook={async (start,end)=>{
+            if (!bundle?.lead?.id) return
+            await apiFetch('/api/schedule/book', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ leadId: bundle.lead.id, start, end }) })
           }} />
         </div>
         <div className="text-sm font-semibold flex items-center gap-2">

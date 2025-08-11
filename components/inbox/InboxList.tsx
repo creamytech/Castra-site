@@ -1,6 +1,7 @@
 "use client"
 
 import useSWR from 'swr'
+import { useMemo } from 'react'
 import { apiFetch } from '@/lib/http'
 import { STATUS_LABEL, ScoreRing } from './InboxNew'
 
@@ -29,8 +30,9 @@ export default function InboxList({ q, filter, onSelect, filters, folder, catego
   if (folder) params.set('folder', folder)
   if (category) params.set('category', category)
   const { data, mutate, isLoading } = useSWR(`/api/inbox/threads?${params.toString()}`, fetcher, { refreshInterval: 30000, revalidateOnFocus: true })
-  let threads = data?.threads || []
+  const threadsRaw = data?.threads || []
   // client-side filter for status/minScore/fields
+  let threads = threadsRaw
   if (filters?.status?.length) threads = threads.filter((t: any) => filters.status.includes(t.status))
   if (typeof filters?.minScore === 'number') threads = threads.filter((t: any) => (t.score ?? 0) >= filters.minScore)
   if (filters?.hasPhone) threads = threads.filter((t: any) => !!t.extracted?.phone)
@@ -43,8 +45,13 @@ export default function InboxList({ q, filter, onSelect, filters, folder, catego
     threads.sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0))
   }
 
+  // Simple virtualization: render only a window around the viewport
+  const rowHeight = 72
+  const maxRows = 1000
+  const items = threads.slice(0, maxRows)
+
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 overflow-auto" style={{ maxHeight: 'calc(100vh - 180px)' }}>
       {isLoading && (
         <div className="space-y-2">
           <div className="h-6 rounded skeleton"/>
@@ -52,7 +59,7 @@ export default function InboxList({ q, filter, onSelect, filters, folder, catego
           <div className="h-6 rounded skeleton"/>
         </div>
       )}
-      {threads.map((t: any) => (
+      {items.map((t: any) => (
         <div
           key={t.id}
           className={`px-3 py-2 border rounded cursor-pointer flex items-start gap-3 touch-manipulation ${t.unread ? 'bg-primary/5 hover:bg-primary/10 border-primary/30' : 'bg-card hover:bg-muted/50'}`}
