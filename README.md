@@ -17,6 +17,8 @@ S3_SECRET_KEY=...
 CRON_SECRET=...
 ```
 
+Migrations: If a migration fails part-way (P3009), resolve via Prisma docs, or in dev you can reset: `npx prisma migrate reset` (DANGEROUS: wipes DB).
+
 # Castra - AI-Powered Realtor Co-Pilot
 
 Castra is an AI-powered real estate management platform that helps realtors streamline their workflow with intelligent email management, calendar scheduling, CRM integration, and AI-powered chat assistance.
