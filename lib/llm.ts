@@ -221,6 +221,39 @@ async function executeTool(name: string, args: any): Promise<string> {
         return await listUpcomingEventsTool(args)
       case 'get_recent_emails':
         return await getRecentEmails(args)
+      case 'gmail_list_threads': {
+        const q = args?.q ? `?q=${encodeURIComponent(String(args.q))}` : ''
+        const max = args?.max ? (q ? `&max=${encodeURIComponent(String(args.max))}` : `?max=${encodeURIComponent(String(args.max))}`) : ''
+        const resp = await fetch(`/api/dev/gmail/threads${q}${max}`, { cache: 'no-store' })
+        if (!resp.ok) throw new Error(await resp.text())
+        const data = await resp.json()
+        const threads = Array.isArray(data.threads) ? data.threads.slice(0, Math.min(Number(args?.max || 20), 50)) : []
+        return JSON.stringify({ threads })
+      }
+      case 'gmail_get_thread': {
+        const threadId = String(args?.threadId || '')
+        if (!threadId) throw new Error('threadId required')
+        const resp = await fetch(`/api/dev/gmail/thread?id=${encodeURIComponent(threadId)}`, { cache: 'no-store' })
+        if (!resp.ok) throw new Error(await resp.text())
+        const data = await resp.json()
+        // Truncate long bodies
+        if (data?.thread?.messages) {
+          data.thread.messages = data.thread.messages.map((m: any) => ({ ...m, bodyText: String(m.bodyText || '').slice(0, 4000) }))
+        }
+        return JSON.stringify(data)
+      }
+      case 'calendar_list_upcoming': {
+        const from = args?.from ? `from=${encodeURIComponent(String(args.from))}` : ''
+        const to = args?.to ? `&to=${encodeURIComponent(String(args.to))}` : ''
+        const max = args?.max ? `&max=${encodeURIComponent(String(args.max))}` : ''
+        const days = args?.to || args?.from ? '' : '7'
+        const url = from || to || max ? `/api/dev/calendar/upcoming?${from}${to}${max}`.replace(/\?&/, '?') : `/api/dev/calendar/upcoming?days=${days}`
+        const resp = await fetch(url, { cache: 'no-store' })
+        if (!resp.ok) throw new Error(await resp.text())
+        const data = await resp.json()
+        const events = Array.isArray(data.events) ? data.events.slice(0, Math.min(Number(args?.max || 20), 50)) : []
+        return JSON.stringify({ events })
+      }
       default:
         throw new Error(`Unknown tool: ${name}`)
     }

@@ -33,9 +33,8 @@ export default function InboxThread({ threadId }: { threadId: string }) {
   }
 
   const sendEmail = async () => {
-    const lastId = thread?.messages?.slice(-1)?.[0]?.id
-    if (!lastId) return
-    const res = await apiFetch(`/api/inbox/messages/${lastId}/reply`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel: 'email', draft, to, subject, threadId: thread?.id, dealId: thread?.dealId }) })
+    if (!bundle?.lead?.id) return
+    const res = await apiFetch(`/api/messaging/email/send`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ leadId: bundle.lead.id, subject, body: draft }) })
     if (res.ok) setDraft('')
     mutate()
   }
@@ -72,12 +71,12 @@ export default function InboxThread({ threadId }: { threadId: string }) {
   return (
     <div className="space-y-3">
       <div className="sticky top-0 z-20 bg-card/95 backdrop-blur">
-        <ThreadHeader lead={{ status: thread.status, score: thread.score ?? 0, reasons: thread.reasons || [] }} onStatusChange={async (s)=>{
+        <ThreadHeader lead={{ status: bundle?.lead?.status || thread.status, score: bundle?.lead?.score ?? thread.score ?? 0, reasons: bundle?.lead?.reasons || thread.reasons || [] }} onStatusChange={async (s)=>{
           await apiFetch(`/api/leads/${thread.dealId || ''}/status`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: s }) }).catch(()=>{})
         }}/>
         <div className="px-3 py-2 border-b">
           <div className="font-semibold">{thread.subject || '(No subject)'}</div>
-          <ThreadSummaryChips lead={{ extracted: thread.extracted }} />
+          <ThreadSummaryChips lead={{ extracted: bundle?.lead?.extracted || thread.extracted }} />
         </div>
       </div>
       <div className="space-y-2">

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/api'
 import { generateChatReply } from '@/lib/llm'
 import { listUpcomingEvents } from '@/lib/google'
+import { getGoogleAuthForUser, gmailClient } from '@/lib/gmail/client'
+import { google } from 'googleapis'
 import { z } from 'zod'
 
 export const POST = withAuth(async ({ req, ctx }) => {
@@ -48,7 +50,7 @@ export const POST = withAuth(async ({ req, ctx }) => {
       }
     }
 
-    // Define available tools with Zod schemas
+    // Define available tools with Zod schemas (server-backed only; no direct Google calls)
     const functions = [
       {
         name: "create_calendar_event",
@@ -163,6 +165,21 @@ export const POST = withAuth(async ({ req, ctx }) => {
           },
           required: ["query"]
         }
+      },
+      {
+        name: 'gmail_list_threads',
+        description: 'List recent Gmail threads for the signed-in user',
+        parameters: { type: 'object', properties: { q: { type: 'string' }, max: { type: 'number' } }, additionalProperties: false }
+      },
+      {
+        name: 'gmail_get_thread',
+        description: 'Get a specific Gmail thread with normalized text',
+        parameters: { type: 'object', required: ['threadId'], properties: { threadId: { type: 'string' } }, additionalProperties: false }
+      },
+      {
+        name: 'calendar_list_upcoming',
+        description: 'List upcoming calendar events for the signed-in user',
+        parameters: { type: 'object', properties: { from: { type: 'string' }, to: { type: 'string' }, max: { type: 'number' } }, additionalProperties: false }
       }
     ]
 
@@ -202,6 +219,8 @@ export const POST = withAuth(async ({ req, ctx }) => {
 
 Use these functions when appropriate to help the user accomplish their tasks. Always ask for user consent before accessing emails or creating events.`
 
+    // Intercept tool calls and execute server-backed tools
+    // We wrap our model call by injecting our execute function into lib/llm if needed later.
     const reply = await generateChatReply(enhancedMessages, functions, systemPrompt)
     
     return NextResponse.json({ message: reply })
