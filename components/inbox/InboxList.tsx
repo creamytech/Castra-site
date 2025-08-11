@@ -80,6 +80,11 @@ export default function InboxList({ q, filter, onSelect, filters, folder, catego
               <span className={`${t.unread ? 'font-semibold' : 'font-normal'}`}>{t.subject || '(No subject)'}</span>
               {t.preview && <span className="text-muted-foreground"> — {t.preview}</span>}
             </div>
+            <div className="opacity-0 group-hover:opacity-100 transition flex gap-1 mt-1">
+              <button onClick={(e)=>{ e.stopPropagation(); apiFetch(`/api/inbox/threads/${t.id}/status`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'lead' }) }) }} className="px-1.5 py-0.5 border rounded text-xs">✅</button>
+              <button onClick={(e)=>{ e.stopPropagation(); apiFetch(`/api/inbox/threads/${t.id}/status`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'potential' }) }) }} className="px-1.5 py-0.5 border rounded text-xs">⚠️</button>
+              <button onClick={(e)=>{ e.stopPropagation(); apiFetch(`/api/inbox/threads/${t.id}/status`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'no_lead' }) }) }} className="px-1.5 py-0.5 border rounded text-xs">🚫</button>
+            </div>
           </div>
         </div>
       ))}
