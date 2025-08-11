@@ -12,6 +12,13 @@ export const GET = withAuth(async ({ ctx }, { params }: any) => {
 
     // fallback
     const msgs = await prisma.message.findMany({ where: { userId: ctx.session.user.id, threadId: params.id }, orderBy: { internalDate: 'asc' } })
+    // attempt to fetch full bodies if missing via Gmail if we have a recent message id
+    try {
+      const last = msgs[msgs.length-1]
+      if (last?.id) {
+        // optional enhancement: fetch Gmail full bodies server-side here
+      }
+    } catch {}
     return NextResponse.json({ thread: { id: params.id, messages: msgs } })
   } catch (e: any) {
     console.error('[inbox thread GET]', e)

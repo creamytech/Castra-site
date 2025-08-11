@@ -34,7 +34,7 @@ export default function StageColumn({ stage, filters, onMove, refreshKey, onEmai
   useEffect(() => { if (page > 1) load(false) }, [page])
 
   return (
-    <div ref={setNodeRef} className={`bg-card border border-border rounded-lg p-3 flex flex-col ${isOver ? 'ring-2 ring-primary' : ''}`}>
+    <div ref={setNodeRef} className={`bg-card border border-border rounded-lg p-3 flex flex-col min-h-[200px] ${isOver ? 'ring-2 ring-primary' : ''}`}>
       <div className="flex items-center justify-between mb-2">
         <div className="text-sm font-semibold">{icon ? <span className="mr-1">{icon}</span> : null}{stage} <span className="text-xs text-muted-foreground">{total}</span></div>
         <button onClick={()=>setShowCreate(true)} className="text-xs px-2 py-1 rounded border">+ New</button>

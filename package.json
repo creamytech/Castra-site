@@ -26,6 +26,7 @@
     "bullmq": "^5.56.10",
     "clsx": "^2.1.1",
     "docusign-esign": "^6.4.0",
+    "dompurify": "^3.2.6",
     "framer-motion": "^12.23.12",
     "googleapis": "^133.0.0",
     "ioredis": "^5.7.0",

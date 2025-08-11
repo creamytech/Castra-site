@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import StageColumn from './StageColumn'
-import { DndContext, DragEndEvent } from '@dnd-kit/core'
+import { DndContext, DragEndEvent, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import NewDealDialog from './NewDealDialog'
 
 const STAGES = ['LEAD','QUALIFIED','SHOWING','OFFER','ESCROW','CLOSED','LOST']
@@ -19,6 +19,9 @@ export default function PipelineBoard() {
   const [drawerData, setDrawerData] = useState<{ emails: any[]; events: any[] }>({ emails: [], events: [] })
 
   useEffect(() => { setLoading(false) }, [])
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
+  )
 
   const moveStage = async (dealId: string, nextStage: string) => {
     // trigger immediate refresh for optimistic feel
@@ -58,7 +61,7 @@ export default function PipelineBoard() {
   }
 
   return (
-    <DndContext onDragEnd={onDragEnd}>
+    <DndContext onDragEnd={onDragEnd} collisionDetection={closestCenter} sensors={sensors}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2 text-sm flex-wrap">
           <input className="border rounded px-2 py-1 bg-background" placeholder="Search" onChange={e => setFilters((f: any) => ({ ...f, q: e.target.value }))} />

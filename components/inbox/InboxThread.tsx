@@ -3,6 +3,7 @@
 import useSWR from 'swr'
 import { useState } from 'react'
 import { apiFetch } from '@/lib/http'
+import DOMPurify from 'dompurify'
 
 const fetcher = (url: string) => apiFetch(url).then(r => r.json())
 
@@ -41,7 +42,11 @@ export default function InboxThread({ threadId }: { threadId: string }) {
         {(thread.messages || []).map((m: any) => (
           <div key={m.id} className="p-2 border rounded bg-background">
             <div className="text-xs text-muted-foreground">{m.from} • {new Date(m.date || m.internalDate).toLocaleString()}</div>
-            <div className="text-sm whitespace-pre-wrap">{m.snippet || m.bodyText || ''}</div>
+            {m.bodyHtml ? (
+              <div className="prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(m.bodyHtml) }} />
+            ) : (
+              <div className="text-sm whitespace-pre-wrap">{m.bodyText || m.snippet || ''}</div>
+            )}
           </div>
         ))}
       </div>
