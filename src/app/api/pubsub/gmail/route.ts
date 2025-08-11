@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     const conn = await (prisma as any).connection?.findFirst?.({ where: { provider: 'google', email: data.emailAddress }, select: { id: true } })
     if (!conn?.id) return NextResponse.json({ ok: true, ignored: true })
 
-    await mailQueue.add('fetch-updates', { connectionId: conn.id }, { jobId: `fetch-${conn.id}-${Date.now()}` })
+    await mailQueue.add('fetch-updates', { connectionId: conn.id }, { jobId: `fetch-${conn.id}-${Date.now()}`, attempts: 5, backoff: { type: 'exponential', delay: 5000 } })
     return NextResponse.json({ ok: true })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'failed' }, { status: 400 })
