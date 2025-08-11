@@ -2,7 +2,7 @@
 
 import useSWR from 'swr'
 import { useMemo } from 'react'
-import { FixedSizeList as List, ListChildComponentProps } from 'react-window'
+import { FixedSizeList as List } from 'react-window'
 import { apiFetch } from '@/lib/http'
 import { STATUS_LABEL, ScoreRing } from './InboxNew'
 
@@ -49,7 +49,7 @@ export default function InboxList({ q, filter, onSelect, filters, folder, catego
   const rowHeight = 76
   const items = threads
 
-  function Row({ index, style }: ListChildComponentProps) {
+  function Row({ index, style }: any) {
     const t: any = items[index]
     if (!t) return null
     return (
