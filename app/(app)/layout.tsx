@@ -34,7 +34,7 @@ export default function AppLayout({
     applyTheme(theme);
   }, []);
 
-  // No onboarding redirects here
+  // Avoid heavy client-side redirects here to not interfere with auth/login flow
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
