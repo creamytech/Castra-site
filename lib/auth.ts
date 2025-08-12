@@ -134,12 +134,23 @@ export const authOptions: NextAuthOptions = {
         email
       });
       
-      // Safe Google account linking to prevent OAuthAccountNotLinked
+      // Safe Google account linking to prevent OAuthAccountNotLinked and OAuthCreateAccount
       if (account?.provider === "google" && user?.email) {
         try {
-          const existing = await prismaAuth.user.findUnique({ where: { email: user.email } });
+          let existing = await prismaAuth.user.findUnique({ where: { email: user.email } });
           const verified = (profile as any)?.email_verified ?? true;
           
+          // If no existing user, proactively create to avoid adapter create race/constraints
+          if (!existing && verified) {
+            try {
+              existing = await prismaAuth.user.create({ data: { email: user.email, name: user.name || null, image: (user as any)?.image || null } })
+            } catch (err: any) {
+              // Ignore unique violations
+              if (err?.code !== 'P2002') throw err
+              existing = await prismaAuth.user.findUnique({ where: { email: user.email } })
+            }
+          }
+
           if (existing && verified) {
             const linked = await prismaAuth.account.findFirst({
               where: { 
