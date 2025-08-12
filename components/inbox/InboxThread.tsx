@@ -99,7 +99,7 @@ export default function InboxThread({ threadId }: { threadId: string }) {
   return (
     <div className="space-y-3">
       <div className="sticky top-0 z-20 bg-card/95 backdrop-blur">
-        <ThreadHeader lead={{ status: bundle?.lead?.status || thread.status, score: bundle?.lead?.score ?? thread.score ?? 0, reasons: bundle?.lead?.reasons || thread.reasons || [] }} onStatusChange={async (s)=>{
+        <ThreadHeader lead={{ status: bundle?.lead?.status || thread.status, score: bundle?.lead?.score ?? thread.score ?? 0, reasons: bundle?.lead?.reasons || thread.reasons || [] }} threadId={thread.id} dealId={bundle?.deal?.id || bundle?.lead?.id} onStatusChange={async (s)=>{
           await apiFetch(`/api/leads/${thread.dealId || ''}/status`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: s }) }).catch(()=>{})
         }}/>
         <div className="px-3 py-2 border-b">

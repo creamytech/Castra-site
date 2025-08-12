@@ -1,6 +1,7 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
+import { apiFetch } from '@/lib/http'
 
 type SummaryData = {
   tldr?: string
@@ -23,7 +24,36 @@ function Chip({ children, tone = 'default' }: { children: React.ReactNode; tone?
   return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] border ${toneClass}`}>{children}</span>
 }
 
-export default function SummaryCard({ data }: { data: SummaryData }) {
+export default function SummaryCard({ data, threadId, dealId }: { data: SummaryData; threadId?: string; dealId?: string }) {
+  const [copied, setCopied] = useState(false)
+
+  const fullSummaryText = [
+    data.tldr,
+    ...(data.keyPoints || []).map(p => `- ${p}`),
+    ...(data.actionItems || []).map(a => `- [ ] ${a}`),
+  ].filter(Boolean).join('\n')
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(fullSummaryText)
+      setCopied(true)
+      setTimeout(()=>setCopied(false), 1500)
+    } catch {}
+  }
+
+  const handleInsertIntoReply = () => {
+    if (!threadId) return
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('inbox:prefill-draft', { detail: { threadId, draft: fullSummaryText } }))
+    }
+  }
+
+  const handleSaveToDealNotes = async () => {
+    if (!dealId) return
+    try {
+      await apiFetch(`/api/deals/${dealId}/notes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: fullSummaryText, kind: 'AI_SUMMARY', subject: 'AI Summary' }) })
+    } catch {}
+  }
   return (
     <div className="p-3 rounded-lg border bg-card/80 space-y-3">
       {data.tldr && (
@@ -80,9 +110,9 @@ export default function SummaryCard({ data }: { data: SummaryData }) {
       )}
 
       <div className="flex items-center gap-2 pt-1">
-        <button className="text-xs px-2 py-1 rounded border hover:bg-muted">Copy summary</button>
-        <button className="text-xs px-2 py-1 rounded border hover:bg-muted">Insert into reply</button>
-        <button className="text-xs px-2 py-1 rounded border hover:bg-muted">Save to deal notes</button>
+        <button onClick={handleCopy} className="text-xs px-2 py-1 rounded border hover:bg-muted">{copied ? 'Copied' : 'Copy summary'}</button>
+        <button onClick={handleInsertIntoReply} className="text-xs px-2 py-1 rounded border hover:bg-muted" disabled={!threadId}>Insert into reply</button>
+        <button onClick={handleSaveToDealNotes} className="text-xs px-2 py-1 rounded border hover:bg-muted" disabled={!dealId}>Save to deal notes</button>
       </div>
     </div>
   )

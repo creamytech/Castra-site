@@ -27,7 +27,11 @@ export const POST = withAuth(async ({ req, ctx }) => {
     // Check cache first
     const cachedSummary = getCachedThreadSummary(ctx.session.user.id, threadId)
     if (cachedSummary) {
-      return NextResponse.json({ summary: cachedSummary, cached: true })
+      let parsed: any = cachedSummary
+      if (typeof cachedSummary === 'string') {
+        try { parsed = JSON.parse(cachedSummary) } catch { /* leave as string */ }
+      }
+      return NextResponse.json({ summary: parsed, cached: true })
     }
 
     // Fetch thread details
@@ -71,10 +75,11 @@ export const POST = withAuth(async ({ req, ctx }) => {
 
     const completion = await openai.chat.completions.create({
       model,
+      response_format: { type: 'json_object' } as any,
       messages: [
         {
           role: 'system',
-          content: 'You are a helpful assistant that summarizes email threads. Return a compact JSON object with fields: tldr (1-2 sentences), keyPoints (array of 3-6 bullets), actionItems (array of actionable bullets), dates (array of date/time strings if any), people (array of names or emails), sentiment (positive|neutral|negative), confidence (low|medium|high). Do not include any extra keys or prose.'
+          content: 'You are a helpful assistant that summarizes email threads. Return only valid minified JSON with keys: tldr (1-2 sentences), keyPoints (3-8 concise bullets), actionItems (bullets phrased as actionable tasks), dates (ISO strings or natural phrases found), people (participant names/emails), sentiment (positive|neutral|negative), confidence (low|medium|high). No extra text.'
         },
         {
           role: 'user',

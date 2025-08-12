@@ -5,12 +5,13 @@ import { apiFetch } from '@/lib/http'
 import SummaryCard from './SummaryCard'
 import { useMemo } from 'react'
 
-export function ThreadHeader({ lead, onStatusChange }: { lead: any; onStatusChange: (s:string)=>void }) {
+export function ThreadHeader({ lead, onStatusChange, threadId, dealId }: { lead: any; onStatusChange: (s:string)=>void; threadId?: string; dealId?: string }) {
   const scoreClass = lead.score >= 80 ? 'good' : lead.score >= 60 ? 'warn' : 'dim'
   // animate score sweep via inline style var --sweep
   const sweep = Math.max(0, Math.min(100, (lead.score ?? 0)))
-  const { data } = useSWR(lead?.threadId ? `/api/email/summarize?tid=${lead.threadId}` : null, async () => {
-    const r = await apiFetch('/api/email/summarize', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ threadId: lead.threadId }) })
+  const effectiveThreadId = threadId || lead?.threadId
+  const { data } = useSWR(effectiveThreadId ? `/api/email/summarize?tid=${effectiveThreadId}` : null, async () => {
+    const r = await apiFetch('/api/email/summarize', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ threadId: effectiveThreadId }) })
     return r.json()
   })
   const summaryData = useMemo(()=>{
@@ -48,7 +49,7 @@ export function ThreadHeader({ lead, onStatusChange }: { lead: any; onStatusChan
         {(lead.reasons || []).map((r: string, i: number) => <span key={i} className="chip text-xs px-2 py-1 rounded border bg-background/60 hover:bg-accent/40 transition shadow-sm">{r}</span>)}
       </div>
       {data?.summary && (
-        <SummaryCard data={summaryData} />
+      <SummaryCard data={summaryData} threadId={effectiveThreadId} dealId={dealId} />
       )}
     </div>
   );
