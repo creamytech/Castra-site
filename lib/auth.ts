@@ -4,6 +4,7 @@ import OktaProvider from "next-auth/providers/okta";
 import GoogleProvider from "next-auth/providers/google";
 import AzureADProvider from "next-auth/providers/azure-ad";
 import { prisma } from "./prisma";
+import { PrismaClient } from "@prisma/client";
 import { config } from "./config";
 
 // Normalize NEXTAUTH_URL at runtime to avoid trailing-slash callback issues in some deployments
@@ -39,6 +40,7 @@ if (config.google.clientId && config.google.clientSecret) {
     GoogleProvider({
       clientId: config.google.clientId,
       clientSecret: config.google.clientSecret,
+      allowDangerousEmailAccountLinking: true,
       // Keep defaults to isolate callback issues; request extended scopes later after login
     })
   );
@@ -63,8 +65,11 @@ if (config.azure.clientId && config.azure.clientSecret && config.azure.tenantId)
 
 console.log("Configured providers:", providers.map(p => p.id));
 
+// Use a dedicated Prisma client for NextAuth adapter to isolate from any extensions/middlewares
+const prismaAuth = new PrismaClient();
+
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  adapter: PrismaAdapter(prismaAuth as any),
   debug: true,
   // Rely on env vars via config, but set explicitly to avoid env resolution issues
   secret: config.auth.secret,
@@ -111,11 +116,11 @@ export const authOptions: NextAuthOptions = {
       // Safe Google account linking to prevent OAuthAccountNotLinked
       if (account?.provider === "google" && user?.email) {
         try {
-          const existing = await prisma.user.findUnique({ where: { email: user.email } });
+          const existing = await prismaAuth.user.findUnique({ where: { email: user.email } });
           const verified = (profile as any)?.email_verified ?? true;
           
           if (existing && verified) {
-            const linked = await prisma.account.findFirst({
+            const linked = await prismaAuth.account.findFirst({
               where: { 
                 userId: existing.id, 
                 provider: "google", 
@@ -125,7 +130,7 @@ export const authOptions: NextAuthOptions = {
             
             if (!linked) {
               try {
-                await prisma.account.create({
+                await prismaAuth.account.create({
                   data: {
                     userId: existing.id,
                     type: account.type!,
