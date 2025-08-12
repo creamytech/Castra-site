@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { apiFetch } from "@/lib/http";
+import { getPusherClient } from "@/lib/websocket";
 
 export const dynamic = "force-dynamic";
 
@@ -25,12 +26,34 @@ export default function DashboardPage() {
     draftsPending: 0
   });
   const [isGoogleConnected, setIsGoogleConnected] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
   const router = useRouter();
 
   useEffect(() => {
     if (status === "authenticated") {
       fetchStats();
       checkGoogleConnection();
+      const loadNotifications = async () => {
+        try {
+          const res = await apiFetch('/api/notifications?unread=true');
+          if ((res as any).ok) {
+            const j = await res.json();
+            setNotifications(j.notifications || []);
+          }
+        } catch {}
+      };
+      loadNotifications();
+      const t = setInterval(loadNotifications, 30000);
+      try {
+        const p = getPusherClient() as any;
+        if (p && (session as any)?.user?.id) {
+          const channel = p.subscribe(`private-user-${(session as any).user.id}`);
+          channel.bind('notification', (data: any) => {
+            setNotifications((prev) => [data, ...prev].slice(0, 50));
+          });
+        }
+      } catch {}
+      return () => clearInterval(t);
     } else if (status === "unauthenticated") {
       router.push("/auth/signin");
     }
@@ -86,6 +109,21 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-6xl mx-auto">
+      {notifications.length > 0 && (
+        <div className="mb-4 space-y-2">
+          {notifications.slice(0,3).map(n => (
+            <div key={n.id} className="p-3 rounded-lg border bg-card/90 shadow-sm flex items-center justify-between hover-shimmer">
+              <div>
+                <div className="font-medium">{n.title}</div>
+                {n.body && <div className="text-sm text-muted-foreground line-clamp-1">{n.body}</div>}
+              </div>
+              {n.link && (
+                <Link href={n.link} className="text-sm underline">Open</Link>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold mb-2 text-foreground">Dashboard</h1>
         <p className="text-xl text-muted-foreground">
@@ -95,22 +133,13 @@ export default function DashboardPage() {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="card">
-          <div className="text-3xl font-bold text-primary">{stats.leadsNew}</div>
-          <div className="text-sm text-muted-foreground">New Leads (30d)</div>
-        </div>
-        <div className="card">
-          <div className="text-3xl font-bold text-success">{stats.emailsToday}</div>
-          <div className="text-sm text-muted-foreground">Emails Today</div>
-        </div>
-        <div className="card">
-          <div className="text-3xl font-bold text-primary">{stats.eventsUpcoming}</div>
-          <div className="text-sm text-muted-foreground">Upcoming Events</div>
-        </div>
-        <div className="card">
-          <div className="text-3xl font-bold text-warning">{stats.draftsPending}</div>
-          <div className="text-sm text-muted-foreground">Pending Drafts</div>
-        </div>
+        {[{label:'New Leads (30d)', value:stats.leadsNew, tint:'#34d399'},{label:'Emails Today', value:stats.emailsToday, tint:'#38bdf8'},{label:'Upcoming Events', value:stats.eventsUpcoming, tint:'#a78bfa'},{label:'Pending Drafts', value:stats.draftsPending, tint:'#fbbf24'}].map((s)=> (
+          <div key={s.label} className="card-gradient p-6 relative overflow-hidden">
+            <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full opacity-10" style={{ background: s.tint }} aria-hidden="true" />
+            <div className="text-3xl font-bold">{s.value}</div>
+            <div className="text-sm text-muted-foreground">{s.label}</div>
+          </div>
+        ))}
       </div>
 
       {/* Quick Actions */}

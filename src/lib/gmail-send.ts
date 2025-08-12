@@ -1,8 +1,9 @@
 import type { gmail_v1 } from 'googleapis'
-import { getAuthorizedGmail } from '@/lib/google'
+import { getGoogleOAuth } from '@/lib/google'
 
-export async function sendReplyFromDraft(connectionId: string, threadId: string, toEmail: string, subject: string, bodyText: string) {
-  const { gmail } = await getAuthorizedGmail(connectionId)
+export async function sendReplyFromDraft(userId: string, threadId: string, toEmail: string, subject: string, bodyText: string) {
+  const auth = await getGoogleOAuth(userId)
+  const gmail = require('googleapis').google.gmail({ version: 'v1', auth })
   const raw = [
     `To: ${toEmail}`,
     `Subject: ${subject}`,

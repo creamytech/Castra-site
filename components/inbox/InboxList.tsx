@@ -46,7 +46,7 @@ export default function InboxList({ q, filter, onSelect, filters, folder, catego
     threads.sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0))
   }
 
-  const rowHeight = 76
+  const rowHeight = 82
   const items = threads
   if (onItems) onItems(items)
 
@@ -56,24 +56,24 @@ export default function InboxList({ q, filter, onSelect, filters, folder, catego
     return (
       <div style={style}>
         <div
-          className={`px-3 py-2 border rounded cursor-pointer flex items-start gap-3 touch-manipulation group ${t.unread ? 'bg-primary/5 hover:bg-primary/10 border-primary/30' : 'bg-card hover:bg-muted/50'}`}
+          className={`px-3 py-2 border rounded-lg cursor-pointer flex items-start gap-3 touch-manipulation group transition-transform duration-150 ${t.unread ? 'bg-primary/5 hover:bg-primary/10 border-primary/30' : 'bg-card/90 hover:bg-muted/50'} hover:scale-[1.005]`}
           onClick={() => onSelect(t.id)}
           role="button"
           tabIndex={0}
           aria-selected={selectedId === t.id}
           onKeyDown={(e)=>{ if(e.key==='Enter' || e.key===' '){ onSelect(t.id) } }}
         >
-          <div className="pt-1"><ScoreRing score={typeof t.score === 'number' ? t.score : 0} /></div>
+          <div className="pt-1 pulse"><ScoreRing score={typeof t.score === 'number' ? t.score : 0} /></div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 min-w-0">
               <div className={`truncate ${t.unread ? 'font-semibold' : 'font-medium'}`}>{t.fromName || t.fromEmail || 'Unknown sender'}</div>
               {t.status && (
-                <span className="badge" data-status={t.status}>
+                <span className="badge rounded-full" data-status={t.status}>
                   {STATUS_LABEL[t.status as keyof typeof STATUS_LABEL] || t.status}
                 </span>
               )}
               {(t.reasons || []).slice(0, 2).map((r: string, i: number) => (
-                <span key={i} className="chip shrink-0">{String(r).toLowerCase()}</span>
+                <span key={i} className="chip shrink-0 rounded-full bg-background/60">{String(r).toLowerCase()}</span>
               ))}
               <div className="ml-auto text-[10px] text-muted-foreground shrink-0">{formatListTime(t.lastMessageAt || t.lastSyncedAt)}</div>
             </div>
@@ -82,9 +82,9 @@ export default function InboxList({ q, filter, onSelect, filters, folder, catego
               {t.preview && <span className="text-muted-foreground"> — {t.preview}</span>}
             </div>
             <div className="opacity-0 group-hover:opacity-100 transition flex gap-1 mt-1">
-              <button onClick={(e)=>{ e.stopPropagation(); apiFetch(`/api/inbox/threads/${t.id}/status`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'lead' }) }) }} className="px-1.5 py-0.5 border rounded text-xs">✅</button>
-              <button onClick={(e)=>{ e.stopPropagation(); apiFetch(`/api/inbox/threads/${t.id}/status`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'potential' }) }) }} className="px-1.5 py-0.5 border rounded text-xs">⚠️</button>
-              <button onClick={(e)=>{ e.stopPropagation(); apiFetch(`/api/inbox/threads/${t.id}/status`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'no_lead' }) }) }} className="px-1.5 py-0.5 border rounded text-xs">🚫</button>
+              <button onClick={(e)=>{ e.stopPropagation(); apiFetch(`/api/inbox/threads/${t.id}/status`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'lead' }) }) }} className="px-1.5 py-0.5 border rounded-full text-xs bg-emerald-500/10 hover:bg-emerald-500/20">✅</button>
+              <button onClick={(e)=>{ e.stopPropagation(); apiFetch(`/api/inbox/threads/${t.id}/status`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'potential' }) }) }} className="px-1.5 py-0.5 border rounded-full text-xs bg-amber-500/10 hover:bg-amber-500/20">⚠️</button>
+              <button onClick={(e)=>{ e.stopPropagation(); apiFetch(`/api/inbox/threads/${t.id}/status`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'no_lead' }) }) }} className="px-1.5 py-0.5 border rounded-full text-xs bg-rose-500/10 hover:bg-rose-500/20">🚫</button>
             </div>
           </div>
         </div>

@@ -50,10 +50,58 @@ export function InboxFilterBar({ value, onChange }: { value: Filter; onChange: O
 }
 
 export function ScoreRing({ score }: { score: number }) {
-  const color = scoreColor(score)
+  const safe = Math.max(0, Math.min(100, score))
+  const [angle, setAngle] = React.useState(() => (safe / 100) * 360)
+  const target = (safe / 100) * 360
+  const color = safe >= 80 ? '#10b981' : safe >= 60 ? '#f59e0b' : '#9ca3af'
+  const track = 'rgba(255,255,255,0.08)'
+  const size = 28
+  const thickness = 4
+  const inner = size - thickness * 2
+  React.useEffect(() => {
+    let raf = 0
+    const start = angle
+    const delta = target - start
+    const startTime = performance.now()
+    const duration = 240
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - startTime) / duration)
+      const eased = p < 0.5 ? 2 * p * p : -1 + (4 - 2 * p) * p
+      setAngle(start + delta * eased)
+      if (p < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [target])
   return (
-    <span className="scoreRing" data-color={color} aria-label={`Lead score ${score}`}>
-      {Math.max(0, Math.min(99, score))}
+    <span
+      className="inline-grid place-items-center select-none"
+      aria-label={`Lead score ${safe}`}
+      title={`Score ${safe}`}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: '9999px',
+        background: `conic-gradient(${color} ${angle}deg, ${track} 0deg)`,
+        boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.06)'
+      }}
+    >
+      <span
+        style={{
+          width: inner,
+          height: inner,
+          borderRadius: '9999px',
+          background: 'var(--background, #0b0b0c)',
+          display: 'grid',
+          placeItems: 'center',
+          color: 'var(--foreground, #e5e7eb)',
+          fontSize: 10,
+          fontWeight: 700,
+          boxShadow: '0 1px 2px rgba(0,0,0,0.25)'
+        }}
+      >
+        {safe}
+      </span>
     </span>
   )
 }
@@ -63,7 +111,7 @@ type RowProps = { item: Email; selected?: boolean; onOpen: (id: string) => void;
 
 export function EmailRow({ item, selected, onOpen, onQuick }: RowProps) {
   return (
-    <div className="row" role="button" tabIndex={0} aria-selected={selected} onClick={() => onOpen(item.id)} onKeyDown={(e) => { if (e.key === 'Enter') onOpen(item.id) }}>
+    <div className={`row transition-transform duration-150 ${selected ? 'ring-1 ring-primary/50' : ''} hover:scale-[1.005]`} role="button" tabIndex={0} aria-selected={selected} onClick={() => onOpen(item.id)} onKeyDown={(e) => { if (e.key === 'Enter') onOpen(item.id) }}>
       <ScoreRing score={item.score} />
       <div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -99,6 +147,7 @@ export function EmailRow({ item, selected, onOpen, onQuick }: RowProps) {
 
 export function InboxList({ items, onOpen, onQuick }: { items: Email[]; onOpen: (id: string) => void; onQuick: RowProps['onQuick'] }) {
   const [index, setIndex] = React.useState(0)
+  const [showHelp, setShowHelp] = React.useState(false)
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (["INPUT", "TEXTAREA"].includes((e.target as HTMLElement).tagName)) return
@@ -112,16 +161,25 @@ export function InboxList({ items, onOpen, onQuick }: { items: Email[]; onOpen: 
       if (e.key.toLowerCase() === 'n') onQuick(id, 'no_lead')
       if (e.key.toLowerCase() === 's') onQuick(id, 'snooze')
       if (e.key.toLowerCase() === 'a') onQuick(id, 'follow_up')
+      if (e.key === '?') setShowHelp((v) => !v)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [items, index, onOpen, onQuick])
 
   return (
-    <div role="list">
+    <div role="list" className="relative">
       {items.map((it, i) => (
         <EmailRow key={it.id} item={it} selected={i === index} onOpen={onOpen} onQuick={onQuick} />
       ))}
+      {showHelp && (
+        <div className="absolute right-2 bottom-2 p-3 rounded border bg-card shadow-lg text-xs space-y-1">
+          <div className="font-semibold">Shortcuts</div>
+          <div>J/K: Navigate • Enter: Open</div>
+          <div>L: Lead • P: Potential • N: Not Lead</div>
+          <div>A: Follow-up • S: Snooze • ?: Toggle help</div>
+        </div>
+      )}
     </div>
   )
 }

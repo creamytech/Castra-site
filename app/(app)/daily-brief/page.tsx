@@ -111,14 +111,14 @@ export default function DailyBrief() {
                 <div className="text-xs font-semibold uppercase text-muted-foreground">{day}</div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {items.map((d) => (
-                    <div key={d.id} className="p-4 border rounded bg-card space-y-3">
+                     <div key={d.id} className="p-4 border rounded-xl bg-card/90 space-y-3 shadow-sm hover:shadow transition-shadow hover-shimmer">
                       <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
                           <div className="text-sm font-semibold truncate">{d.subject}</div>
                           <div className="text-[11px] text-muted-foreground truncate">{d.lead?.fromName || d.lead?.fromEmail}</div>
                         </div>
                         <div className="text-right">
-                          <div className={`text-xs px-2 py-0.5 rounded ${d.lead?.status==='lead' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{(d.lead?.status || 'potential').replace('_',' ')}</div>
+                          <div className={`text-xs px-2 py-0.5 rounded-full border ${d.lead?.status==='lead' ? 'bg-emerald-500/10 text-emerald-300 border-emerald-400/30' : 'bg-amber-500/10 text-amber-300 border-amber-400/30'}`}>{(d.lead?.status || 'potential').replace('_',' ')}</div>
                           {typeof d.lead?.score === 'number' && <div className="text-[11px] text-muted-foreground mt-1">Score {d.lead.score}</div>}
                         </div>
                       </div>
@@ -127,18 +127,18 @@ export default function DailyBrief() {
                         {d.lead?.attrs?.schedule?.requested?.address && <span className="chip">{d.lead.attrs.schedule.requested.address}</span>}
                         {d.lead?.attrs?.price && <span className="chip">${d.lead.attrs.price}</span>}
                       </div>
-                      <div className="text-sm line-clamp-3 text-muted-foreground">{d.bodyText?.slice(0,200)}</div>
+                      <div className="text-sm line-clamp-3 text-muted-foreground">{d.bodyText?.slice(0,240)}</div>
                       {Array.isArray(d.proposedTimes) && d.proposedTimes.length>0 && (
                         <div className="flex flex-wrap gap-2">
                           {d.proposedTimes.slice(0,3).map((w,i)=>(<span key={i} className="badge">{new Date(w.start).toLocaleString()}–{new Date(w.end).toLocaleTimeString()}</span>))}
                         </div>
                       )}
                       <div className="flex items-center gap-2">
-                        <button onClick={() => send(d)} className="px-3 py-1.5 rounded bg-primary text-primary-foreground text-xs">Approve & Send</button>
-                        <button onClick={() => snooze(d, 60)} className="px-3 py-1.5 rounded border text-xs">Snooze 1h</button>
-                        <button onClick={() => regenerate(d)} className="px-3 py-1.5 rounded border text-xs">Regenerate</button>
-                        <button onClick={() => doDismiss(d)} className="px-3 py-1.5 rounded border text-xs">Dismiss</button>
-                        <Link href={`/dashboard/inbox/${d.threadId}`} className="px-3 py-1.5 rounded border text-xs">Open Thread</Link>
+                        <button onClick={() => send(d)} className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs shadow-sm hover:brightness-[1.06]">Approve & Send</button>
+                        <button onClick={() => snooze(d, 60)} className="px-3 py-1.5 rounded-md border text-xs hover:bg-muted/60">Snooze 1h</button>
+                        <button onClick={() => regenerate(d)} className="px-3 py-1.5 rounded-md border text-xs hover:bg-muted/60">Regenerate</button>
+                        <button onClick={() => doDismiss(d)} className="px-3 py-1.5 rounded-md border text-xs hover:bg-muted/60">Dismiss</button>
+                        <Link href={`/dashboard/inbox/${d.threadId}`} className="px-3 py-1.5 rounded-md border text-xs hover:bg-muted/60">Open Thread</Link>
                       </div>
                       <textarea
                         className="w-full text-sm p-2 border rounded bg-background"

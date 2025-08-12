@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import Toast from "@/components/Toast";
 import FadeIn from "@/components/ui/FadeIn";
 import { motion, AnimatePresence } from "framer-motion";
+import { Segmented } from "@/components/ui/Segmented";
 
 export const dynamic = "force-dynamic";
 
@@ -194,12 +195,9 @@ export default function CalendarPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="h1">Calendar</h1>
-            <p className="text-xl text-gray-700 dark:text-gray-300">Manage your schedule and appointments</p>
+            <p className="text-xl text-muted-foreground">Manage your schedule and appointments</p>
           </div>
-          <div className="inline-flex rounded-lg overflow-hidden border border-border">
-            <button onClick={() => setView("list")} className={`px-3 py-2 text-sm ${view === "list" ? "bg-accent text-accent-foreground" : "bg-card text-muted-foreground"}`}>List</button>
-            <button onClick={() => setView("month")} className={`px-3 py-2 text-sm ${view === "month" ? "bg-accent text-accent-foreground" : "bg-card text-muted-foreground"}`}>Month</button>
-          </div>
+          <Segmented options={[{ label: 'List', value: 'list' }, { label: 'Month', value: 'month' }]} value={view} onChange={(v)=>setView(v as "list"|"month")} />
         </div>
       </FadeIn>
 

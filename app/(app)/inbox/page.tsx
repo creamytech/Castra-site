@@ -4,11 +4,14 @@ import { useState } from 'react'
 import InboxList from '@/components/inbox/InboxList'
 import InboxThread from '@/components/inbox/InboxThread'
 import ThreadSidebar from '@/components/inbox/ThreadSidebar'
+import { InboxFilterBar } from '@/components/inbox/InboxNew'
+import { Segmented } from '@/components/ui/Segmented'
 
 export default function RealEstateInboxPage() {
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState('all')
   const [threadId, setThreadId] = useState<string>('')
+  const [filters, setFilters] = useState<{ status?: string[]; minScore?: number; unreadOnly?: boolean; hasPhone?: boolean; hasPrice?: boolean }>({})
 
   return (
     <div className="p-6 grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -16,12 +19,9 @@ export default function RealEstateInboxPage() {
         <div className="flex gap-2">
           <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search…" className="w-full border rounded px-2 py-1 bg-background" />
         </div>
-        <div className="flex gap-2 text-xs">
-          <button onClick={()=>setFilter('all')} className={`px-2 py-1 rounded border ${filter==='all'?'bg-muted':''}`}>All</button>
-          <button onClick={()=>setFilter('hasDeal')} className={`px-2 py-1 rounded border ${filter==='hasDeal'?'bg-muted':''}`}>Has Deal</button>
-          <button onClick={()=>setFilter('unlinked')} className={`px-2 py-1 rounded border ${filter==='unlinked'?'bg-muted':''}`}>Unlinked</button>
-        </div>
-        <InboxList q={q} filter={filter} onSelect={(id)=>setThreadId(id)} />
+        <Segmented options={[{label:'All', value:'all'},{label:'Has Deal', value:'hasDeal'},{label:'Unlinked', value:'unlinked'}]} value={filter} onChange={setFilter} />
+        <InboxFilterBar value={filters} onChange={setFilters as any} />
+        <InboxList q={q} filter={filter} filters={filters} onSelect={(id)=>setThreadId(id)} selectedId={threadId} />
       </div>
       <div className="md:col-span-3">
         <InboxThread threadId={threadId} />

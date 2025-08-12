@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/api'
 import { prisma } from '@/lib/prisma'
+import { enqueue } from '@/lib/agent/queue'
 import { getGoogleAuthForUser, gmailClient } from '@/lib/gmail/client'
 import { applyInboxRules } from '@/src/ai/classifier/rules'
 import { classifyLead } from '@/src/ai/classifyLead'
