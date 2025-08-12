@@ -23,11 +23,9 @@ export const GET = withAuth(async ({ ctx }) => {
             update: { userId: ctx.session.user.id }
           })
         }
-        accounts = await prisma.mailAccount.findMany({ where: { userId: ctx.session.user.id }, select: { id: true, provider: true, providerUserId: true } })
-        if (!accounts.length) {
-          const raw: any[] = await (prisma as any).$queryRawUnsafe('SELECT id, provider, "providerUserId" FROM "MailAccount" WHERE "userId" = $1', ctx.session.user.id)
-          if (raw?.length) accounts = raw as any
-        }
+        // Fetch via SECURITY DEFINER function to avoid any RLS context issues
+        const viaFn: any[] = await (prisma as any).$queryRawUnsafe('SELECT * FROM app.get_mail_accounts($1)', ctx.session.user.id)
+        if (viaFn?.length) accounts = viaFn as any
       } catch {}
     }
     return NextResponse.json({ accounts })
