@@ -193,6 +193,30 @@ export default function DashboardInboxPage() {
                 <label className="inline-flex items-center gap-2 text-xs"><input type="checkbox" checked={filters.hasPhone||false} onChange={e=>setFilters((f:any)=>({ ...f, hasPhone: e.target.checked }))} /> Has phone</label>
                 <label className="inline-flex items-center gap-2 text-xs"><input type="checkbox" checked={filters.hasPrice||false} onChange={e=>setFilters((f:any)=>({ ...f, hasPrice: e.target.checked }))} /> Has price</label>
               </div>
+              <div className="pt-2 border-t mt-2">
+                <label className="text-xs text-muted-foreground">Density</label>
+                <div className="grid grid-cols-2 gap-2 mt-1 text-xs">
+                  {['comfortable','compact'].map(d => (
+                    <label key={d} className="inline-flex items-center gap-2">
+                      <input type="radio" name="density" checked={(filters.density||'comfortable')===d} onChange={()=>setFilters((f:any)=>({ ...f, density: d }))} /> {d}
+                    </label>
+                  ))}
+                </div>
+                <div className="mt-2 flex justify-end gap-2">
+                  <button className="px-2 py-1 text-xs border rounded" onClick={()=>{
+                    const payload = { key: 'inbox:filters', value: JSON.stringify(filters) }
+                    fetch('/api/memory', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+                  }}>Save view</button>
+                  <button className="px-2 py-1 text-xs border rounded" onClick={async()=>{
+                    const r = await fetch('/api/memory?keys=inbox:filters')
+                    const j = await r.json().catch(()=>({}))
+                    const v = j?.memories?.[0]?.value
+                    if (typeof v === 'string') {
+                      try { const parsed = JSON.parse(v); setFilters((f:any)=>({ ...f, ...parsed })) } catch {}
+                    }
+                  }}>Load view</button>
+                </div>
+              </div>
             </div>
           </details>
         </div>

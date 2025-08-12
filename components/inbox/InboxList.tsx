@@ -46,7 +46,7 @@ export default function InboxList({ q, filter, onSelect, filters, folder, onItem
     threads.sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0))
   }
 
-  const rowHeight = 88
+  const rowHeight = (filters?.density || 'comfortable') === 'compact' ? 64 : 88
   const items = threads
   if (onItems) onItems(items)
 
@@ -57,7 +57,7 @@ export default function InboxList({ q, filter, onSelect, filters, folder, onItem
     return (
       <div style={style}>
         <div
-          className={`px-3 py-2 border rounded-lg cursor-pointer flex items-start gap-3 touch-manipulation group transition-transform duration-150 ${t.unread ? 'bg-primary/5 hover:bg-primary/10 border-primary/30' : 'bg-card/90 hover:bg-muted/50'} hover:scale-[1.005] ${isSelected ? 'ring-2 ring-primary/60' : ''}`}
+          className={`relative pl-2 px-3 py-2 border rounded-lg cursor-pointer flex items-start gap-3 touch-manipulation group transition-transform duration-150 ${t.unread ? 'bg-primary/5 hover:bg-primary/10 border-primary/30' : 'bg-card/90 hover:bg-muted/50'} hover:scale-[1.005] ${isSelected ? 'ring-2 ring-primary/60' : ''}`}
           onClick={(e) => { const target = e.target as HTMLElement; if (target.closest('input,button,textarea,select,a,[data-interactive="true"]')) return; onSelect(t.id) }}
           role="button"
           tabIndex={0}
@@ -100,6 +100,7 @@ export default function InboxList({ q, filter, onSelect, filters, folder, onItem
             </div>
           </div>
         </div>
+        {t.unread && <span className="absolute left-0 top-0 bottom-0 w-1 rounded-l bg-primary/60" aria-hidden></span>}
       </div>
     )
   }

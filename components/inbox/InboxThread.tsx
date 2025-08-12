@@ -92,11 +92,24 @@ export default function InboxThread({ threadId }: { threadId: string }) {
       <div className="space-y-2">
         {(thread.messages || []).map((m: any) => (
           <div key={m.id} className="p-2 border rounded bg-background overflow-auto">
-            <div className="text-xs text-muted-foreground">{m.from} • {new Date(m.date || m.internalDate).toLocaleString()}</div>
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-6 h-6 rounded-full bg-muted grid place-items-center text-[10px]">{String(m.from||'?').slice(0,1).toUpperCase()}</div>
+              <div className="text-xs text-muted-foreground flex-1 truncate">{m.from} • {new Date(m.date || m.internalDate).toLocaleString()}</div>
+            </div>
             {m.bodyHtml ? (
-              <div className="prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(m.bodyHtml) }} />
+              <details className="group">
+                <summary className="text-xs text-muted-foreground cursor-pointer select-none">Show content</summary>
+                <div className="prose prose-invert max-w-none mt-1" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(m.bodyHtml) }} />
+              </details>
             ) : (
               <div className="text-sm whitespace-pre-wrap">{m.bodyText || m.snippet || ''}</div>
+            )}
+            {Array.isArray(m.attachments) && m.attachments.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {m.attachments.map((a:any)=> (
+                  <a key={a.id} href={a.downloadUrl || '#'} target="_blank" rel="noreferrer" className="px-2 py-1 text-xs border rounded bg-muted hover:bg-muted/80" download>{a.filename || 'attachment'}</a>
+                ))}
+              </div>
             )}
           </div>
         ))}
