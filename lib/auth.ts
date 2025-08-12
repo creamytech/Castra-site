@@ -6,6 +6,18 @@ import AzureADProvider from "next-auth/providers/azure-ad";
 import { prisma } from "./prisma";
 import { config } from "./config";
 
+// Normalize NEXTAUTH_URL at runtime to avoid trailing-slash callback issues in some deployments
+const normalizedAuthUrl = (config.auth.url || '').replace(/\/+$/, '');
+if (normalizedAuthUrl) {
+  if (process.env.NEXTAUTH_URL !== normalizedAuthUrl) {
+    console.log('[auth] Normalizing NEXTAUTH_URL from', process.env.NEXTAUTH_URL, 'to', normalizedAuthUrl);
+    process.env.NEXTAUTH_URL = normalizedAuthUrl;
+  }
+  if (!process.env.NEXTAUTH_URL_INTERNAL) {
+    process.env.NEXTAUTH_URL_INTERNAL = normalizedAuthUrl;
+  }
+}
+
 const providers = [];
 
 // Add Okta provider if configured
@@ -97,37 +109,49 @@ export const authOptions: NextAuthOptions = {
       
       // Safe Google account linking to prevent OAuthAccountNotLinked
       if (account?.provider === "google" && user?.email) {
-        const existing = await prisma.user.findUnique({ where: { email: user.email } });
-        const verified = (profile as any)?.email_verified ?? true;
-        
-        if (existing && verified) {
-          const linked = await prisma.account.findFirst({
-            where: { 
-              userId: existing.id, 
-              provider: "google", 
-              providerAccountId: account.providerAccountId 
-            },
-          });
+        try {
+          const existing = await prisma.user.findUnique({ where: { email: user.email } });
+          const verified = (profile as any)?.email_verified ?? true;
           
-          if (!linked) {
-            await prisma.account.create({
-              data: {
-                userId: existing.id,
-                type: account.type!,
-                provider: "google",
-                providerAccountId: account.providerAccountId!,
-                access_token: account.access_token,
-                refresh_token: account.refresh_token,
-                expires_at: account.expires_at,
-                token_type: account.token_type,
-                scope: account.scope,
-                id_token: account.id_token,
+          if (existing && verified) {
+            const linked = await prisma.account.findFirst({
+              where: { 
+                userId: existing.id, 
+                provider: "google", 
+                providerAccountId: account.providerAccountId 
               },
             });
+            
+            if (!linked) {
+              try {
+                await prisma.account.create({
+                  data: {
+                    userId: existing.id,
+                    type: account.type!,
+                    provider: "google",
+                    providerAccountId: account.providerAccountId!,
+                    access_token: account.access_token,
+                    refresh_token: account.refresh_token,
+                    expires_at: account.expires_at,
+                    token_type: account.token_type,
+                    scope: account.scope,
+                    id_token: account.id_token,
+                  },
+                });
+              } catch (err: any) {
+                // Ignore unique constraint errors if another link already exists
+                if (err?.code !== 'P2002') {
+                  console.error('Account link create failed', err);
+                }
+              }
+            }
+            
+            // Ensure session uses existing user
+            (user as any).id = existing.id;
           }
-          
-          // Ensure session uses existing user
-          (user as any).id = existing.id;
+        } catch (linkErr) {
+          console.error('Google sign-in linking error', linkErr);
+          // Do not block sign-in on linking issues
         }
       }
       
