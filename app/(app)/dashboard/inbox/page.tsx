@@ -257,7 +257,7 @@ export default function DashboardInboxPage() {
           <div className="border rounded p-2 space-y-2 text-xs">
             <div className="text-sm font-medium">Ask the Inbox Agent</div>
             <div className="text-muted-foreground">Examples: “show hot leads over 80”, “open thread with tour request”, “draft follow-up”.</div>
-            <form onSubmit={(e)=>{ e.preventDefault(); const v = (document.getElementById('agent-q') as HTMLInputElement)?.value||''; if (!v) return; fetch('/api/search?q='+encodeURIComponent(v)).then(()=>{}); }} className="flex gap-2">
+            <form onSubmit={async (e)=>{ e.preventDefault(); const v = (document.getElementById('agent-q') as HTMLInputElement)?.value||''; if (!v) return; const r = await fetch('/api/inbox/agent', { method:'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: v }) }); const j = await r.json().catch(()=>({})); const first = (j?.suggestions||[]).find((s:any)=>s.type==='filter'); if (first) setFilters((f:any)=>({ ...f, ...first.filters })); const opener = (j?.suggestions||[]).find((s:any)=>s.type==='open'); if (opener) openThread(opener.threadId); }} className="flex gap-2">
               <input id="agent-q" className="flex-1 border rounded px-2 py-1 bg-background" placeholder="Find leads…" />
               <button className="px-2 py-1 text-xs rounded bg-primary text-primary-foreground">Ask</button>
             </form>
