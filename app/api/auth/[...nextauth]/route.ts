@@ -14,7 +14,6 @@ const handler = NextAuth({
       options: { httpOnly: true, sameSite: 'lax', path: '/', secure: true },
     },
   },
-  trustHost: true,
 })
 
 export { handler as GET, handler as POST }
