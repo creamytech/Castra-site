@@ -98,6 +98,19 @@ export const authOptions: NextAuthOptions = {
     },
   },
   callbacks: {
+    async redirect({ url, baseUrl }) {
+      try {
+        console.log('[next-auth] redirect callback', { url, baseUrl })
+        // Allow relative URLs
+        if (url.startsWith('/')) return `${baseUrl}${url}`
+        // Allow same-origin absolute URLs
+        const to = new URL(url)
+        const base = new URL(baseUrl)
+        if (to.origin === base.origin) return url
+      } catch {}
+      // Fallback to dashboard on cross-origin or invalid URLs
+      return `${baseUrl}/dashboard`
+    },
     async signIn({ user, account, profile, email }: any) {
       console.log("SignIn Callback:", { 
         provider: account?.provider,
@@ -200,6 +213,25 @@ export const authOptions: NextAuthOptions = {
   providers,
   session: {
     strategy: "database",
+  },
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: true,
+      },
+    },
+    callbackUrl: {
+      name: `next-auth.callback-url`,
+      options: { sameSite: 'lax', path: '/', secure: true },
+    },
+    csrfToken: {
+      name: `next-auth.csrf-token`,
+      options: { httpOnly: false, sameSite: 'lax', path: '/', secure: true },
+    },
   },
   pages: {
     signIn: "/auth/signin",
