@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import StageColumn from './StageColumn'
 import { DndContext, DragEndEvent, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors, DragOverEvent, Over } from '@dnd-kit/core'
+import { motion, AnimatePresence } from 'framer-motion'
 import NewDealDialog from './NewDealDialog'
 
 const STAGES = ['LEAD','QUALIFIED','SHOWING','OFFER','ESCROW','CLOSED','LOST']
@@ -63,12 +64,23 @@ export default function PipelineBoard() {
   const onDragEnd = async (e: DragEndEvent) => {
     const activeId = e.active.id as string
     const overId = (e.over?.id as string) || ''
+    // If dropped over a column, move to that stage
     if (STAGES.includes(overId)) {
       await moveStage(activeId, overId)
       return
     }
-    // Intra-column keyboard drop: if dropping over another card, handled by onDragOver pairwise insert.
-    // No-op here.
+    // If dropped over another card, pairwise insert within that card's stage
+    const overData = (e.over?.data?.current || {}) as any
+    if (overData?.stage) {
+      try {
+        await fetch('/api/deals/reorder', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ movingId: activeId, anchorId: overId, insertAfter: true })
+        })
+        setRefreshKey(Date.now())
+      } catch {}
+    }
   }
 
   // Intra-stage reorder: if dragging over another card in same stage, reorder around anchor
@@ -89,7 +101,7 @@ export default function PipelineBoard() {
     } catch {}
   }
 
-  const openEmail = (deal: any) => { setActiveDeal(deal); setShowEmail(true); setShowSMS(false); setShowSchedule(false); setDrawerOpen(true) }
+  const openEmail = (deal: any) => { setActiveDeal(deal); setShowEmail(true); setShowSMS(false); setShowSchedule(false); setDrawerOpen(true); if (deal?.emailThreads?.[0]?.id) { window.location.href = `/dashboard/inbox/${deal.emailThreads[0].id}` } else { window.location.href = '/dashboard/inbox' } }
   const openSMS = (deal: any) => { setActiveDeal(deal); setShowSMS(true); setShowEmail(false); setShowSchedule(false) }
   const openSchedule = (deal: any) => { setActiveDeal(deal); setShowSchedule(true); setShowEmail(false); setShowSMS(false) }
   const openDrawer = async (dealId: string) => {
@@ -137,10 +149,11 @@ export default function PipelineBoard() {
         ))}
       </div>
       {/* Side Drawer */}
+      <AnimatePresence>
       {drawerOpen && (
         <div className="fixed inset-0 z-40" onClick={()=>setDrawerOpen(false)}>
-          <div className="absolute inset-0 bg-black/40" />
-          <div className="absolute right-0 top-0 h-full w-full max-w-2xl bg-background border-l overflow-y-auto" onClick={e=>e.stopPropagation()}>
+          <motion.div className="absolute inset-0 bg-black/40" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
+          <motion.div initial={{ x: 480 }} animate={{ x: 0 }} exit={{ x: 480 }} transition={{ type: 'spring', stiffness: 260, damping: 26 }} className="absolute right-0 top-0 h-full w-full max-w-2xl bg-background border-l overflow-y-auto" onClick={e=>e.stopPropagation()}>
             {/* Thread Viewer */}
             <div className="p-4 space-y-3">
               <div className="font-semibold">{activeDeal?.title || 'Deal'}</div>
@@ -152,43 +165,49 @@ export default function PipelineBoard() {
               <div className="text-sm text-muted-foreground">Upcoming events</div>
               <div className="space-y-2">
                 {drawerData.events.slice(0,3).map((e:any)=>(
-                  <div key={e.id} className="p-2 border rounded">
+                  <motion.div key={e.id} className="p-2 border rounded" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
                     <div className="text-sm">{e.summary || 'Event'}</div>
                     <div className="text-xs text-muted-foreground">{e.start?.dateTime || e.start?.date}</div>
-                  </div>
+                  </motion.div>
                 ))}
                 {drawerData.events.length===0 && <div className="text-xs text-muted-foreground">No upcoming events</div>}
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
       )}
+      </AnimatePresence>
+      <AnimatePresence>
       {showEmail && activeDeal && (
         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
-          <div className="bg-background border rounded p-4 w-full max-w-lg space-y-2">
+          <motion.div initial={{ scale: .95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: .98, opacity: 0 }} className="bg-background border rounded p-4 w-full max-w-lg space-y-2 shadow-2xl">
             <div className="font-semibold">Email {activeDeal.title}</div>
             <div className="text-xs text-muted-foreground">Subject defaults to "Re: original subject" when replying</div>
             <div className="flex justify-end gap-2">
               <button onClick={()=>setShowEmail(false)} className="px-2 py-1 border rounded text-xs">Close</button>
               <a href={`/dashboard/inbox/${activeDeal?.emailThreads?.[0]?.id || ''}`} className="px-2 py-1 rounded bg-primary text-primary-foreground text-xs">Open Thread</a>
             </div>
-          </div>
+          </motion.div>
         </div>
       )}
+      </AnimatePresence>
+      <AnimatePresence>
       {showSMS && activeDeal && (
         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
-          <div className="bg-background border rounded p-4 w-full max-w-md space-y-2">
+          <motion.div initial={{ scale: .95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: .98, opacity: 0 }} className="bg-background border rounded p-4 w-full max-w-md space-y-2 shadow-2xl">
             <div className="font-semibold">SMS {activeDeal.title}</div>
             <div className="text-xs text-muted-foreground">Compose SMS in the side panel; if Twilio not connected, you will see a connect prompt.</div>
             <div className="flex justify-end gap-2">
               <button onClick={()=>setShowSMS(false)} className="px-2 py-1 border rounded text-xs">Close</button>
             </div>
-          </div>
+          </motion.div>
         </div>
       )}
+      </AnimatePresence>
+      <AnimatePresence>
       {showSchedule && activeDeal && (
         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
-          <div className="bg-background border rounded p-4 w-full max-w-md space-y-3">
+          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 8, opacity: 0 }} className="bg-background border rounded p-4 w-full max-w-md space-y-3 shadow-2xl">
             <div className="font-semibold">Schedule for {activeDeal.title}</div>
             <input type="datetime-local" className="w-full border rounded px-2 py-1 bg-background" aria-label="Start" id="cal-start" />
             <input type="datetime-local" className="w-full border rounded px-2 py-1 bg-background" aria-label="End" id="cal-end" />
@@ -208,9 +227,10 @@ export default function PipelineBoard() {
                 setShowSchedule(false)
               }} className="px-2 py-1 rounded bg-primary text-primary-foreground text-xs">Create</button>
             </div>
-          </div>
+          </motion.div>
         </div>
       )}
+      </AnimatePresence>
     </DndContext>
   )
 }

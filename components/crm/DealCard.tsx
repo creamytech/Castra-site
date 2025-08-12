@@ -41,7 +41,7 @@ export default function DealCard({ deal, onMove, onEmail, onSMS, onSchedule, onO
         <div className="text-xs mt-1">Next: {deal.nextAction}{deal.nextDue ? ` by ${new Date(deal.nextDue).toLocaleDateString()}` : ''}</div>
       )}
       <div className="mt-2 flex items-center gap-2 flex-wrap">
-        <button onClick={(e)=>{ e.stopPropagation(); onEmail?.(deal) }} className="text-xs px-2 py-1 rounded bg-muted hover:bg-muted/80 inline-flex items-center gap-1"><Mail className="w-3 h-3" /> Email</button>
+        <button onClick={(e)=>{ e.stopPropagation(); if ((deal as any)?.emailThreads?.[0]?.id) { window.location.href = `/dashboard/inbox/${(deal as any).emailThreads[0].id}` } else { onEmail?.(deal) } }} className="text-xs px-2 py-1 rounded bg-muted hover:bg-muted/80 inline-flex items-center gap-1"><Mail className="w-3 h-3" /> Email</button>
         <button onClick={(e)=>{ e.stopPropagation(); onSMS?.(deal) }} className="text-xs px-2 py-1 rounded bg-muted hover:bg-muted/80 inline-flex items-center gap-1"><MessageSquare className="w-3 h-3" /> SMS</button>
         <button onClick={(e)=>{ e.stopPropagation(); onSchedule?.(deal) }} className="text-xs px-2 py-1 rounded bg-muted hover:bg-muted/80 inline-flex items-center gap-1"><Calendar className="w-3 h-3" /> Schedule</button>
         <button onClick={async () => { try { const r = await fetch(`/api/deals/${deal.id}/quick-action`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'AI_SUGGEST_NEXT' }) }); const j = await r.json(); if (r.ok) alert(`Suggestion: ${j.suggestion}`) } catch {} }} className="text-xs px-2 py-1 rounded bg-muted hover:bg-muted/80 inline-flex items-center gap-1"><Sparkles className="w-3 h-3" /> AI</button>
