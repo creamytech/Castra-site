@@ -7,6 +7,7 @@ import { applyInboxRules } from '@/src/ai/classifier/rules'
 import { classifyLead } from '@/src/ai/classifyLead'
 
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 export const GET = withAuth(async ({ req, ctx }) => {
   try {

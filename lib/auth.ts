@@ -66,6 +66,10 @@ if (config.azure.clientId && config.azure.clientSecret && config.azure.tenantId)
 console.log("Configured providers:", providers.map(p => p.id));
 
 // Use a dedicated Prisma client for NextAuth adapter to isolate from any extensions/middlewares
+// Ensure DATABASE_URL exists for the auth client as well
+if (!process.env.DATABASE_URL && process.env.POSTGRES_URL) {
+  process.env.DATABASE_URL = process.env.POSTGRES_URL;
+}
 const prismaAuth = new PrismaClient();
 
 export const authOptions: NextAuthOptions = {
