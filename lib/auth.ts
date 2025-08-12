@@ -197,6 +197,10 @@ export const authOptions: NextAuthOptions = {
       // On OAuth callback, persist secure MailAccount with encrypted refresh token
       try {
         if (account?.provider === 'google' && user?.id && account?.providerAccountId) {
+          // Ensure RLS app.user_id is set for this request before writing tenant-scoped tables
+          try {
+            await appPrisma.$executeRawUnsafe(`SELECT set_config('app.user_id', $1, true)`, user.id)
+          } catch {}
           const refresh = account.refresh_token as string | undefined
           const providerUserId = account.providerAccountId
           if (refresh) {

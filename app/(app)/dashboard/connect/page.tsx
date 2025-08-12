@@ -52,7 +52,7 @@ export default function ConnectPage() {
         // Check if Google is connected and redirect if so
         const googleConnected = data.accounts?.some((acc: Account) => acc.provider === 'google')
         if (googleConnected) {
-          router.push('/app/dashboard')
+          router.push('/dashboard')
           return
         }
         
@@ -86,7 +86,7 @@ export default function ConnectPage() {
     }
   }
 
-  const handleConnect = (provider: string) => {
+  const handleConnect = async (provider: string) => {
     // Redirect to sign-in with specific provider (use absolute callback and correct path)
     const callbackUrl = `${window.location.origin}/dashboard`
     // Force prompt consent to ensure refresh token and scopes
