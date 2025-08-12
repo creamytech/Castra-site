@@ -13,6 +13,15 @@ export async function getGoogleAuthForUser(userId: string) {
     access_token: accessToken || undefined,
     refresh_token: refreshToken,
   })
+  // Probe scopes to ensure Gmail access
+  try {
+    const tokenInfo = await oauth2.getTokenInfo(oauth2.credentials.access_token || '')
+    const scopes = (tokenInfo?.scopes || []) as string[]
+    const needsScopes = !scopes?.some(s => s.includes('gmail'))
+    if (needsScopes) throw new Error('Missing Gmail scopes')
+  } catch (e) {
+    throw new Error('Re-consent required for Gmail scopes')
+  }
   // Ensure required scopes present; if not, caller should re-consent
   oauth2.on('tokens', async (tokens) => {
     if (tokens.access_token) {

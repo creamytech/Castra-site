@@ -52,6 +52,7 @@ if (config.google.clientId && config.google.clientSecret) {
       clientSecret: config.google.clientSecret,
       allowDangerousEmailAccountLinking: true,
       authorization: {
+        url: 'https://accounts.google.com/o/oauth2/v2/auth',
         params: {
           access_type: 'offline',
           prompt: 'consent',

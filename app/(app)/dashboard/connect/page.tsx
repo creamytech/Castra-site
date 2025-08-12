@@ -44,7 +44,7 @@ export default function ConnectPage() {
 
   const fetchAccounts = async () => {
     try {
-      const response = await fetch('/api/accounts')
+      const response = await fetch('/api/accounts', { cache: 'no-store' })
       if (response.ok) {
         const data = await response.json()
         setAccounts(data.accounts || [])
@@ -89,7 +89,8 @@ export default function ConnectPage() {
   const handleConnect = (provider: string) => {
     // Redirect to sign-in with specific provider (use absolute callback and correct path)
     const callbackUrl = `${window.location.origin}/dashboard`
-    window.location.href = `/api/auth/signin/${provider}?callbackUrl=${encodeURIComponent(callbackUrl)}`
+    // Force prompt consent to ensure refresh token and scopes
+    window.location.href = `/api/auth/signin/${provider}?prompt=consent&access_type=offline&callbackUrl=${encodeURIComponent(callbackUrl)}`
   }
 
   const handleDisconnect = async (provider: string) => {
