@@ -91,11 +91,21 @@ export const GET = withAuth(async ({ req, ctx }) => {
         prisma.emailThread.count({ where }),
         prisma.emailThread.findMany({
           where,
-          // Keep DB order simple to avoid provider-specific aggregate issues; we'll sort in JS by last message date
           orderBy: { lastSyncedAt: 'desc' },
           skip: (page - 1) * takeBase,
           take: takeBase,
-          include: { deal: true, messages: { select: { intent: true, snippet: true, bodyText: true, from: true, date: true, internalRefs: true }, orderBy: { date: 'desc' }, take: 1 } },
+          select: {
+            id: true,
+            userId: true,
+            subject: true,
+            lastSyncedAt: true,
+            dealId: true,
+            status: true,
+            score: true,
+            reasons: true,
+            extracted: true,
+            messages: { select: { intent: true, snippet: true, bodyText: true, from: true, date: true, internalRefs: true }, orderBy: { date: 'desc' }, take: 1 }
+          },
         })
       ])
       let llmBudget = 30

@@ -52,7 +52,7 @@ export const PATCH = withAuth(async ({ req, ctx }) => {
         break
       case 'delete':
         // soft delete by adding TRASH label
-        const msgs = await prisma.message.findMany({ where })
+        const msgs = await prisma.message.findMany({ where, select: { id: true } })
         for (const m of msgs) {
           const next = Array.from(new Set([...(m.labels || []), 'TRASH']))
           await prisma.message.update({ where: { id: m.id }, data: { labels: next } })
@@ -60,7 +60,7 @@ export const PATCH = withAuth(async ({ req, ctx }) => {
         break
       case 'label':
         if (!label) return NextResponse.json({ error: 'label required' }, { status: 400 })
-        const ms = await prisma.message.findMany({ where })
+        const ms = await prisma.message.findMany({ where, select: { id: true } })
         for (const m of ms) {
           const next = Array.from(new Set([...(m.labels || []), String(label).toUpperCase()]))
           await prisma.message.update({ where: { id: m.id }, data: { labels: next } })
