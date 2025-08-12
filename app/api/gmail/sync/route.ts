@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getGoogleAuthForUser } from "@/lib/gmail/client";
+import { withRLS } from "@/lib/rls";
 import { getLabelMap, syncSinceHistoryId } from "@/lib/gmail/history";
 import { prisma } from "@/lib/securePrisma";
 import { putEncryptedObject } from "@/lib/storage";
@@ -16,6 +17,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // set RLS via helper to avoid context loss
+    await withRLS(session.user.id, async ()=>{})
     const { oauth2 } = await getGoogleAuthForUser(session.user.id);
     const gmail = google.gmail({ version: 'v1', auth: oauth2 });
 

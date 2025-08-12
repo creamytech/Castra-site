@@ -3,6 +3,8 @@ import { prisma } from '@/lib/securePrisma'
 import { decryptRefreshToken, encryptRefreshToken, cacheAccessToken, getCachedAccessToken } from '@/lib/token'
 
 export async function getGoogleAuthForUser(userId: string) {
+  // Ensure RLS context for this connection
+  try { await (prisma as any).$executeRawUnsafe(`SELECT set_config('app.user_id', $1, true)`, userId) } catch {}
   const account = await prisma.mailAccount.findFirst({ where: { userId, provider: 'google' } })
   if (!account) throw new Error('No Google account linked')
 
