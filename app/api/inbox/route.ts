@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 export const GET = withAuth(async ({ req, ctx }) => {
   try {

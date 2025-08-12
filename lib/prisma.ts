@@ -1,6 +1,11 @@
 import { PrismaClient } from "@prisma/client";
 import { withOptimize } from "@prisma/extension-optimize";
 
+// Ensure Prisma has a DATABASE_URL. Some platforms expose only POSTGRES_URL.
+if (!process.env.DATABASE_URL && process.env.POSTGRES_URL) {
+  process.env.DATABASE_URL = process.env.POSTGRES_URL;
+}
+
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
