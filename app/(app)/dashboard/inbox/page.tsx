@@ -141,7 +141,7 @@ export default function DashboardInboxPage() {
     <div className="p-0 sm:p-0 grid grid-cols-1 md:grid-cols-5 gap-0">
       <div className="order-1 md:order-none md:col-span-1 space-y-3 md:sticky md:top-16 md:self-start p-4 border-r bg-background/60 backdrop-blur animate-slide-in">
         <div className="flex gap-2">
-          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search…" className="w-full border rounded px-2 py-1 bg-background" aria-label="Search inbox" />
+          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search…" className="w-full border rounded px-3 py-2 bg-background" aria-label="Search inbox" />
         </div>
         <SidebarNav
           folder={folder}

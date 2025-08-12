@@ -1,7 +1,7 @@
 "use client"
 
 const cn = (...cls: Array<string | false | null | undefined>) => cls.filter(Boolean).join(' ')
-import { Inbox, Star, Clock, Send, FileText, Ban, Trash2, Mail } from 'lucide-react'
+import { Inbox, Star, Send, FileText, Ban, Trash2, Mail, ChevronDown } from 'lucide-react'
 
 type FolderKey = 'inbox'|'unread'|'starred'|'drafts'|'spam'|'trash'|'all'
 type CategoryKey = 'primary'|'promotions'|'social'|'updates'|'forums'|'all'
@@ -84,17 +84,23 @@ export default function SidebarNav({
 
       <div className="pt-2">
         <div className="text-xs text-muted-foreground mb-1">Categories</div>
-        <div className="grid grid-cols-2 gap-2">
-          {CATS.map((c) => (
-            <button
-              key={c.key}
-              onClick={() => onChangeCategory(c.key)}
-              className={cn('px-2 py-1 rounded border text-xs', category === c.key ? 'bg-primary text-primary-foreground' : '')}
-            >
-              {c.label}
-            </button>
-          ))}
-        </div>
+        <details className="relative">
+          <summary className="list-none px-3 py-2 rounded-md border flex items-center justify-between cursor-pointer hover:bg-accent/50">
+            <span className="text-sm">{CATS.find(c=>c.key===category)?.label || 'Primary'}</span>
+            <ChevronDown size={14} className="opacity-70" />
+          </summary>
+          <div className="absolute z-20 mt-2 w-full bg-popover border rounded-md shadow-lg overflow-hidden">
+            {CATS.map((c) => (
+              <button
+                key={c.key}
+                onClick={() => onChangeCategory(c.key)}
+                className={cn('w-full text-left px-3 py-2 text-sm hover:bg-accent', category === c.key ? 'bg-primary/10' : '')}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+        </details>
       </div>
     </aside>
   )
