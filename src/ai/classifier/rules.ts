@@ -3,6 +3,9 @@ export type RulesExtracted = {
   price?: string | null
   address?: string | null
   timeAsk?: boolean
+  showingRequest?: boolean
+  pricingQuestion?: boolean
+  prequalification?: boolean
   sourceType?: 'buyer' | 'seller' | 'renter' | 'vendor' | 'unknown'
   portal?: string | null
 }
@@ -60,6 +63,14 @@ const TIME_KEYWORDS = [
   'afternoon',
   'evening',
   'time',
+]
+
+const PREQUAL_KEYWORDS = [
+  'pre-approval','preapproval','pre approval','prequal','pre-qual','pre qualification','pre-qualification','lender','mortgage','preapproved','pre approved'
+]
+
+const PRICING_KEYWORDS = [
+  'price','pricing','budget','offer','list price','asking price','how much','what is the price','comp','cma'
 ]
 
 function extractPhone(text: string): string | null {
@@ -122,6 +133,27 @@ export function applyInboxRules(input: {
     reasons.push('time-ask')
   }
 
+  // Showing requests (tour/show) as a stronger signal
+  const showing = /(tour|showing|see the (home|house|property)|viewing)/.test(subject) || /(tour|showing|see the (home|house|property)|viewing)/.test(text)
+  if (showing) {
+    extracted.showingRequest = true
+    reasons.push('showing-request')
+  }
+
+  // Prequalification intent
+  const prequal = PREQUAL_KEYWORDS.some(k => subject.includes(k) || text.includes(k))
+  if (prequal) {
+    extracted.prequalification = true
+    reasons.push('prequal')
+  }
+
+  // Pricing question intent
+  const pricing = PRICING_KEYWORDS.some(k => subject.includes(k) || text.includes(k))
+  if (pricing) {
+    extracted.pricingQuestion = true
+    reasons.push('pricing-question')
+  }
+
   // Extract entities
   const phone = extractPhone(text)
   const price = extractPrice(text)
@@ -146,6 +178,9 @@ export function applyInboxRules(input: {
   // Additives
   const tourVerb = /(tour|showing|schedule|see|view)/.test(subject) || /(tour|showing|schedule|see|view)/.test(text)
   if (tourVerb) rulesScore += 25
+  if (showing) rulesScore += 10
+  if (prequal) rulesScore += 10
+  if (pricing) rulesScore += 8
   if (address) rulesScore += 10
   if (timeAsk) rulesScore += 10
   if (price) rulesScore += 10

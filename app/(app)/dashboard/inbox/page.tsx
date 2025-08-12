@@ -97,6 +97,43 @@ export default function DashboardInboxPage() {
     return ()=> document.removeEventListener('keydown', onKey)
   }, [overlayOpen, threadId])
 
+  // Batch triage: process 10
+  useEffect(() => {
+    const onQuick = (e: any) => {
+      const { action, threadId: tid } = e.detail || {}
+      if (!action) return
+      if (action.type === 'propose_times') {
+        openThread(tid)
+        setTimeout(()=>{
+          const evt = new CustomEvent('inbox:prefill-draft', { detail: { threadId: tid, draft: 'Hi! Here are a few times I’m available for a showing this week:
+- Tue 3-5pm
+- Wed 11am-1pm
+- Thu 4-6pm
+Let me know what works best, or share some times that work for you.' } })
+          window.dispatchEvent(evt)
+        }, 250)
+      }
+      if (action.type === 'send_preapproval') {
+        openThread(tid)
+        setTimeout(()=>{
+          const evt = new CustomEvent('inbox:prefill-draft', { detail: { threadId: tid, draft: 'Happy to help with pre-approval. I can connect you with a trusted local lender and outline the documents needed (income verification, bank statements, credit report). Would you like me to introduce you via email? Also, what price range are you targeting?' } })
+          window.dispatchEvent(evt)
+        }, 250)
+      }
+      if (action.type === 'start_cma') {
+        // Open deals or reports page in a new tab
+        window.open('/reports?tab=cma&from=inbox', '_blank')
+      }
+    }
+    window.addEventListener('inbox:quick-action', onQuick as any)
+    return ()=> window.removeEventListener('inbox:quick-action', onQuick as any)
+  }, [])
+
+  const [batchMode, setBatchMode] = useState(false)
+  const [batchIndex, setBatchIndex] = useState(0)
+  const startBatch = () => { setBatchMode(true); setBatchIndex(0); if (itemsRef.current[0]) openThread(itemsRef.current[0].id) }
+  const nextBatchItem = () => { const next = itemsRef.current[batchIndex+1]; if (next) { setBatchIndex(batchIndex+1); openThread(next.id) } }
+
   // Debounce search
   useEffect(() => {
     const t = setTimeout(()=> setDebouncedQ(q), 250)

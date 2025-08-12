@@ -127,10 +127,13 @@ export default function InboxList({ q, filter, onSelect, filters, folder, onItem
               <span className={`${t.unread ? 'font-semibold' : 'font-normal'}`}>{t.subject || '(No subject)'}</span>
               {t.preview && <span className="text-muted-foreground"> — {t.preview}</span>}
             </div>
-            <div className="opacity-0 group-hover:opacity-100 transition flex gap-1 mt-1">
+            <div className="opacity-0 group-hover:opacity-100 transition flex gap-1 mt-1 flex-wrap">
               <button data-interactive="true" title="Reply" onClick={(e)=>{ e.stopPropagation(); onSelect(t.id) }} className="px-2 py-1 border rounded text-xs inline-flex items-center gap-1"><Reply size={12}/> Reply</button>
               <button data-interactive="true" title="Archive" onClick={async (e)=>{ e.stopPropagation(); try { await apiFetch('/api/inbox/threads/bulk', { method:'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [t.id], action: 'archive' }) }); } catch {} }} className="px-2 py-1 border rounded text-xs inline-flex items-center gap-1"><Archive size={12}/> Archive</button>
               <button data-interactive="true" title="Mark read" onClick={async (e)=>{ e.stopPropagation(); try { await apiFetch('/api/inbox/threads/bulk', { method:'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [t.id], action: 'read' }) }); } catch {} }} className="px-2 py-1 border rounded text-xs inline-flex items-center gap-1"><MailOpen size={12}/> Read</button>
+              {(Array.isArray(t.quickActions) ? t.quickActions : []).map((qa: any, i: number) => (
+                <button key={i} data-interactive="true" className="px-2 py-1 border rounded text-xs inline-flex items-center gap-1" onClick={(e)=>{ e.stopPropagation(); window.dispatchEvent(new CustomEvent('inbox:quick-action', { detail: { action: qa, threadId: t.id } })) }}>{qa.label}</button>
+              ))}
               <details data-interactive="true" className="relative">
                 <summary className="px-2 py-1 border rounded text-xs inline-flex items-center gap-1 list-none cursor-pointer select-none"><MoreHorizontal size={12}/> More</summary>
                 <div className="absolute z-20 mt-1 right-0 w-40 bg-popover border rounded shadow-lg text-xs">

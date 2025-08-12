@@ -163,8 +163,9 @@ export const GET = withAuth(async ({ req, ctx }) => {
 
         // Compute priority
         const priority = computePriority(score, unreadFlag, rules, llm)
+        const quickActions = buildQuickActions({ rules, threadId: t.id, lastFrom: last?.from || '', subject: t.subject || '' })
 
-        return { id: t.id, userId: t.userId, subject: t.subject, lastSyncedAt: t.lastSyncedAt, lastMessageAt, deal: t.deal || null, status, score, priority, reasons, extracted, preview: last?.snippet || last?.bodyText || '', unread: unreadFlag, labelIds, fromName, fromEmail, confidence, needs_confirmation }
+        return { id: t.id, userId: t.userId, subject: t.subject, lastSyncedAt: t.lastSyncedAt, lastMessageAt, deal: t.deal || null, status, score, priority, reasons, extracted, quickActions, preview: last?.snippet || last?.bodyText || '', unread: unreadFlag, labelIds, fromName, fromEmail, confidence, needs_confirmation }
       }))
 
       const matchFolder = (tr: any) => {
@@ -251,4 +252,19 @@ function computePriority(score: number, unread: boolean, rules: ReturnType<typeo
   const llmConf = typeof llm?.confidence === 'number' ? llm.confidence : (rules.uncertainty ? 0.55 : 0.75)
   p += Math.round((llmConf - 0.5) * 20)
   return Math.max(0, Math.min(100, p))
+}
+
+function buildQuickActions(params: { rules: ReturnType<typeof applyInboxRules>, threadId: string, lastFrom: string, subject: string }) {
+  const { rules, threadId, lastFrom, subject } = params
+  const actions: Array<{ type: string; label: string; payload?: any }> = []
+  if (rules.extracted.showingRequest || rules.extracted.timeAsk) {
+    actions.push({ type: 'propose_times', label: 'Propose showing times', payload: { threadId } })
+  }
+  if (rules.extracted.prequalification) {
+    actions.push({ type: 'send_preapproval', label: 'Send pre-approval checklist', payload: { threadId, to: lastFrom } })
+  }
+  if (rules.extracted.pricingQuestion || /cma|price/i.test(subject)) {
+    actions.push({ type: 'start_cma', label: 'Start CMA', payload: { threadId } })
+  }
+  return actions
 }
