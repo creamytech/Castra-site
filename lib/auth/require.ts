@@ -7,6 +7,10 @@ export type LoadedContext = { session: any; orgId: string; role: 'OWNER'|'ADMIN'
 export async function requireSession(): Promise<LoadedContext> {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) throw new Error('Unauthorized')
+  // Set RLS user id early so that any subsequent queries respect tenant policies
+  try {
+    await prisma.$executeRawUnsafe(`SELECT set_config('app.user_id', $1, true)`, session.user.id)
+  } catch {}
   // Ensure a corresponding User row exists (fresh DB scenarios)
   try {
     await prisma.user.upsert({
