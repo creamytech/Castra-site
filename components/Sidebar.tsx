@@ -3,7 +3,8 @@
 import { signOut, useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import useSWR from 'swr'
 
 interface NavItem {
   id: string
@@ -16,7 +17,25 @@ interface NavItem {
 export default function Sidebar() {
   const { data: session } = useSession()
   const pathname = usePathname()
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(true)
+
+  // Persist collapsed state
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem('sidebarCollapsed')
+      if (v === 'false') setIsCollapsed(false)
+    } catch {}
+  }, [])
+  useEffect(() => {
+    try { localStorage.setItem('sidebarCollapsed', String(isCollapsed)) } catch {}
+  }, [isCollapsed])
+
+  // Unread counts
+  const fetcher = (url: string) => fetch(url, { cache: 'no-store' }).then(r=>r.json()).catch(()=>({}))
+  const { data: notifData } = useSWR('/api/notifications?unread=true', fetcher, { refreshInterval: 30000 }) as any
+  const notificationsUnread = Number(notifData?.unreadCount || 0)
+  const { data: inboxData } = useSWR('/api/inbox/threads?limit=50', fetcher, { refreshInterval: 30000 }) as any
+  const inboxUnread = Array.isArray(inboxData?.threads) ? inboxData.threads.filter((t:any)=>t.unread).length : 0
 
   const navItems: NavItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: '🏠', href: '/dashboard' },
@@ -64,23 +83,26 @@ export default function Sidebar() {
       <nav className="flex-1 p-4">
         <ul className="space-y-2">
           {navItems.map((item) => {
-            const isActive = pathname === item.href
-            const baseClasses = 'flex items-center rounded-lg transition-colors w-full'
+            const isActive = pathname === item.href || pathname?.startsWith(item.href)
+            const baseClasses = 'relative flex items-center rounded-lg transition-colors w-full'
             const spacing = isCollapsed ? 'justify-center py-3' : 'space-x-3 px-3 py-2'
-            const activeClasses = isActive ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-accent hover:text-accent-foreground'
+            const activeClasses = isActive ? 'bg-muted font-medium' : 'text-foreground hover:bg-accent hover:text-accent-foreground'
+            const count = item.id === 'inbox' ? inboxUnread : item.id === 'chat' ? 0 : item.id === 'notifications' ? notificationsUnread : 0
             return (
               <li key={item.id}>
                 <Link
                   href={item.href}
+                  title={isCollapsed ? item.label : undefined}
                   className={`${baseClasses} ${spacing} ${activeClasses}`}
                 >
+                  {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r" aria-hidden></span>}
                   <span className="text-xl">{item.icon}</span>
                   {!isCollapsed && (
                     <div className="flex items-center justify-between flex-1">
-                      <span className="font-medium">{item.label}</span>
-                      {item.badge && (
-                        <span className="px-2 py-1 text-xs bg-destructive text-destructive-foreground rounded-full">
-                          {item.badge}
+                      <span className="font-medium truncate">{item.label}</span>
+                      {count > 0 && (
+                        <span className="px-2 py-0.5 text-[10px] bg-primary text-primary-foreground rounded-full">
+                          {count}
                         </span>
                       )}
                     </div>
