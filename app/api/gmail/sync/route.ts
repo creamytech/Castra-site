@@ -17,8 +17,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // set RLS via helper to avoid context loss
-    await withRLS(session.user.id, async ()=>{})
+    // set RLS via helper to avoid context loss and ensure MailAccount exists
+    await withRLS(session.user.id, async () => {})
     const { oauth2 } = await getGoogleAuthForUser(session.user.id);
     const gmail = google.gmail({ version: 'v1', auth: oauth2 });
 
