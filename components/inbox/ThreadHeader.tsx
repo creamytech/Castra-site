@@ -2,6 +2,8 @@
 import { STATUS_LABEL, STATUS_COLORS } from "@/src/lib/status";
 import useSWR from 'swr'
 import { apiFetch } from '@/lib/http'
+import SummaryCard from './SummaryCard'
+import { useMemo } from 'react'
 
 export function ThreadHeader({ lead, onStatusChange }: { lead: any; onStatusChange: (s:string)=>void }) {
   const scoreClass = lead.score >= 80 ? 'good' : lead.score >= 60 ? 'warn' : 'dim'
@@ -11,6 +13,14 @@ export function ThreadHeader({ lead, onStatusChange }: { lead: any; onStatusChan
     const r = await apiFetch('/api/email/summarize', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ threadId: lead.threadId }) })
     return r.json()
   })
+  const summaryData = useMemo(()=>{
+    const text: string = data?.summary || ''
+    const lines = text.split(/\n+/).map(s=>s.trim()).filter(Boolean)
+    const tldr = lines[0] || ''
+    const keyPoints = lines.slice(1, 5)
+    return { tldr, keyPoints, actionItems: [], sentiment: 'neutral' as const, confidence: 'high' as const }
+  }, [data?.summary])
+
   return (
     <div className="thread-header space-y-3 p-4 border-b bg-gradient-to-b from-card/90 to-card/70 backdrop-blur supports-[backdrop-filter]:backdrop-blur-md">
       <div className="flex items-center gap-3 hover-shimmer">
@@ -28,12 +38,7 @@ export function ThreadHeader({ lead, onStatusChange }: { lead: any; onStatusChan
         {(lead.reasons || []).map((r: string, i: number) => <span key={i} className="chip text-xs px-2 py-1 rounded border bg-background/60 hover:bg-accent/40 transition shadow-sm">{r}</span>)}
       </div>
       {data?.summary && (
-        <div className="text-xs text-muted-foreground bg-background/70 border rounded-xl p-3 shadow-sm">
-          <div className="font-medium mb-1 flex items-center gap-2">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-pulse"/> AI Summary
-          </div>
-          <div className="whitespace-pre-wrap leading-relaxed text-foreground/90">{data.summary}</div>
-        </div>
+        <SummaryCard data={summaryData} />
       )}
     </div>
   );
