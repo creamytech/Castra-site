@@ -12,11 +12,17 @@ export const POST = withAuth(async ({ ctx }) => {
     let created = 0
     for (const a of accounts) {
       if (!a.providerAccountId) continue
-      await prisma.mailAccount.upsert({
-        where: { providerUserId: a.providerAccountId },
-        create: { userId: ctx.session.user.id, provider: 'google', providerUserId: a.providerAccountId, refreshTokenEnc: Buffer.alloc(0) },
-        update: { userId: ctx.session.user.id }
-      })
+      // Call DB function with SECURITY DEFINER to bypass RLS if needed
+      try {
+        await prisma.$executeRawUnsafe(`SELECT app.link_mail_account($1, $2, $3)`, ctx.session.user.id, 'google', a.providerAccountId)
+      } catch {
+        // Fallback to app-side upsert under current session
+        await prisma.mailAccount.upsert({
+          where: { providerUserId: a.providerAccountId },
+          create: { userId: ctx.session.user.id, provider: 'google', providerUserId: a.providerAccountId, refreshTokenEnc: Buffer.alloc(0) },
+          update: { userId: ctx.session.user.id }
+        })
+      }
       created++
     }
     return NextResponse.json({ ok: true, linked: created })
