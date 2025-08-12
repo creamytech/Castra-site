@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { apiFetch } from "@/lib/http";
-import { getPusherClient } from "@/lib/websocket";
+import { getPusherClient } from "@/lib/websocket-client";
 
 export const dynamic = "force-dynamic";
 

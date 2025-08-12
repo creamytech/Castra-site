@@ -3,7 +3,7 @@ import { handleEvent } from '@/lib/agent/orchestrator'
 import { prisma } from '@/lib/prisma'
 import { applyInboxRules } from '@/src/ai/classifier/rules'
 import { classifyLead } from '@/src/ai/classifyLead'
-import { notifyUser } from '@/lib/websocket'
+import { notifyUser } from '@/lib/websocket-server'
 import { verifyGooglePubSub } from '@/lib/webhooks/verify'
 
 export const dynamic = 'force-dynamic'

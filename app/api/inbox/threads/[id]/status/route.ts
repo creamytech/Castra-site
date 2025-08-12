@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/api'
 import { prisma } from '@/lib/prisma'
-import { notifyUser } from '@/lib/websocket'
+import { notifyUser } from '@/lib/websocket-server'
 
 export const dynamic = 'force-dynamic'
 
