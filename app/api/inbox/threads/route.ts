@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/api'
 import { prisma } from '@/lib/prisma'
+import { cacheGet, cacheSet } from '@/lib/cache'
 import { enqueue } from '@/lib/agent/queue'
 import { getGoogleAuthForUser, gmailClient } from '@/lib/gmail/client'
 import { applyInboxRules } from '@/src/ai/classifier/rules'
@@ -87,6 +88,11 @@ export const GET = withAuth(async ({ req, ctx }) => {
       }
 
       const takeBase = Math.min(limit * 3, 500)
+      // Simple cache key (short TTL)
+      const cacheKey = `inbox:threads:${ctx.session.user.id}:${ctx.orgId}:${folder}:${q}:${page}:${limit}`
+      const cached = await cacheGet<any>(cacheKey)
+      if (cached) return NextResponse.json(cached)
+
       const [total, rows] = await Promise.all([
         prisma.emailThread.count({ where }),
         prisma.emailThread.findMany({
@@ -104,13 +110,25 @@ export const GET = withAuth(async ({ req, ctx }) => {
             score: true,
             reasons: true,
             extracted: true,
-            messages: { select: { intent: true, snippet: true, bodyText: true, from: true, date: true, internalRefs: true }, orderBy: { date: 'desc' }, take: 1 }
           },
         })
       ])
+
+      // Batch load latest message for these threads (avoid include/take=1 N+1)
+      const threadIds = rows.map(r => r.id)
+      const latestMessagesRaw = threadIds.length ? await prisma.emailMessage.findMany({
+        where: { threadId: { in: threadIds } },
+        orderBy: [ { threadId: 'asc' }, { date: 'desc' } ],
+        select: { threadId: true, intent: true, snippet: true, bodyText: true, from: true, date: true, internalRefs: true },
+        take: Math.min(threadIds.length * 5, 2000)
+      }) : []
+      const latestByThread = new Map<string, any>()
+      for (const m of latestMessagesRaw) {
+        if (!latestByThread.has(m.threadId)) latestByThread.set(m.threadId, m)
+      }
       let llmBudget = 30
       const threadsRaw = await Promise.all(rows.map(async (t: any) => {
-        const last = t.messages?.[0]
+        const last = latestByThread.get(t.id)
         const combined = `${last?.snippet || ''} ${last?.bodyText || ''}`
         const labelIds = (last?.internalRefs as any)?.labelIds || []
         const unreadFlag = Array.isArray(labelIds) ? labelIds.includes('UNREAD') : false
@@ -154,11 +172,6 @@ export const GET = withAuth(async ({ req, ctx }) => {
         const confidence = llm?.confidence ?? (rules.uncertainty ? 0.55 : 0.75)
         const needs_confirmation = llm?.needs_confirmation ?? (confidence < 0.6)
 
-        // Persist lightweight updates for this thread
-        try {
-          await prisma.emailThread.update({ where: { id: t.id }, data: { status, score, reasons, extracted } })
-        } catch {}
-
         // Parse from header into name/email if available
         let fromName: string | null = null
         let fromEmail: string | null = null
@@ -175,7 +188,7 @@ export const GET = withAuth(async ({ req, ctx }) => {
         const priority = computePriority(score, unreadFlag, rules, llm)
         const quickActions = buildQuickActions({ rules, threadId: t.id, lastFrom: last?.from || '', subject: t.subject || '' })
 
-        return { id: t.id, userId: t.userId, subject: t.subject, lastSyncedAt: t.lastSyncedAt, lastMessageAt, deal: t.deal || null, status, score, priority, reasons, extracted, quickActions, preview: last?.snippet || last?.bodyText || '', unread: unreadFlag, labelIds, fromName, fromEmail, confidence, needs_confirmation }
+        return { id: t.id, userId: t.userId, subject: t.subject, lastSyncedAt: t.lastSyncedAt, lastMessageAt, deal: null, status, score, priority, reasons, extracted, quickActions, preview: last?.snippet || last?.bodyText || '', unread: unreadFlag, labelIds, fromName, fromEmail, confidence, needs_confirmation }
       }))
 
       const matchFolder = (tr: any) => {
@@ -202,7 +215,9 @@ export const GET = withAuth(async ({ req, ctx }) => {
         // Stable, strict sort by last message time only
         .sort((a: any, b: any) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime())
         .slice(0, limit)
-      return NextResponse.json({ total, page, limit, threads })
+      const payload = { total, page, limit, threads }
+      await cacheSet(cacheKey, payload, 15)
+      return NextResponse.json(payload)
     }
 
     // Fallback: group by Message.threadId and compute lightweight status/score heuristics
