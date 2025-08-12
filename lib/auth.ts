@@ -39,23 +39,7 @@ if (config.google.clientId && config.google.clientSecret) {
     GoogleProvider({
       clientId: config.google.clientId,
       clientSecret: config.google.clientSecret,
-      authorization: {
-        params: {
-          access_type: "offline",
-          prompt: "consent",
-          scope: [
-            "openid",
-            "email",
-            "profile",
-            "https://www.googleapis.com/auth/gmail.readonly",
-            "https://www.googleapis.com/auth/gmail.modify",
-            "https://www.googleapis.com/auth/gmail.compose",
-            "https://www.googleapis.com/auth/gmail.send",
-            "https://www.googleapis.com/auth/calendar.events",
-            "https://www.googleapis.com/auth/calendar.readonly"
-          ].join(" ")
-        }
-      }
+      // Keep defaults to isolate callback issues; request extended scopes later after login
     })
   );
 } else {
@@ -172,8 +156,9 @@ export const authOptions: NextAuthOptions = {
         }
       }
       
-      console.log("Sign-in allowed for:", account?.provider || account?.type);
-      return true;
+      const allowed = !!(account?.provider === 'google' || account?.type === 'credentials')
+      console.log("Sign-in allowed for:", account?.provider || account?.type, '->', allowed);
+      return allowed;
     },
     async session({ session, user, token }: any) {
       console.log("Session Callback:", { 
