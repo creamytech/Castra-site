@@ -283,6 +283,7 @@ model EmailMessage {
 
   @@index([userId, date])
   @@index([threadId, date])
+  @@index([threadId])
   @@index([dealId])
   @@index([orgId, date])
 }

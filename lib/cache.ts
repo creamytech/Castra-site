@@ -143,14 +143,17 @@ class LRUCache {
 // Global cache instance
 const threadSummaryCache = new LRUCache(100)
 
-export function getCachedThreadSummary(userId: string, threadId: string): string | null {
-  const key = `${userId}:${threadId}`
+export async function getCachedThreadSummary(userId: string, threadId: string): Promise<string | null> {
+  const key = `summary:${userId}:${threadId}`
+  const fromRedis = await cacheGet<string>(key)
+  if (fromRedis) return fromRedis
   return threadSummaryCache.get(key)
 }
 
-export function setCachedThreadSummary(userId: string, threadId: string, summary: string): void {
-  const key = `${userId}:${threadId}`
+export async function setCachedThreadSummary(userId: string, threadId: string, summary: string): Promise<void> {
+  const key = `summary:${userId}:${threadId}`
   threadSummaryCache.set(key, summary, 24 * 60 * 60 * 1000) // 24 hours
+  await cacheSet(key, summary, 24 * 60 * 60)
 }
 
 export function clearThreadSummaryCache(): void {

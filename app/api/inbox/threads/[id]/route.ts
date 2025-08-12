@@ -12,7 +12,8 @@ export const GET = withAuth(async ({ ctx }, { params }: any) => {
     if (thread) return NextResponse.json({ thread })
 
     // fallback
-    const msgs = await prisma.message.findMany({ where: { userId: ctx.session.user.id, threadId: params.id }, orderBy: { internalDate: 'asc' } })
+    // Select only needed fields
+    const msgs = await prisma.message.findMany({ where: { userId: ctx.session.user.id, threadId: params.id }, orderBy: { internalDate: 'asc' }, select: { id: true, from: true, snippet: true, bodyHtml: true, bodyText: true, internalDate: true, cc: true, labels: true } })
     // attempt to fetch full bodies if missing via Gmail if we have a recent message id
     try {
       const last = msgs[msgs.length-1]

@@ -89,7 +89,7 @@ export const GET = withAuth(async ({ req, ctx }) => {
 
       const takeBase = Math.min(limit * 3, 500)
       // Simple cache key (short TTL)
-      const cacheKey = `inbox:threads:${ctx.session.user.id}:${ctx.orgId}:${folder}:${q}:${page}:${limit}`
+      const cacheKey = `inbox:threads:v2:${ctx.session.user.id}:${ctx.orgId}:${folder}:${q}:${page}:${limit}`
       const cached = await cacheGet<any>(cacheKey)
       if (cached) return NextResponse.json(cached)
 

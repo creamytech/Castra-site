@@ -25,7 +25,7 @@ export const POST = withAuth(async ({ req, ctx }) => {
     }
 
     // Check cache first
-    const cachedSummary = getCachedThreadSummary(ctx.session.user.id, threadId)
+    const cachedSummary = await getCachedThreadSummary(ctx.session.user.id, threadId)
     if (cachedSummary) {
       let parsed: any = cachedSummary
       if (typeof cachedSummary === 'string') {
@@ -100,7 +100,7 @@ export const POST = withAuth(async ({ req, ctx }) => {
     }
 
     // Cache the summary
-    setCachedThreadSummary(ctx.session.user.id, threadId, JSON.stringify(structured))
+    await setCachedThreadSummary(ctx.session.user.id, threadId, JSON.stringify(structured))
 
     console.log(`Successfully summarized thread ${threadId}`)
 
