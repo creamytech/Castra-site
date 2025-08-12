@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/api";
 import { prisma } from "@/lib/securePrisma";
+import { withRLS } from '@/lib/rls'
 
 export const dynamic = "force-dynamic";
 
 export const GET = withAuth(async ({ ctx }) => {
   try {
-    let accounts = await prisma.mailAccount.findMany({
-      where: { userId: ctx.session.user.id },
-      select: { id: true, provider: true, providerUserId: true }
+    let accounts = await withRLS(ctx.session.user.id, async (tx) => {
+      return (tx as any).mailAccount.findMany({
+        where: { userId: ctx.session.user.id },
+        select: { id: true, provider: true, providerUserId: true }
+      })
     })
     // Fallback: if no MailAccount but NextAuth Account exists, create a MailAccount on the fly
     if (!accounts.length) {
@@ -17,11 +20,11 @@ export const GET = withAuth(async ({ ctx }) => {
         for (const a of adapterAccounts) {
           if (!a.providerAccountId) continue
           const refreshBuf = Buffer.alloc(0)
-          await prisma.mailAccount.upsert({
+          await withRLS(ctx.session.user.id, (tx)=> (tx as any).mailAccount.upsert({
             where: { providerUserId: a.providerAccountId },
             create: { userId: ctx.session.user.id, provider: 'google', providerUserId: a.providerAccountId, refreshTokenEnc: refreshBuf },
             update: { userId: ctx.session.user.id }
-          })
+          }))
         }
         // Fetch via SECURITY DEFINER function to avoid any RLS context issues
         const viaFn: any[] = await (prisma as any).$queryRawUnsafe('SELECT * FROM app.get_mail_accounts($1)', ctx.session.user.id)
