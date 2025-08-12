@@ -39,6 +39,16 @@ export default function InboxThread({ threadId }: { threadId: string }) {
     mutate()
   }
 
+  const queueToDailyBrief = async () => {
+    try {
+      if (!thread?.id) return
+      const res = await apiFetch(`/api/drafts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ threadId: thread.id, leadId: bundle?.lead?.id, subject, bodyText: draft }) })
+      if ((res as any).ok) {
+        setDraft('')
+      }
+    } catch {}
+  }
+
   const replyAll = async () => {
     const last = thread?.messages?.slice(-1)?.[0]
     if (!last) return
@@ -101,6 +111,7 @@ export default function InboxThread({ threadId }: { threadId: string }) {
           onInsert={()=>{ if (bundle?.draft?.bodyText) setDraft(bundle.draft.bodyText) }}
           onRegenerate={aiDraft}
           onSend={sendEmail}
+          onQueue={queueToDailyBrief}
           onPickTime={(start,end)=> setPicked({start,end})}
           onSendInvite={(start,end)=>{ if (leadId) book(start,end) }}
           proposed={bundle?.schedule?.proposedWindows || []}

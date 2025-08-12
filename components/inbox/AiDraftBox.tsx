@@ -1,7 +1,7 @@
 "use client"
 import { useState } from 'react'
 
-export function AiDraftBox({ draft, subject, body, setSubject, setBody, onInsert, onRegenerate, onSend, onSendInvite, proposed = [], onPickTime }: {
+export function AiDraftBox({ draft, subject, body, setSubject, setBody, onInsert, onRegenerate, onSend, onSendInvite, proposed = [], onPickTime, onQueue }: {
   draft?: any;
   subject: string;
   body: string;
@@ -13,6 +13,7 @@ export function AiDraftBox({ draft, subject, body, setSubject, setBody, onInsert
   onSendInvite: (start: string, end: string) => void;
   proposed?: { start: string; end: string }[];
   onPickTime: (start: string, end: string) => void;
+  onQueue: () => void;
 }) {
   const [open, setOpen] = useState(true);
   return (
@@ -51,6 +52,7 @@ export function AiDraftBox({ draft, subject, body, setSubject, setBody, onInsert
           </div>
           <div className="flex gap-2">
             <button onClick={onSend} className="px-3 py-1 rounded bg-primary text-primary-foreground text-xs">Send Email</button>
+            <button onClick={onQueue} className="px-3 py-1 rounded border text-xs">Queue to Daily Brief</button>
             <button onClick={()=>{
               if (proposed[0]) onSendInvite(proposed[0].start, proposed[0].end)
             }} className="px-3 py-1 rounded border text-xs">Send & Invite</button>
