@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic'
 type Suggestion =
   | { type: 'open'; threadId: string; subject: string | null; score?: number; preview?: string }
   | { type: 'filter'; label: string; filters: any }
+  | { type: 'draft'; threadId: string; messageId: string }
 
 function parseQuery(q: string) {
   const lower = q.toLowerCase()
@@ -31,7 +32,7 @@ export const POST = withAuth(async ({ req, ctx }) => {
     const query: string = String(body.query || '').trim()
     const filters = body.filters || parseQuery(query)
 
-    const where: any = { userId: ctx.session.user.id, orgId: ctx.orgId }
+  const where: any = { userId: ctx.session.user.id, orgId: ctx.orgId }
     if (typeof filters.minScore === 'number') where.score = { gte: filters.minScore }
     if (filters.q) where.subject = { contains: filters.q, mode: 'insensitive' }
     // unread/attachments are derived from latest message labels
@@ -47,7 +48,7 @@ export const POST = withAuth(async ({ req, ctx }) => {
       const labelIds = (last?.internalRefs as any)?.labelIds || []
       const unread = Array.isArray(labelIds) ? labelIds.includes('UNREAD') : false
       const hasAttachment = Array.isArray(labelIds) ? labelIds.includes('HAS_ATTACHMENT') : false
-      return { id: t.id, subject: t.subject, score: t.score ?? 0, preview: last?.snippet || '', unread, hasAttachment }
+      return { id: t.id, subject: t.subject, score: t.score ?? 0, preview: last?.snippet || '', unread, hasAttachment, lastId: last?.id }
     })
     if (filters.unreadOnly) rows = rows.filter(r => r.unread)
     if (filters.hasAttachment) rows = rows.filter(r => r.hasAttachment)
@@ -62,6 +63,12 @@ export const POST = withAuth(async ({ req, ctx }) => {
     }
     // Matching filter suggestion
     suggestions.push({ type: 'filter', label: 'Apply filters', filters })
+
+    // Draft intent
+    if (/draft|follow\s?-?up|reply/.test(query.toLowerCase())) {
+      const target = rows[0]
+      if (target?.lastId) suggestions.unshift({ type: 'draft', threadId: target.id, messageId: target.lastId })
+    }
 
     return NextResponse.json({ success: true, suggestions })
   } catch (e: any) {

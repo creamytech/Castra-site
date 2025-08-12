@@ -265,6 +265,7 @@ export default function DashboardInboxPage() {
               <button className="px-2 py-1 border rounded" onClick={()=>setFilters((f:any)=>({ ...f, minScore: 80 }))}>Hot ≥ 80</button>
               <button className="px-2 py-1 border rounded" onClick={()=>setFilters((f:any)=>({ ...f, hasPhone: true }))}>Has phone</button>
               <button className="px-2 py-1 border rounded" onClick={()=>setFilters((f:any)=>({ ...f, hasAttachment: true }))}>Has attachment</button>
+              <button className="px-2 py-1 border rounded" onClick={async()=>{ const r = await fetch('/api/inbox/agent', { method:'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: 'draft a follow-up' }) }); const j = await r.json().catch(()=>({})); const d = (j?.suggestions||[]).find((s:any)=>s.type==='draft'); if (d) { openThread(d.threadId); setTimeout(async()=>{ await fetch(`/api/inbox/messages/${d.messageId}/ai-draft`, { method:'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tone: 'friendly' }) }); }, 200); } }}>Draft follow-up</button>
             </div>
           </div>
         </div>
