@@ -27,7 +27,7 @@ export async function syncSinceHistoryId(userId: string, mailboxId: string, hist
   const labelMap = await getLabelMap(userId)
 
   do {
-    const historyRes = await gmail.users.history.list({ userId: 'me', startHistoryId, pageToken, historyTypes: ['messageAdded','labelsAdded','labelsRemoved'] as any, maxResults: 200 })
+    const historyRes: any = await gmail.users.history.list({ userId: 'me', startHistoryId, pageToken, historyTypes: ['messageAdded','labelsAdded','labelsRemoved'] as any, maxResults: 200 })
     const histories = historyRes.data.history || []
     for (const h of histories) {
       const added = h.messagesAdded || []

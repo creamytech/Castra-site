@@ -19,14 +19,8 @@ export const GET = withAuth(async ({ ctx, req }) => {
   }
 }, { action: 'inbox.message.get' })
 
-import { NextRequest, NextResponse } from 'next/server'
-import { withAuth } from '@/lib/auth/api'
-import { prisma } from '@/lib/prisma'
 import OpenAI from 'openai'
-
-export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
-
 const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null
 
 export const POST = withAuth(async ({ req, ctx }) => {

@@ -79,7 +79,9 @@ export async function POST(request: NextRequest) {
           // Map mailbox/account lazily (placeholder: single mailbox per user via account)
           const account = await prisma.mailAccount.findFirst({ where: { userId: session.user.id, provider: 'google' } })
           if (!account) continue
-          const mailbox = await prisma.mailbox.upsert({ where: { accountId_email: { accountId: account.id, email: session.user.email || 'me' } as any }, create: { accountId: account.id, email: session.user.email || 'me' }, update: {} }) as any
+          // Ensure a mailbox exists per account; for simplicity, use first-or-create by account
+          let mailbox = await prisma.mailbox.findFirst({ where: { accountId: account.id } })
+          if (!mailbox) mailbox = await prisma.mailbox.create({ data: { accountId: account.id, email: session.user.email || 'me' } })
           const thread = await prisma.thread.upsert({ where: { providerThreadId: messageDetail.data.threadId || message.id! }, create: { providerThreadId: messageDetail.data.threadId || message.id!, mailboxId: mailbox.id, latestAt: internalDate }, update: { latestAt: internalDate } })
           let bodyRef: string | null = null
           if (bodyHtml || bodyText) {
