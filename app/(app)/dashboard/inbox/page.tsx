@@ -14,7 +14,7 @@ export default function DashboardInboxPage() {
   const [debouncedQ, setDebouncedQ] = useState('')
   const itemsRef = useRef<any[]>([])
   const [filter, setFilter] = useState('all')
-  const [folder, setFolder] = useState<'inbox'|'unread'|'starred'|'spam'|'trash'|'drafts'|'all'>('all')
+  const [folder, setFolder] = useState<'inbox'|'unread'|'starred'|'spam'|'trash'|'drafts'|'archived'|'all'>('all')
   const [filters, setFilters] = useState<any>({ status: [], minScore: 0, unreadOnly: false, hasPhone: false, hasPrice: false })
   // Categories removed; filter dropdown will be used instead
   const [syncing, setSyncing] = useState(false)
@@ -105,11 +105,8 @@ export default function DashboardInboxPage() {
       if (action.type === 'propose_times') {
         openThread(tid)
         setTimeout(()=>{
-          const evt = new CustomEvent('inbox:prefill-draft', { detail: { threadId: tid, draft: 'Hi! Here are a few times I’m available for a showing this week:
-- Tue 3-5pm
-- Wed 11am-1pm
-- Thu 4-6pm
-Let me know what works best, or share some times that work for you.' } })
+          const draft = `Hi! Here are a few times I’m available for a showing this week:\n- Tue 3-5pm\n- Wed 11am-1pm\n- Thu 4-6pm\nLet me know what works best, or share some times that work for you.`
+          const evt = new CustomEvent('inbox:prefill-draft', { detail: { threadId: tid, draft } })
           window.dispatchEvent(evt)
         }, 250)
       }

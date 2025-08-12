@@ -57,6 +57,7 @@ export default function ThreadSidebar({ threadId }: { threadId?: string }) {
     } finally { setCreating(false) }
   }
   const createDeal = async () => {
+    if (!threadId) return
     const r = await createDealFromThread(threadId)
     if (r?.deal?.id) {
       setDealId(r.deal.id)
