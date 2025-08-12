@@ -1,25 +1,25 @@
 import { google } from 'googleapis'
 import { prisma } from '@/lib/securePrisma'
 import { decryptRefreshToken, encryptRefreshToken, cacheAccessToken, getCachedAccessToken } from '@/lib/token'
+import { withRLS } from '@/lib/rls'
 
 export async function getGoogleAuthForUser(userId: string) {
-  // Ensure RLS context for this connection
-  try { await (prisma as any).$executeRawUnsafe(`SELECT set_config('app.user_id', $1, true)`, userId) } catch {}
-  let account = await (prisma as any).mailAccount.findFirst({ where: { userId, provider: 'google' } })
-  if (!account) {
-    // Fallback: read NextAuth adapter Account and create MailAccount on the fly
-    const adapter = await (prisma as any).account.findFirst({ where: { userId, provider: 'google' }, select: { providerAccountId: true, refresh_token: true } })
-    if (adapter?.providerAccountId && adapter?.refresh_token) {
-      const enc = await encryptRefreshToken(adapter.refresh_token)
-      account = await (prisma as any).mailAccount.upsert({
-        where: { providerUserId: adapter.providerAccountId },
-        create: { userId, provider: 'google', providerUserId: adapter.providerAccountId, refreshTokenEnc: enc },
-        update: { userId, refreshTokenEnc: enc }
-      })
-    } else {
-      throw new Error('No Google account linked')
+  const account = await withRLS(userId, async (tx) => {
+    let acc = await (tx as any).mailAccount.findFirst({ where: { userId, provider: 'google' } })
+    if (!acc) {
+      const adapter = await (tx as any).account.findFirst({ where: { userId, provider: 'google' }, select: { providerAccountId: true, refresh_token: true } })
+      if (adapter?.providerAccountId && adapter?.refresh_token) {
+        const enc = await encryptRefreshToken(adapter.refresh_token)
+        acc = await (tx as any).mailAccount.upsert({
+          where: { providerUserId: adapter.providerAccountId },
+          create: { userId, provider: 'google', providerUserId: adapter.providerAccountId, refreshTokenEnc: enc },
+          update: { userId, refreshTokenEnc: enc }
+        })
+      }
     }
-  }
+    return acc
+  })
+  if (!account) throw new Error('No Google account linked')
 
   let accessToken = await getCachedAccessToken(userId, 'google')
   const oauth2 = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET)
