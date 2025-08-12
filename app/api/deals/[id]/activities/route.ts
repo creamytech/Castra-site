@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 
 export const GET = withAuth(async ({ ctx }, { params }: any) => {
   try {
-    const items = await prisma.activity.findMany({ where: { dealId: params.id, userId: ctx.session.user.id }, orderBy: { occurredAt: 'desc' }, take: 200 })
+    const items = await prisma.activity.findMany({ where: { dealId: params.id, userId: ctx.session.user.id, orgId: ctx.orgId }, orderBy: { occurredAt: 'desc' }, take: 200 })
     return NextResponse.json({ success: true, activities: items })
   } catch (e: any) {
     console.error('[activities GET]', e)
@@ -19,7 +19,7 @@ export const POST = withAuth(async ({ req, ctx }, { params }: any) => {
     const body = await req.json()
     const { kind, channel, subject, body: content, meta, occurredAt } = body
     if (!kind) return NextResponse.json({ error: 'kind required' }, { status: 400 })
-    const item = await prisma.activity.create({ data: { dealId: params.id, userId: ctx.session.user.id, kind, channel, subject, body: content, meta, occurredAt } })
+    const item = await prisma.activity.create({ data: { dealId: params.id, userId: ctx.session.user.id, orgId: ctx.orgId, kind, channel, subject, body: content, meta, occurredAt } })
     return NextResponse.json({ success: true, activity: item })
   } catch (e: any) {
     console.error('[activities POST]', e)

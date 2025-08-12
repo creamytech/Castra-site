@@ -37,7 +37,7 @@ export default function CreateEventSheet({ open, onClose, seed }: { open: boolea
         summary: title,
         startISO: toRFC3339(start),
         endISO: toRFC3339(end),
-        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York',
         allDay,
         attendees: attendees.split(',').map(s => s.trim()).filter(Boolean).map(e => ({ email: e }))
       }

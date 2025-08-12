@@ -87,6 +87,12 @@ export const PATCH = withAuth(async ({ req, ctx }) => {
         return NextResponse.json({ error: e?.message || 'send failed' }, { status: 500 })
       }
       await prisma.draft.update({ where: { id }, data: { status: 'sent' } })
+      // Update deal last outreach and timeline if deal exists for thread
+      const thread = await prisma.emailThread.findFirst({ where: { id: draft.threadId, userId: ctx.session.user.id }, select: { dealId: true } })
+      if (thread?.dealId) {
+        await prisma.deal.update({ where: { id: thread.dealId }, data: { nextAction: null, nextDue: null } })
+        await prisma.activity.create({ data: { dealId: thread.dealId, userId: ctx.session.user.id, kind: 'EMAIL', channel: 'email', subject: 'Outbound email sent', body: subject, meta: { threadId: draft.threadId } } as any })
+      }
       // Mark notification
       await prisma.notification.create({ data: { userId: ctx.session.user.id, type: 'draft', title: 'Draft sent', body: subject, link: `/dashboard/inbox/${draft.threadId}` } })
       return NextResponse.json({ ok: true, sent: true })

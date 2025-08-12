@@ -124,7 +124,7 @@ export default function CalendarPage() {
           location: newEvent.location || undefined,
           start,
           end,
-          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "America/New_York",
+           timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "America/New_York",
           attendees
         })
       });
@@ -241,6 +241,9 @@ export default function CalendarPage() {
                     required
                   />
                 </div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Times will be saved in America/New_York unless specified; your current time zone is {Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York'}.</div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

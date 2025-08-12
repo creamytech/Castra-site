@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import StageColumn from './StageColumn'
-import { DndContext, DragEndEvent, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { DndContext, DragEndEvent, closestCenter, PointerSensor, useSensor, useSensors, DragOverEvent, Over } from '@dnd-kit/core'
 import NewDealDialog from './NewDealDialog'
 
 const STAGES = ['LEAD','QUALIFIED','SHOWING','OFFER','ESCROW','CLOSED','LOST']
@@ -26,18 +26,16 @@ export default function PipelineBoard() {
   }, [])
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 2,
-        tolerance: 8
-      }
+      // a11y: require small movement to begin to avoid accidental grabs
+      activationConstraint: { distance: 4 }
     })
   )
 
-  const moveStage = async (dealId: string, nextStage: string) => {
+  const moveStage = async (dealId: string, nextStage: string, expectedUpdatedAt?: string) => {
     // trigger immediate refresh for optimistic feel
     setRefreshKey(Date.now())
     try {
-      const res = await fetch(`/api/deals/${dealId}/move`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ toStage: nextStage }) })
+      const res = await fetch(`/api/deals/${dealId}/move`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ toStage: nextStage, expectedUpdatedAt }) })
       if (!res.ok) throw new Error('Move failed')
     } catch (e) {
       // rollback by another refresh; server is source of truth
@@ -52,6 +50,24 @@ export default function PipelineBoard() {
     if (STAGES.includes(toStage)) {
       await moveStage(activeId, toStage)
     }
+  }
+
+  // Intra-stage reorder: if dragging over another card in same stage, reorder around anchor
+  const onDragOver = async (e: DragOverEvent) => {
+    const activeId = e.active?.id as string | undefined
+    const over = e.over as Over | null
+    const overId = (over?.id as string) || undefined
+    if (!activeId || !overId || activeId === overId) return
+    // Only act when over is a card (not a column)
+    if (STAGES.includes(String(overId))) return
+    try {
+      await fetch('/api/deals/reorder', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ movingId: activeId, anchorId: overId, insertAfter: true })
+      })
+      setRefreshKey(Date.now())
+    } catch {}
   }
 
   const openEmail = (deal: any) => { setActiveDeal(deal); setShowEmail(true); setShowSMS(false); setShowSchedule(false) }
@@ -71,7 +87,7 @@ export default function PipelineBoard() {
   }
 
   return (
-    <DndContext onDragEnd={onDragEnd} collisionDetection={closestCenter} sensors={sensors}>
+    <DndContext onDragEnd={onDragEnd} onDragOver={onDragOver} collisionDetection={closestCenter} sensors={sensors}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2 text-sm flex-wrap">
           <input className="border rounded px-2 py-1 bg-background" placeholder="Search" onChange={e => setFilters((f: any) => ({ ...f, q: e.target.value }))} />

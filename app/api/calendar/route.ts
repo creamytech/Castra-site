@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 export const POST = withAuth(async ({ req, ctx }) => {
   try {
     const body = await req.json().catch(() => ({}))
-    const { summary, startISO, endISO, attendees = [], timeZone = "UTC" } = body
+    const { summary, startISO, endISO, attendees = [], timeZone = "America/New_York" } = body
 
     // Validate required fields
     if (!summary || typeof summary !== 'string') {

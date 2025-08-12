@@ -25,7 +25,9 @@ export default function StageColumn({ stage, filters, onMove, refreshKey, onEmai
     const data = await res.json()
     if (res.ok) {
       setTotal(data.total || 0)
-      setItems(reset ? (data.deals || []) : [...items, ...(data.deals || [])])
+      // Ensure stable sort by position client-side as a safety net
+      const rows = (data.deals || []).sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
+      setItems(reset ? rows : [...items, ...rows])
     }
     setLoading(false)
   }
@@ -33,15 +35,32 @@ export default function StageColumn({ stage, filters, onMove, refreshKey, onEmai
   useEffect(() => { setPage(1); load(true) }, [stage, JSON.stringify(filters), refreshKey])
   useEffect(() => { if (page > 1) load(false) }, [page])
 
+  const reorder = async (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= items.length || toIndex >= items.length) return
+    const next = items.slice()
+    const [moved] = next.splice(fromIndex, 1)
+    next.splice(toIndex, 0, moved)
+    // Optimistic reorder locally
+    setItems(next)
+    try {
+      const updates = next.map((d: any, idx: number) => ({ id: d.id, position: idx + 1 }))
+      const res = await fetch('/api/deals/reorder', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ stage, updates }) })
+      if (!res.ok) throw new Error('reorder failed')
+    } catch {
+      // Rollback by reloading
+      load(true)
+    }
+  }
+
   return (
     <div ref={setNodeRef} className={`bg-card border border-border rounded-lg p-3 flex flex-col min-h-[200px] ${isOver ? 'ring-2 ring-primary' : ''}`}>
       <div className="flex items-center justify-between mb-2">
-        <div className="text-sm font-semibold">{icon ? <span className="mr-1">{icon}</span> : null}{stage} <span className="text-xs text-muted-foreground">{total}</span></div>
+        <div className="text-sm font-semibold">{icon ? <span className="mr-1" aria-hidden>{icon}</span> : null}<span aria-label={`Stage ${stage}`}>{stage}</span> <span className="text-xs text-muted-foreground">{total}</span></div>
         <button onClick={()=>setShowCreate(true)} className="text-xs px-2 py-1 rounded border">+ New</button>
       </div>
       <div className="space-y-2 flex-1">
         {items.map((d: any) => (
-          <DraggableCard key={d.id} id={d.id}>
+          <DraggableCard key={d.id} id={d.id} data={{ stage, position: d.position }}>
             <DealCard deal={d} onMove={(id, next) => onMove(id, next)} onEmail={onEmail} onSMS={onSMS} onSchedule={onSchedule} onOpen={onOpen} />
           </DraggableCard>
         ))}

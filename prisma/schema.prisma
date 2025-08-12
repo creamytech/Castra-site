@@ -460,6 +460,7 @@ model Deal {
   description String?
   status      String   @default("prospecting")
   value       Float?
+  closeReason String?
   probability Float    @default(0)
   closeDate   DateTime?
   notes       String?
@@ -474,6 +475,8 @@ model Deal {
   mlsId       String?
   nextAction  String?
   nextDue     DateTime?
+  // Stable intra-stage ordering (lower comes first)
+  position    Int       @default(0)
 
   // Relations
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -496,6 +499,7 @@ model Deal {
   @@index([leadId])
   @@index([userId, stage])
   @@index([orgId, stage])
+  @@index([userId, stage, position])
 }
 
 // Agentic models

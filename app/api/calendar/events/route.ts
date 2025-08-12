@@ -18,7 +18,8 @@ export const POST = withAuth(async ({ req, ctx }) => {
       }, { status: 400 });
     }
 
-    const { summary, description, start, end, timeZone, attendees, location, allDay } = validationResult.data;
+    // Force default timezone America/New_York if client did not provide
+    const { summary, description, start, end, timeZone = 'America/New_York', attendees, location, allDay } = validationResult.data as any;
 
     // Create event with proper Google Calendar format
     const event = await createCalendarEvent(ctx.session.user.id, {

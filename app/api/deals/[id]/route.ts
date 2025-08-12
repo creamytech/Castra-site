@@ -18,11 +18,15 @@ export const GET = withAuth(async ({ ctx }, { params }: any) => {
 export const PATCH = withAuth(async ({ req, ctx }, { params }: any) => {
   try {
     const body = await req.json()
-    const allowed = ['title','type','stage','propertyAddr','city','state','priceTarget','mlsId','nextAction','nextDue','notes']
+    const allowed = ['title','type','stage','propertyAddr','city','state','priceTarget','mlsId','nextAction','nextDue','notes','value','closeReason']
     const data: any = {}
     for (const k of allowed) if (k in body) data[k] = body[k]
+    const { expectedUpdatedAt } = body
     const existing = await prisma.deal.findFirst({ where: { id: params.id, userId: ctx.session.user.id, orgId: ctx.orgId } })
     if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (expectedUpdatedAt && new Date(expectedUpdatedAt).getTime() !== new Date(existing.updatedAt).getTime()) {
+      return NextResponse.json({ error: 'Conflict', code: 'VERSION_CONFLICT', currentUpdatedAt: existing.updatedAt }, { status: 409 })
+    }
     const updated = await prisma.deal.update({ where: { id: params.id }, data })
     return NextResponse.json({ success: true, deal: updated })
   } catch (e: any) {

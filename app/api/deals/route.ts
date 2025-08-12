@@ -35,7 +35,7 @@ export const GET = withAuth(async ({ req, ctx }) => {
       prisma.deal.count({ where }),
       prisma.deal.findMany({
         where,
-        orderBy: { updatedAt: 'desc' },
+        orderBy: [ { stage: 'asc' }, { position: 'asc' as any }, { updatedAt: 'desc' } ],
         skip: (page - 1) * pageSize,
         take: pageSize,
         include: { contacts: { include: { contact: true } }, activities: { take: 1, orderBy: { occurredAt: 'desc' } } }
@@ -56,7 +56,10 @@ export const POST = withAuth(async ({ req, ctx }) => {
     const { title, type, stage, city, state, priceTarget, contactId } = body as any
     if (!title) return NextResponse.json({ error: 'title is required' }, { status: 400 })
 
-    const deal = await prisma.deal.create({ data: { userId: ctx.session.user.id, orgId: ctx.orgId, title, type, stage, city, state, priceTarget, contactId } })
+    // Determine next position for stage
+    const maxPos = await prisma.deal.aggregate({ _max: { position: true }, where: { userId: ctx.session.user.id, orgId: ctx.orgId, stage } })
+    const nextPos = (maxPos._max.position ?? 0) + 1
+    const deal = await prisma.deal.create({ data: { userId: ctx.session.user.id, orgId: ctx.orgId, title, type, stage, city, state, priceTarget, contactId, position: nextPos } })
     return NextResponse.json({ success: true, deal })
   } catch (e: any) {
     console.error('[deals POST]', e)

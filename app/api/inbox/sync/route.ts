@@ -115,6 +115,44 @@ export const POST = withAuth(async ({ ctx }) => {
 
       // Persist computed status/score on thread for UI badges
       await prisma.emailThread.update({ where: { id: threadId }, data: { status: c.status, score: c.score, reasons: c.reasons, extracted: c.extracted } })
+
+      // Auto-create Contact + Deal idempotently if lead/potential
+      if (c.status === 'lead' || c.status === 'potential') {
+        const sender = from
+        const emailMatch = sender.match(/"?([^\"]+)"?\s*<([^>]+)>/)
+        const name = emailMatch ? emailMatch[1].trim() : (sender.split('@')[0] || 'Lead')
+        const email = emailMatch ? emailMatch[2] : (sender.includes('@') ? sender : undefined)
+        const phone = c.extracted?.phone || undefined
+        // Upsert contact by email or phone
+        let contact: any = null
+        if (email) {
+          contact = await prisma.contact.findFirst({ where: { userId: ctx.session.user.id, orgId: ctx.orgId, email: { equals: email, mode: 'insensitive' } } })
+        }
+        if (!contact && phone) {
+          contact = await prisma.contact.findFirst({ where: { userId: ctx.session.user.id, orgId: ctx.orgId, phone: phone } })
+        }
+        if (!contact) {
+          contact = await prisma.contact.create({ data: { userId: ctx.session.user.id, orgId: ctx.orgId, firstName: name.split(' ')[0] || 'Lead', lastName: name.split(' ').slice(1).join(' '), email: email || null, phone: phone || null, tags: ['lead'] } })
+        }
+        // Idempotent deal: de-dupe by threadId or contact+stage LEAD
+        let deal = await prisma.deal.findFirst({ where: { userId: ctx.session.user.id, orgId: ctx.orgId, OR: [ { emailThreads: { some: { id: threadId } } }, { contactId: contact?.id, stage: 'LEAD' } ] } as any })
+        if (!deal) {
+          const maxPos = await prisma.deal.aggregate({ _max: { position: true }, where: { userId: ctx.session.user.id, orgId: ctx.orgId, stage: 'LEAD' } })
+          const nextPos = (maxPos._max.position ?? 0) + 1
+          deal = await prisma.deal.create({ data: { userId: ctx.session.user.id, orgId: ctx.orgId, contactId: contact?.id || undefined, leadId: null, title: subject || 'New Lead', type: 'BUYER', stage: 'LEAD', position: nextPos, city: null, state: null, priceTarget: null, nextAction: c.status === 'lead' ? 'Reply to lead' : 'Review lead', nextDue: new Date() } as any })
+          await prisma.activity.create({ data: { dealId: deal.id, userId: ctx.session.user.id, orgId: ctx.orgId, kind: 'NOTE', channel: 'system', subject: 'Created from Lead', meta: { threadId, extracted: c.extracted } } })
+          await prisma.notification.create({ data: { userId: ctx.session.user.id, orgId: ctx.orgId, type: 'lead', title: 'New Lead added to Pipeline', body: subject || undefined, link: '/crm' } }).catch(()=>{})
+        }
+        // Link thread/messages -> deal/contact
+        await prisma.emailThread.update({ where: { id: threadId }, data: { dealId: deal.id } }).catch(()=>{})
+        await prisma.emailMessage.updateMany({ where: { userId: ctx.session.user.id, orgId: ctx.orgId, threadId }, data: { dealId: deal.id, contactId: contact?.id || undefined } })
+
+        // If email mentions meeting/time, create tentative task
+        if (c.reasons?.includes('time_window')) {
+          const due = new Date(); due.setHours(17, 0, 0, 0)
+          await prisma.task.create({ data: { userId: ctx.session.user.id, orgId: ctx.orgId, dealId: deal.id, type: 'FOLLOW_UP', status: 'PENDING', payload: { kind: 'call_or_show', note: 'Proposed meeting time in email' }, runAt: due } })
+        }
+      }
       fetched++
     }
 
