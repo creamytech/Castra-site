@@ -8,7 +8,7 @@ export const POST = withAuth(async ({ ctx }) => {
   try {
     // Bridge NextAuth Account -> MailAccount for Google
     // Use secure client to write; NextAuth tables are accessible without RLS
-    const accounts = await (prisma as any).account.findMany({ where: { userId: ctx.session.user.id, provider: 'google' }, select: { providerAccountId: true } })
+    const accounts = await (prisma as any).account.findMany({ where: { userId: ctx.session.user.id, provider: 'google' }, select: { providerAccountId: true, refresh_token: true } })
     let created = 0
     for (const a of accounts) {
       if (!a.providerAccountId) continue

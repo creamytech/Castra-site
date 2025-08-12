@@ -40,6 +40,7 @@ export function middleware(req: NextRequest) {
     || url.pathname.startsWith('/api/voice/offer')
     || url.pathname.startsWith('/api/ingest/')
     || url.pathname.startsWith('/api/voice/session')
+    || url.pathname === '/api/accounts/link'
     || url.pathname.startsWith('/auth/')
 
   if (!existing) {

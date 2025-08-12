@@ -212,7 +212,7 @@ export const authOptions: NextAuthOptions = {
             })
             // Remove plaintext tokens from NextAuth Account row for hygiene
             try {
-              await prismaAuth.account.updateMany({ where: { userId: user.id, provider: 'google' }, data: { access_token: null, refresh_token: null } })
+              await prismaAuth.account.updateMany({ where: { userId: user.id, provider: 'google' }, data: { access_token: null } })
             } catch {}
           } else {
             await appPrisma.mailAccount.upsert({
