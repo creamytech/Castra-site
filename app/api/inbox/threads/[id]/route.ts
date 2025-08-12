@@ -19,7 +19,14 @@ export const GET = withAuth(async ({ ctx }, { params }: any) => {
         // optional enhancement: fetch Gmail full bodies server-side here
       }
     } catch {}
-    return NextResponse.json({ thread: { id: params.id, messages: msgs } })
+    // Compute a lightweight status/score for immediate accuracy when opening a thread that isn't materialized yet
+    const last = msgs[msgs.length-1]
+    const subject = msgs[0]?.subject || ''
+    const combined = `${last?.snippet || ''} ${last?.payload ? '' : ''}`
+    const rules = applyInboxRules({ subject, text: combined, headers: { from: last?.from || '' } })
+    const status = rules.isLead ? 'lead' : (rules.uncertainty ? 'potential' : 'follow_up')
+    const score = Math.max(0, Math.min(100, rules.rulesScore + (rules.extracted.phone ? 5 : 0) + (rules.extracted.timeAsk ? 5 : 0)))
+    return NextResponse.json({ thread: { id: params.id, subject, status, score, extracted: rules.extracted, reasons: rules.reasons, messages: msgs } })
   } catch (e: any) {
     console.error('[inbox thread GET]', e)
     return NextResponse.json({ error: 'Failed' }, { status: 500 })

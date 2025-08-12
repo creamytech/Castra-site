@@ -208,10 +208,10 @@ export const GET = withAuth(async ({ req, ctx }) => {
       return NextResponse.json({ total, page, limit, threads })
     }
 
-    // Fallback: group by Message.threadId
-    // Fallback to raw Gmail messages cache if threads not materialized
-    const messages = await prisma.message.findMany({ where: { userId: ctx.session.user.id }, orderBy: { internalDate: 'desc' }, take: 200 })
+    // Fallback: group by Message.threadId and compute lightweight status/score heuristics
+    const messages = await prisma.message.findMany({ where: { userId: ctx.session.user.id }, orderBy: { internalDate: 'desc' }, take: 400 })
     const map = new Map<string, any>()
+    const latestByThread = new Map<string, any>()
     for (const m of messages) {
       if (q && !(m.subject?.toLowerCase().includes(q.toLowerCase()) || m.from?.toLowerCase().includes(q.toLowerCase()))) continue
       const t = map.get(m.threadId) || { id: m.threadId, userId: ctx.session.user.id, subject: m.subject, lastSyncedAt: m.internalDate, lastMessageAt: m.internalDate, preview: m.snippet }
@@ -220,12 +220,30 @@ export const GET = withAuth(async ({ req, ctx }) => {
         t.lastSyncedAt = m.internalDate
         t.lastMessageAt = m.internalDate
         t.preview = m.snippet
+        latestByThread.set(m.threadId, m)
       }
       map.set(m.threadId, t)
     }
     const all = Array.from(map.values()).sort((a: any, b: any) => new Date(b.lastMessageAt || b.lastSyncedAt).getTime() - new Date(a.lastMessageAt || a.lastSyncedAt).getTime())
     const total = all.length
-    const threads = all.slice((page - 1) * limit, (page - 1) * limit + limit)
+    const windowed = all.slice((page - 1) * limit, (page - 1) * limit + limit)
+    // Compute status/score using rules only; also persist an EmailThread row to stabilize future fetches
+    const threads = await Promise.all(windowed.map(async (t: any) => {
+      const last = latestByThread.get(t.id)
+      const combined = `${t.preview || ''}`
+      const rules = applyInboxRules({ subject: t.subject || '', text: combined, headers: { from: last?.from || '' } })
+      const status = rules.isLead ? 'lead' : (rules.uncertainty ? 'potential' : 'follow_up')
+      const score = Math.max(0, Math.min(100, rules.rulesScore + (rules.extracted.phone ? 5 : 0) + (rules.extracted.timeAsk ? 5 : 0)))
+      // Try to upsert basic EmailThread to persist computed values
+      try {
+        await prisma.emailThread.upsert({
+          where: { id: t.id },
+          create: { id: t.id, userId: ctx.session.user.id, orgId: ctx.orgId, subject: t.subject, lastSyncedAt: new Date(t.lastSyncedAt), status, score, reasons: rules.reasons as any, extracted: rules.extracted as any },
+          update: { subject: t.subject, lastSyncedAt: new Date(t.lastSyncedAt), status, score, reasons: rules.reasons as any, extracted: rules.extracted as any },
+        })
+      } catch {}
+      return { ...t, status, score, reasons: rules.reasons, extracted: rules.extracted }
+    }))
     return NextResponse.json({ total, page, limit, threads })
   } catch (e: any) {
     console.error('[inbox threads GET]', e)

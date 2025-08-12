@@ -30,7 +30,7 @@ export default function InboxList({ q, filter, onSelect, filters, folder, catego
   if (filter === 'unlinked') params.set('hasDeal', 'false')
   if (folder) params.set('folder', folder)
   if (category) params.set('category', category)
-  const { data, mutate, isLoading } = useSWR(`/api/inbox/threads?${params.toString()}`, fetcher, { refreshInterval: 30000, revalidateOnFocus: true })
+  const { data, mutate, isLoading } = useSWR(`/api/inbox/threads?${params.toString()}`, fetcher, { refreshInterval: 15000, revalidateOnFocus: true })
   const threadsRaw = data?.threads || []
   // client-side filter for status/minScore/fields
   let threads = threadsRaw
