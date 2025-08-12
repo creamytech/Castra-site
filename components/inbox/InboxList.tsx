@@ -58,14 +58,19 @@ export default function InboxList({ q, filter, onSelect, filters, folder, onItem
       <div style={style}>
         <div
           className={`px-3 py-2 border rounded-lg cursor-pointer flex items-start gap-3 touch-manipulation group transition-transform duration-150 ${t.unread ? 'bg-primary/5 hover:bg-primary/10 border-primary/30' : 'bg-card/90 hover:bg-muted/50'} hover:scale-[1.005] ${isSelected ? 'ring-2 ring-primary/60' : ''}`}
-          onClick={() => onSelect(t.id)}
+          onClick={(e) => { const target = e.target as HTMLElement; if (target.closest('input,button,textarea,select,a,[data-interactive="true"]')) return; onSelect(t.id) }}
           role="button"
           tabIndex={0}
           aria-selected={selectedId === t.id}
           onKeyDown={(e)=>{ if(e.key==='Enter' || e.key===' '){ onSelect(t.id) } }}
         >
           <div className="pt-1 flex items-center gap-2">
-            <input type="checkbox" aria-label="Select thread" checked={isSelected} onChange={(e)=>{ e.stopPropagation(); onToggleSelect?.(t.id, index, { shiftKey: (e as any).shiftKey }) }} className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity" />
+            <input type="checkbox" aria-label="Select thread" checked={isSelected}
+              onClick={(e)=>e.stopPropagation()}
+              onMouseDown={(e)=>e.stopPropagation()}
+              onKeyDown={(e)=>e.stopPropagation()}
+              onChange={(e)=>{ e.stopPropagation(); onToggleSelect?.(t.id, index, { shiftKey: (e as any).shiftKey }) }}
+              className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity" />
             <ScoreRing score={typeof t.score === 'number' ? t.score : 0} />
           </div>
           <div className="min-w-0 flex-1">
@@ -88,10 +93,10 @@ export default function InboxList({ q, filter, onSelect, filters, folder, onItem
               {t.preview && <span className="text-muted-foreground"> — {t.preview}</span>}
             </div>
             <div className="opacity-0 group-hover:opacity-100 transition flex gap-1 mt-1">
-              <button title="Reply" onClick={(e)=>{ e.stopPropagation(); onSelect(t.id) }} className="px-2 py-1 border rounded text-xs inline-flex items-center gap-1"><Reply size={12}/> Reply</button>
-              <button title="Archive" onClick={(e)=>{ e.stopPropagation(); /* todo hook archive */ }} className="px-2 py-1 border rounded text-xs inline-flex items-center gap-1"><Archive size={12}/> Archive</button>
-              <button title="Mark read" onClick={(e)=>{ e.stopPropagation(); /* optimistic mark read */ }} className="px-2 py-1 border rounded text-xs inline-flex items-center gap-1"><MailOpen size={12}/> Read</button>
-              <button title="More" onClick={(e)=>{ e.stopPropagation(); }} className="px-2 py-1 border rounded text-xs inline-flex items-center gap-1"><MoreHorizontal size={12}/></button>
+              <button data-interactive="true" title="Reply" onClick={(e)=>{ e.stopPropagation(); onSelect(t.id) }} className="px-2 py-1 border rounded text-xs inline-flex items-center gap-1"><Reply size={12}/> Reply</button>
+              <button data-interactive="true" title="Archive" onClick={(e)=>{ e.stopPropagation(); /* todo hook archive */ }} className="px-2 py-1 border rounded text-xs inline-flex items-center gap-1"><Archive size={12}/> Archive</button>
+              <button data-interactive="true" title="Mark read" onClick={(e)=>{ e.stopPropagation(); /* optimistic mark read */ }} className="px-2 py-1 border rounded text-xs inline-flex items-center gap-1"><MailOpen size={12}/> Read</button>
+              <button data-interactive="true" title="More" onClick={(e)=>{ e.stopPropagation(); }} className="px-2 py-1 border rounded text-xs inline-flex items-center gap-1"><MoreHorizontal size={12}/></button>
             </div>
           </div>
         </div>
