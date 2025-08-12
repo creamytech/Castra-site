@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/api'
 import { prisma } from '@/lib/prisma'
+import { logAudit } from '@/lib/audit/log'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,6 +17,7 @@ export const PATCH = withAuth(async ({ req, ctx }) => {
       if (!moving || !anchor) return NextResponse.json({ error: 'Not found' }, { status: 404 })
       if (moving.stage !== anchor.stage) return NextResponse.json({ error: 'Stage mismatch' }, { status: 400 })
       const targetStage = anchor.stage
+      const started = Date.now()
       await prisma.$transaction(async (tx) => {
         // Fetch ordered list
         const list = await tx.deal.findMany({ where: { userId: ctx.session.user.id, orgId: ctx.orgId, stage: targetStage as any }, orderBy: { position: 'asc' } })
@@ -26,12 +28,13 @@ export const PATCH = withAuth(async ({ req, ctx }) => {
         const insertIdx = insertAfter ? (idx + 1) : idx
         if (insertIdx < 0) throw new Error('Anchor not in list')
         filtered.splice(insertIdx, 0, moving)
-        // Reassign positions starting at 1
+        // Reassign positions with gaps (100 spacing)
         for (let i = 0; i < filtered.length; i++) {
           const d = filtered[i]
-          await tx.deal.update({ where: { id: d.id }, data: { position: i + 1 } })
+          await tx.deal.update({ where: { id: d.id }, data: { position: (i + 1) * 100 } })
         }
       })
+      await logAudit({ orgId: ctx.orgId!, userId: ctx.session.user.id, action: 'deal_reordered', target: moving.id, meta: { stage: targetStage, anchorId, insertAfter, durationMs: Date.now()-started } })
       return NextResponse.json({ success: true })
     }
     // Mode 2: Bulk updates provided
@@ -44,7 +47,9 @@ export const PATCH = withAuth(async ({ req, ctx }) => {
     if (rows.length !== updates.length) {
       return NextResponse.json({ error: 'Some deals not found or stage mismatch' }, { status: 400 })
     }
-    await prisma.$transaction(updates.map(u => prisma.deal.update({ where: { id: u.id }, data: { position: u.position } })))
+    // Apply with gaps
+    const spaced = updates.map((u, idx) => ({ id: u.id, position: (idx + 1) * 100 }))
+    await prisma.$transaction(spaced.map(u => prisma.deal.update({ where: { id: u.id }, data: { position: u.position } })))
     return NextResponse.json({ success: true })
   } catch (e: any) {
     console.error('[deals reorder]', e)

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/api'
 import { prisma } from '@/lib/prisma'
+import { logAudit } from '@/lib/audit/log'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,8 +34,10 @@ export const PATCH = withAuth(async ({ req, ctx }, { params }: any) => {
     return NextResponse.json({ error: 'Close reason required' }, { status: 400 })
   }
 
+  const started = Date.now()
   await prisma.deal.update({ where: { id: params.id }, data: { stage, ...(value != null ? { value } : {}), ...(closeReason ? { closeReason } : {}) } })
     await prisma.activity.create({ data: { dealId: params.id, userId: ctx.session.user.id, orgId: ctx.orgId, kind: 'NOTE', channel: 'ui', subject: `Stage moved to ${stage}`, body: '', meta: { from: deal.stage, to: stage } } })
+  await logAudit({ orgId: ctx.orgId!, userId: ctx.session.user.id, action: 'deal_moved', target: params.id, meta: { from: deal.stage, to: stage, durationMs: Date.now()-started } })
   if (stage === 'SHOWING') {
       const next = new Date(); next.setHours(9,0,0,0)
       await prisma.deal.update({ where: { id: params.id }, data: { nextAction: 'Confirm showing time', nextDue: next } })

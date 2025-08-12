@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/api'
 import { prisma } from '@/lib/prisma'
+import { logAudit } from '@/lib/audit/log'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,9 +33,13 @@ export const PATCH = withAuth(async ({ req, ctx }, { params }: any) => {
   }
 
     const maxPos = await prisma.deal.aggregate({ _max: { position: true }, where: { userId: ctx.session.user.id, orgId: ctx.orgId, stage: toStage } })
-    const nextPos = (maxPos._max.position ?? 0) + 1
-    await prisma.deal.update({ where: { id: deal.id }, data: { stage: toStage, position: nextPos } })
-    await prisma.activity.create({ data: { dealId: deal.id, userId: ctx.session.user.id, orgId: ctx.orgId, kind: 'NOTE', channel: 'ai', subject: `Stage moved to ${toStage}`, body: '', meta: { from: deal.stage, to: toStage } } })
+    const nextPos = ((maxPos._max.position ?? 0) + 100)
+    const started = Date.now()
+    await prisma.$transaction([
+      prisma.deal.update({ where: { id: deal.id }, data: { stage: toStage, position: nextPos } }),
+      prisma.activity.create({ data: { dealId: deal.id, userId: ctx.session.user.id, orgId: ctx.orgId, kind: 'NOTE', channel: 'ai', subject: `Stage moved to ${toStage}`, body: '', meta: { from: deal.stage, to: toStage } } })
+    ])
+    await logAudit({ orgId: ctx.orgId!, userId: ctx.session.user.id, action: 'deal_moved', target: deal.id, meta: { from: deal.stage, to: toStage, durationMs: Date.now()-started } })
 
     // Simple hooks
     if (toStage === 'SHOWING') {

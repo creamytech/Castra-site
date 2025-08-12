@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 
 export const GET = withAuth(async ({ ctx }, { params }: any) => {
   try {
-    const deal = await prisma.deal.findFirst({ where: { id: params.id, userId: ctx.session.user.id, orgId: ctx.orgId }, include: { contacts: { include: { contact: true } }, activities: { orderBy: { occurredAt: 'desc' }, take: 50 } } })
+    const deal = await prisma.deal.findFirst({ where: { id: params.id, userId: ctx.session.user.id, orgId: ctx.orgId }, include: { contacts: { include: { contact: true } }, activities: { orderBy: { occurredAt: 'desc' }, take: 50 }, emailThreads: true } })
     if (!deal) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     return NextResponse.json({ success: true, deal })
   } catch (e: any) {
@@ -18,7 +18,7 @@ export const GET = withAuth(async ({ ctx }, { params }: any) => {
 export const PATCH = withAuth(async ({ req, ctx }, { params }: any) => {
   try {
     const body = await req.json()
-    const allowed = ['title','type','stage','propertyAddr','city','state','priceTarget','mlsId','nextAction','nextDue','notes','value','closeReason']
+    const allowed = ['title','type','stage','propertyAddr','city','state','priceTarget','mlsId','nextAction','nextDue','notes','value','closeReason','deletedAt']
     const data: any = {}
     for (const k of allowed) if (k in body) data[k] = body[k]
     const { expectedUpdatedAt } = body
@@ -39,8 +39,8 @@ export const DELETE = withAuth(async ({ ctx }, { params }: any) => {
   try {
     const existing = await prisma.deal.findFirst({ where: { id: params.id, userId: ctx.session.user.id, orgId: ctx.orgId } })
     if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    await prisma.deal.delete({ where: { id: params.id } })
-    return NextResponse.json({ success: true })
+    await prisma.deal.update({ where: { id: params.id }, data: { deletedAt: new Date() } })
+    return NextResponse.json({ success: true, undoToken: existing.id })
   } catch (e: any) {
     console.error('[deal DELETE]', e)
     return NextResponse.json({ error: 'Failed to delete deal' }, { status: 500 })

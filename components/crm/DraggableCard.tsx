@@ -1,7 +1,7 @@
 "use client"
 
 import { CSSProperties, ReactNode } from 'react'
-import { useDraggable, useDroppable } from '@dnd-kit/core'
+import { useDraggable, useDroppable, KeyboardSensor } from '@dnd-kit/core'
 
 export default function DraggableCard({ id, children, data }: { id: string; children: ReactNode; data?: any }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id, data })

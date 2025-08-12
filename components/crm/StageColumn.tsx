@@ -20,7 +20,7 @@ export default function StageColumn({ stage, filters, onMove, refreshKey, onEmai
 
   const load = async (reset = false) => {
     setLoading(true)
-    const params = new URLSearchParams({ stage, page: String(reset ? 1 : page), pageSize: '25', ...(filters?.q ? { q: filters.q } : {}), ...(filters?.city ? { city: filters.city } : {}), ...(filters?.priceMin ? { minPrice: String(filters.priceMin) } : {}), ...(filters?.priceMax ? { maxPrice: String(filters.priceMax) } : {}), ...(filters?.type ? { type: filters.type } : {}), ...(filters?.hot ? { hot: 'true' } : {}) })
+    const params = new URLSearchParams({ stage, page: String(reset ? 1 : page), pageSize: '25', ...(filters?.q ? { q: filters.q } : {}), ...(filters?.city ? { city: filters.city } : {}), ...(filters?.priceMin ? { minPrice: String(filters.priceMin) } : {}), ...(filters?.priceMax ? { maxPrice: String(filters.priceMax) } : {}), ...(filters?.type ? { type: filters.type } : {}), ...(filters?.hot ? { hot: 'true' } : {}), ...(filters?.archived ? { archived: 'true' } : {}) })
     const res = await fetch(`/api/deals?${params.toString()}`, { cache: 'no-store' })
     const data = await res.json()
     if (res.ok) {
@@ -43,7 +43,7 @@ export default function StageColumn({ stage, filters, onMove, refreshKey, onEmai
     // Optimistic reorder locally
     setItems(next)
     try {
-      const updates = next.map((d: any, idx: number) => ({ id: d.id, position: idx + 1 }))
+      const updates = next.map((d: any, idx: number) => ({ id: d.id, position: (idx + 1) * 100 }))
       const res = await fetch('/api/deals/reorder', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ stage, updates }) })
       if (!res.ok) throw new Error('reorder failed')
     } catch {
@@ -58,9 +58,9 @@ export default function StageColumn({ stage, filters, onMove, refreshKey, onEmai
         <div className="text-sm font-semibold">{icon ? <span className="mr-1" aria-hidden>{icon}</span> : null}<span aria-label={`Stage ${stage}`}>{stage}</span> <span className="text-xs text-muted-foreground">{total}</span></div>
         <button onClick={()=>setShowCreate(true)} className="text-xs px-2 py-1 rounded border">+ New</button>
       </div>
-      <div className="space-y-2 flex-1">
+      <div className="space-y-2 flex-1 overflow-y-auto">
         {items.map((d: any) => (
-          <DraggableCard key={d.id} id={d.id} data={{ stage, position: d.position }}>
+          <DraggableCard key={d.id} id={d.id} data={{ stage, position: d.position, updatedAt: d.updatedAt }}>
             <DealCard deal={d} onMove={(id, next) => onMove(id, next)} onEmail={onEmail} onSMS={onSMS} onSchedule={onSchedule} onOpen={onOpen} />
           </DraggableCard>
         ))}

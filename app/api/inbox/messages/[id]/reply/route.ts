@@ -14,7 +14,12 @@ export const POST = withAuth(async ({ req, ctx }, { params }: any) => {
     if (channel === 'email') {
       if (!to || !subject) return NextResponse.json({ error: 'to and subject required' }, { status: 400 })
       const sent = await sendEmail(ctx.session.user.id, to, subject, draft, threadId)
-      if (dealId) await prisma.activity.create({ data: { dealId, userId: ctx.session.user.id, kind: 'EMAIL', channel: 'email', subject, body: draft, meta: { messageId: sent.id } } })
+      if (dealId) {
+        await prisma.$transaction([
+          prisma.activity.create({ data: { dealId, userId: ctx.session.user.id, kind: 'EMAIL', channel: 'email', subject, body: draft, meta: { messageId: sent.id } } }),
+          prisma.deal.update({ where: { id: dealId }, data: { lastOutreachAt: new Date() } })
+        ])
+      }
       return NextResponse.json({ success: true })
     }
     if (channel === 'sms') {

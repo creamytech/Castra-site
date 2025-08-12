@@ -21,7 +21,8 @@ export const GET = withAuth(async ({ req, ctx }) => {
     const type = searchParams.get('type') || undefined
     const hot = searchParams.get('hot') === 'true'
 
-    const where: any = { userId: ctx.session.user.id, orgId: ctx.orgId }
+    const showArchived = searchParams.get('archived') === 'true'
+    const where: any = { userId: ctx.session.user.id, orgId: ctx.orgId, ...(showArchived ? {} : { deletedAt: null }) }
     if (stage) where.stage = stage as any
     if (city) where.city = { contains: city, mode: 'insensitive' }
     if (q) where.title = { contains: q, mode: 'insensitive' }
@@ -58,7 +59,7 @@ export const POST = withAuth(async ({ req, ctx }) => {
 
     // Determine next position for stage
     const maxPos = await prisma.deal.aggregate({ _max: { position: true }, where: { userId: ctx.session.user.id, orgId: ctx.orgId, stage } })
-    const nextPos = (maxPos._max.position ?? 0) + 1
+    const nextPos = ((maxPos._max.position ?? 0) + 100)
     const deal = await prisma.deal.create({ data: { userId: ctx.session.user.id, orgId: ctx.orgId, title, type, stage, city, state, priceTarget, contactId, position: nextPos } })
     return NextResponse.json({ success: true, deal })
   } catch (e: any) {

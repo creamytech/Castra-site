@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import StageColumn from './StageColumn'
-import { DndContext, DragEndEvent, closestCenter, PointerSensor, useSensor, useSensors, DragOverEvent, Over } from '@dnd-kit/core'
+import { DndContext, DragEndEvent, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors, DragOverEvent, Over } from '@dnd-kit/core'
 import NewDealDialog from './NewDealDialog'
 
 const STAGES = ['LEAD','QUALIFIED','SHOWING','OFFER','ESCROW','CLOSED','LOST']
@@ -21,14 +21,29 @@ export default function PipelineBoard() {
   useEffect(() => { setLoading(false) }, [])
   useEffect(() => {
     const onRefresh = () => setRefreshKey(Date.now())
+    const onToast = (e: any) => {
+      const detail = e?.detail || {}
+      const el = document.createElement('div')
+      el.className = `fixed top-4 right-4 z-[60] px-3 py-2 rounded text-xs ${detail.type==='success' ? 'bg-green-600 text-white' : detail.type==='info' ? 'bg-blue-600 text-white' : 'bg-red-600 text-white'}`
+      el.textContent = detail.message || 'Action complete'
+      document.body.appendChild(el)
+      setTimeout(()=>{ el.remove() }, 3500)
+    }
+    const onUndo = async () => {
+      const last: any = (window as any).lastUndo
+      if (last?.id) {
+        await fetch('/api/deals/undo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: last.id }) })
+        setRefreshKey(Date.now())
+      }
+    }
     if (typeof window !== 'undefined') window.addEventListener('deals:refresh', onRefresh)
+    if (typeof window !== 'undefined') window.addEventListener('toast', onToast as any)
+    if (typeof window !== 'undefined') (window as any).undoArchived = onUndo
     return () => { if (typeof window !== 'undefined') window.removeEventListener('deals:refresh', onRefresh) }
   }, [])
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      // a11y: require small movement to begin to avoid accidental grabs
-      activationConstraint: { distance: 4 }
-    })
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor)
   )
 
   const moveStage = async (dealId: string, nextStage: string, expectedUpdatedAt?: string) => {
@@ -39,6 +54,7 @@ export default function PipelineBoard() {
       if (!res.ok) throw new Error('Move failed')
     } catch (e) {
       // rollback by another refresh; server is source of truth
+      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: 'Failed to move deal. Board reloaded.' } }))
     } finally {
       setRefreshKey(Date.now())
     }
@@ -46,10 +62,13 @@ export default function PipelineBoard() {
 
   const onDragEnd = async (e: DragEndEvent) => {
     const activeId = e.active.id as string
-    const toStage = (e.over?.id as string) || ''
-    if (STAGES.includes(toStage)) {
-      await moveStage(activeId, toStage)
+    const overId = (e.over?.id as string) || ''
+    if (STAGES.includes(overId)) {
+      await moveStage(activeId, overId)
+      return
     }
+    // Intra-column keyboard drop: if dropping over another card, handled by onDragOver pairwise insert.
+    // No-op here.
   }
 
   // Intra-stage reorder: if dragging over another card in same stage, reorder around anchor
@@ -70,19 +89,19 @@ export default function PipelineBoard() {
     } catch {}
   }
 
-  const openEmail = (deal: any) => { setActiveDeal(deal); setShowEmail(true); setShowSMS(false); setShowSchedule(false) }
+  const openEmail = (deal: any) => { setActiveDeal(deal); setShowEmail(true); setShowSMS(false); setShowSchedule(false); setDrawerOpen(true) }
   const openSMS = (deal: any) => { setActiveDeal(deal); setShowSMS(true); setShowEmail(false); setShowSchedule(false) }
   const openSchedule = (deal: any) => { setActiveDeal(deal); setShowSchedule(true); setShowEmail(false); setShowSMS(false) }
   const openDrawer = async (dealId: string) => {
     // Fetch recent emails linked to the deal and upcoming events
     try {
       setDrawerOpen(true)
-      const [emailsRes, eventsRes] = await Promise.all([
-        fetch(`/api/inbox/threads?limit=5&hasDeal=true`, { cache: 'no-store' }).then(r=>r.json()).catch(()=>({ threads: [] })),
+      const [dealRes, eventsRes] = await Promise.all([
+        fetch(`/api/deals/${dealId}`, { cache: 'no-store' }).then(r=>r.json()).catch(()=>({})),
         fetch(`/api/calendar/upcoming`, { cache: 'no-store' }).then(r=>r.json()).catch(()=>({ events: [] })),
       ])
-      setDrawerData({ emails: emailsRes.threads || [], events: eventsRes.events || [] })
-      setActiveDeal({ id: dealId, title: 'Deal' })
+      setDrawerData({ emails: [], events: eventsRes.events || [] })
+      setActiveDeal(dealRes?.deal || { id: dealId, title: 'Deal' })
     } catch {}
   }
 
@@ -101,6 +120,7 @@ export default function PipelineBoard() {
             <option value="RENTAL">Rental</option>
           </select>
           <label className="inline-flex items-center gap-1 text-xs"><input type="checkbox" onChange={e=>setFilters((f:any)=>({ ...f, hot: e.target.checked }))} /> Hot leads only</label>
+          <label className="inline-flex items-center gap-1 text-xs"><input type="checkbox" onChange={e=>setFilters((f:any)=>({ ...f, archived: e.target.checked }))} /> Show archived</label>
         </div>
         <div>
           <NewDealDialog onCreated={() => { setRefreshKey(Date.now()) }} />
@@ -120,27 +140,25 @@ export default function PipelineBoard() {
       {drawerOpen && (
         <div className="fixed inset-0 z-40" onClick={()=>setDrawerOpen(false)}>
           <div className="absolute inset-0 bg-black/40" />
-          <div className="absolute right-0 top-0 h-full w-full max-w-md bg-background border-l p-4 overflow-y-auto" onClick={e=>e.stopPropagation()}>
-            <div className="font-semibold mb-2">Deal Details</div>
-            <div className="text-sm text-muted-foreground mb-4">Recent emails</div>
-            <div className="space-y-2 mb-4">
-              {drawerData.emails.slice(0,3).map((t:any)=>(
-                <a key={t.id} href={`/dashboard/inbox/${t.id}`} className="block p-2 border rounded hover:bg-muted/50">
-                  <div className="text-sm truncate">{t.subject || '(No subject)'}</div>
-                  <div className="text-xs text-muted-foreground">{new Date(t.lastSyncedAt).toLocaleString()}</div>
-                </a>
-              ))}
-              {drawerData.emails.length===0 && <div className="text-xs text-muted-foreground">No recent emails</div>}
-            </div>
-            <div className="text-sm text-muted-foreground mb-2">Upcoming events</div>
-            <div className="space-y-2">
-              {drawerData.events.slice(0,3).map((e:any)=>(
-                <div key={e.id} className="p-2 border rounded">
-                  <div className="text-sm">{e.summary || 'Event'}</div>
-                  <div className="text-xs text-muted-foreground">{e.start?.dateTime || e.start?.date}</div>
-                </div>
-              ))}
-              {drawerData.events.length===0 && <div className="text-xs text-muted-foreground">No upcoming events</div>}
+          <div className="absolute right-0 top-0 h-full w-full max-w-2xl bg-background border-l overflow-y-auto" onClick={e=>e.stopPropagation()}>
+            {/* Thread Viewer */}
+            <div className="p-4 space-y-3">
+              <div className="font-semibold">{activeDeal?.title || 'Deal'}</div>
+              {activeDeal?.emailThreads?.[0]?.id ? (
+                <a className="text-xs underline" href={`/dashboard/inbox/${activeDeal.emailThreads[0].id}`}>Open email thread</a>
+              ) : (
+                <div className="text-xs text-muted-foreground">No linked email thread</div>
+              )}
+              <div className="text-sm text-muted-foreground">Upcoming events</div>
+              <div className="space-y-2">
+                {drawerData.events.slice(0,3).map((e:any)=>(
+                  <div key={e.id} className="p-2 border rounded">
+                    <div className="text-sm">{e.summary || 'Event'}</div>
+                    <div className="text-xs text-muted-foreground">{e.start?.dateTime || e.start?.date}</div>
+                  </div>
+                ))}
+                {drawerData.events.length===0 && <div className="text-xs text-muted-foreground">No upcoming events</div>}
+              </div>
             </div>
           </div>
         </div>
@@ -149,16 +167,10 @@ export default function PipelineBoard() {
         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
           <div className="bg-background border rounded p-4 w-full max-w-lg space-y-2">
             <div className="font-semibold">Email {activeDeal.title}</div>
-            <input className="w-full border rounded px-2 py-1 bg-background" placeholder="Subject" id="email-subj" />
-            <textarea className="w-full h-32 border rounded px-2 py-1 bg-background" placeholder="Message" id="email-body" />
+            <div className="text-xs text-muted-foreground">Subject defaults to "Re: original subject" when replying</div>
             <div className="flex justify-end gap-2">
-              <button onClick={()=>setShowEmail(false)} className="px-2 py-1 border rounded text-xs">Cancel</button>
-              <button onClick={async()=>{
-                const subj = (document.getElementById('email-subj') as HTMLInputElement)?.value
-                const body = (document.getElementById('email-body') as HTMLTextAreaElement)?.value
-                await fetch('/api/messaging/email/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dealId: activeDeal.id, subject: subj, body }) })
-                setShowEmail(false)
-              }} className="px-2 py-1 rounded bg-primary text-primary-foreground text-xs">Send</button>
+              <button onClick={()=>setShowEmail(false)} className="px-2 py-1 border rounded text-xs">Close</button>
+              <a href={`/dashboard/inbox/${activeDeal?.emailThreads?.[0]?.id || ''}`} className="px-2 py-1 rounded bg-primary text-primary-foreground text-xs">Open Thread</a>
             </div>
           </div>
         </div>
@@ -167,32 +179,32 @@ export default function PipelineBoard() {
         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
           <div className="bg-background border rounded p-4 w-full max-w-md space-y-2">
             <div className="font-semibold">SMS {activeDeal.title}</div>
-            <textarea className="w-full h-24 border rounded px-2 py-1 bg-background" placeholder="Text message" id="sms-body" />
+            <div className="text-xs text-muted-foreground">Compose SMS in the side panel; if Twilio not connected, you will see a connect prompt.</div>
             <div className="flex justify-end gap-2">
-              <button onClick={()=>setShowSMS(false)} className="px-2 py-1 border rounded text-xs">Cancel</button>
-              <button onClick={async()=>{
-                const body = (document.getElementById('sms-body') as HTMLTextAreaElement)?.value
-                await fetch('/api/messaging/sms/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dealId: activeDeal.id, body }) })
-                setShowSMS(false)
-              }} className="px-2 py-1 rounded bg-primary text-primary-foreground text-xs">Send</button>
+              <button onClick={()=>setShowSMS(false)} className="px-2 py-1 border rounded text-xs">Close</button>
             </div>
           </div>
         </div>
       )}
       {showSchedule && activeDeal && (
         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
-          <div className="bg-background border rounded p-4 w-full max-w-md space-y-2">
+          <div className="bg-background border rounded p-4 w-full max-w-md space-y-3">
             <div className="font-semibold">Schedule for {activeDeal.title}</div>
-            <input className="w-full border rounded px-2 py-1 bg-background" placeholder="Start (RFC3339)" id="cal-start" />
-            <input className="w-full border rounded px-2 py-1 bg-background" placeholder="End (RFC3339)" id="cal-end" />
+            <input type="datetime-local" className="w-full border rounded px-2 py-1 bg-background" aria-label="Start" id="cal-start" />
+            <input type="datetime-local" className="w-full border rounded px-2 py-1 bg-background" aria-label="End" id="cal-end" />
             <input className="w-full border rounded px-2 py-1 bg-background" placeholder="Summary" id="cal-summary" />
             <div className="flex justify-end gap-2">
               <button onClick={()=>setShowSchedule(false)} className="px-2 py-1 border rounded text-xs">Cancel</button>
               <button onClick={async()=>{
-                const startISO = (document.getElementById('cal-start') as HTMLInputElement)?.value
-                const endISO = (document.getElementById('cal-end') as HTMLInputElement)?.value
+                const startLocal = (document.getElementById('cal-start') as HTMLInputElement)?.value
+                const endLocal = (document.getElementById('cal-end') as HTMLInputElement)?.value
                 const summary = (document.getElementById('cal-summary') as HTMLInputElement)?.value
-                await fetch('/api/calendar/events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ summary, startISO, endISO }) })
+                if (!startLocal || !endLocal) return
+                const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York'
+                const startISO = new Date(startLocal).toISOString()
+                const endISO = new Date(endLocal).toISOString()
+                const res = await fetch('/api/calendar/events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ summary, start: startISO, end: endISO, timeZone: tz }) })
+                if (res.ok) { if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'success', message: 'Appointment scheduled' } })) }
                 setShowSchedule(false)
               }} className="px-2 py-1 rounded bg-primary text-primary-foreground text-xs">Create</button>
             </div>
