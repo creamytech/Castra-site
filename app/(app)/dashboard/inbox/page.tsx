@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useSWRConfig } from 'swr'
-import FiltersSidebar from '@/components/inbox/FiltersSidebar'
+// Removed legacy FiltersSidebar
 import { apiFetch } from '@/lib/http'
 import InboxList from '@/components/inbox/InboxList'
 import InboxThread from '@/components/inbox/InboxThread'
@@ -227,7 +227,7 @@ export default function DashboardInboxPage() {
           syncing={syncing}
           onSync={sync}
         />
-        <FiltersSidebar value={filters} onChange={setFilters} />
+        {/* FiltersSidebar removed per design */}
         {/* Middle list lives in the center column; keep sidebar lean */}
         {!!toast && <div className="text-xs text-muted-foreground">{toast}</div>}
       </div>
