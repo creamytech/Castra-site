@@ -34,7 +34,15 @@ export default function DealCard({ deal, onMove, onEmail, onSMS, onSchedule, onO
     return {}
   }
   return (
-    <div className="p-3 rounded-lg border border-border bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-pink-500/10 hover:from-indigo-500/20 hover:via-purple-500/20 hover:to-pink-500/20 transition-colors cursor-pointer touch-manipulation select-none" onClick={() => onOpen ? onOpen(deal.id) : router.push(`/crm/deals/${deal.id}`)}>
+    <div
+      tabIndex={0}
+      role="listitem"
+      data-deal-id={deal.id}
+      data-stage={deal.stage}
+      data-updated-at={deal.updatedAt}
+      className="p-3 rounded-lg border border-border bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-pink-500/10 hover:from-indigo-500/20 hover:via-purple-500/20 hover:to-pink-500/20 transition-colors cursor-pointer touch-manipulation select-none focus:outline-none focus:ring-2 focus:ring-primary"
+      onClick={() => onOpen ? onOpen(deal.id) : router.push(`/crm/deals/${deal.id}`)}
+    >
       <div className="font-medium truncate">{deal.title}</div>
       <div className="text-xs text-muted-foreground truncate">{deal.city || ''} {deal.priceTarget ? `• $${deal.priceTarget.toLocaleString()}` : ''}</div>
       {deal.nextAction && (

@@ -32,8 +32,9 @@ export const GET = withAuth(async ({ req, ctx }) => {
     if (maxPrice) where.priceTarget.lte = maxPrice
     if (hot) where.nextAction = { not: null }
 
-    const [total, deals] = await Promise.all([
+    const [total, sumAgg, deals] = await Promise.all([
       prisma.deal.count({ where }),
+      prisma.deal.aggregate({ _sum: { value: true }, where }),
       prisma.deal.findMany({
         where,
         orderBy: [ { stage: 'asc' }, { position: 'asc' as any }, { updatedAt: 'desc' } ],
@@ -43,7 +44,8 @@ export const GET = withAuth(async ({ req, ctx }) => {
       })
     ])
 
-    return NextResponse.json({ success: true, total, page, pageSize, deals })
+    const totalValue = sumAgg._sum.value || 0
+    return NextResponse.json({ success: true, total, totalValue, page, pageSize, deals })
   } catch (e: any) {
     console.error('[deals GET]', e)
     return NextResponse.json({ error: 'Failed to fetch deals' }, { status: 500 })

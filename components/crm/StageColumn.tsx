@@ -11,6 +11,7 @@ export default function StageColumn({ stage, filters, onMove, refreshKey, onEmai
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [total, setTotal] = useState(0)
+  const [totalValue, setTotalValue] = useState<number>(0)
 
   const { isOver, setNodeRef } = useDroppable({ id: stage })
   const [showCreate, setShowCreate] = useState(false)
@@ -25,6 +26,7 @@ export default function StageColumn({ stage, filters, onMove, refreshKey, onEmai
     const data = await res.json()
     if (res.ok) {
       setTotal(data.total || 0)
+      setTotalValue(data.totalValue || 0)
       // Ensure stable sort by position client-side as a safety net
       const rows = (data.deals || []).sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
       setItems(reset ? rows : [...items, ...rows])
@@ -53,12 +55,14 @@ export default function StageColumn({ stage, filters, onMove, refreshKey, onEmai
   }
 
   return (
-    <div ref={setNodeRef} className={`bg-card border border-border rounded-lg p-3 flex flex-col min-h-[200px] ${isOver ? 'ring-2 ring-primary' : ''}`}>
-      <div className="flex items-center justify-between mb-2">
-        <div className="text-sm font-semibold">{icon ? <span className="mr-1" aria-hidden>{icon}</span> : null}<span aria-label={`Stage ${stage}`}>{stage}</span> <span className="text-xs text-muted-foreground">{total}</span></div>
-        <button onClick={()=>setShowCreate(true)} className="text-xs px-2 py-1 rounded border">+ New</button>
+    <div ref={setNodeRef} role="list" aria-label={`Column ${stage}`} className={`bg-card border border-border rounded-lg p-0 flex flex-col min-h-[200px] ${isOver ? 'ring-2 ring-primary' : ''}`}>
+      <div className="sticky top-0 z-10 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 px-3 py-2 border-b">
+        <div className="flex items-center justify-between">
+          <div className="text-sm font-semibold">{icon ? <span className="mr-1" aria-hidden>{icon}</span> : null}<span aria-label={`Stage ${stage}`}>{stage}</span> <span className="text-xs text-muted-foreground">· {total} · ${'{'}totalValue.toLocaleString(){'}'}</span></div>
+          <button onClick={()=>setShowCreate(true)} className="text-xs px-2 py-1 rounded border">+ New</button>
+        </div>
       </div>
-      <div className="space-y-2 flex-1 overflow-y-auto">
+      <div className="space-y-2 flex-1 overflow-y-auto p-3" role="group">
         {items.map((d: any) => (
           <DraggableCard key={d.id} id={d.id} data={{ stage, position: d.position, updatedAt: d.updatedAt }}>
             <DealCard deal={d} onMove={(id, next) => onMove(id, next)} onEmail={onEmail} onSMS={onSMS} onSchedule={onSchedule} onOpen={onOpen} />

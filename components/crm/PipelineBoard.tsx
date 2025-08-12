@@ -5,6 +5,7 @@ import StageColumn from './StageColumn'
 import { DndContext, DragEndEvent, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors, DragOverEvent, Over } from '@dnd-kit/core'
 import { motion, AnimatePresence } from 'framer-motion'
 import NewDealDialog from './NewDealDialog'
+import DealThreadPanel from './DealThreadPanel'
 
 const STAGES = ['LEAD','QUALIFIED','SHOWING','OFFER','ESCROW','CLOSED','LOST']
 
@@ -18,6 +19,7 @@ export default function PipelineBoard() {
   const [showSchedule, setShowSchedule] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [drawerData, setDrawerData] = useState<{ emails: any[]; events: any[] }>({ emails: [], events: [] })
+  const [drawerThreadId, setDrawerThreadId] = useState<string | null>(null)
 
   useEffect(() => { setLoading(false) }, [])
   useEffect(() => {
@@ -47,6 +49,43 @@ export default function PipelineBoard() {
     useSensor(KeyboardSensor)
   )
 
+  // Keyboard shortcuts: Cmd/Ctrl + arrows to change stage; J/K navigate; Enter open
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const isMeta = e.metaKey || e.ctrlKey
+      const focused = document.activeElement as HTMLElement | null
+      // Cards are buttons/divs; we mark them with data-deal-id
+      if (!focused) return
+      const dealId = focused.getAttribute('data-deal-id')
+      const stage = focused.getAttribute('data-stage')
+      if (!dealId || !stage) return
+      if (isMeta && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+        e.preventDefault()
+        const idx = STAGES.indexOf(stage)
+        const nextIdx = e.key === 'ArrowRight' ? Math.min(idx + 1, STAGES.length - 1) : Math.max(idx - 1, 0)
+        if (nextIdx !== idx) moveStage(dealId, STAGES[nextIdx])
+        return
+      }
+      if (e.key.toLowerCase() === 'j' || e.key.toLowerCase() === 'k') {
+        // naive focus move to next/prev card in DOM order
+        const root = document.getElementById('pipeline-root')
+        if (!root) return
+        const cards = Array.from(root.querySelectorAll('[data-deal-id]')) as HTMLElement[]
+        const i = cards.findIndex(c => c === focused)
+        const next = e.key.toLowerCase() === 'j' ? cards[i + 1] : cards[i - 1]
+        if (next) { e.preventDefault(); next.focus() }
+        return
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        const id = dealId
+        openDrawer(id)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
+
   const moveStage = async (dealId: string, nextStage: string, expectedUpdatedAt?: string) => {
     // trigger immediate refresh for optimistic feel
     setRefreshKey(Date.now())
@@ -63,16 +102,22 @@ export default function PipelineBoard() {
 
   const onDragEnd = async (e: DragEndEvent) => {
     const activeId = e.active.id as string
+    const activeData = (e.active.data?.current || {}) as any
+    const activeStage = activeData?.stage as string | undefined
     const overId = (e.over?.id as string) || ''
     // If dropped over a column, move to that stage
     if (STAGES.includes(overId)) {
-      await moveStage(activeId, overId)
+      await moveStage(activeId, overId, activeData?.updatedAt)
       return
     }
-    // If dropped over another card, pairwise insert within that card's stage
+    // If dropped over another card, pairwise insert; if cross-stage, move then reorder
     const overData = (e.over?.data?.current || {}) as any
-    if (overData?.stage) {
+    const targetStage = overData?.stage as string | undefined
+    if (targetStage) {
       try {
+        if (activeStage && targetStage && activeStage !== targetStage) {
+          await moveStage(activeId, targetStage, activeData?.updatedAt)
+        }
         await fetch('/api/deals/reorder', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -91,6 +136,9 @@ export default function PipelineBoard() {
     if (!activeId || !overId || activeId === overId) return
     // Only act when over is a card (not a column)
     if (STAGES.includes(String(overId))) return
+    const activeData = (e.active.data?.current || {}) as any
+    const overData = (over?.data?.current || {}) as any
+    if (!activeData?.stage || !overData?.stage || activeData.stage !== overData.stage) return
     try {
       await fetch('/api/deals/reorder', {
         method: 'PATCH',
@@ -114,12 +162,20 @@ export default function PipelineBoard() {
       ])
       setDrawerData({ emails: [], events: eventsRes.events || [] })
       setActiveDeal(dealRes?.deal || { id: dealId, title: 'Deal' })
+      const tid = dealRes?.deal?.emailThreads?.[0]?.id || null
+      setDrawerThreadId(tid)
     } catch {}
   }
 
   return (
-    <DndContext onDragEnd={onDragEnd} onDragOver={onDragOver} collisionDetection={closestCenter} sensors={sensors}>
-      <div className="flex items-center justify-between mb-3">
+    <DndContext
+      onDragStart={() => { if (typeof navigator !== 'undefined' && 'vibrate' in navigator) { try { (navigator as any).vibrate(10) } catch {} } }}
+      onDragEnd={onDragEnd}
+      onDragOver={onDragOver}
+      collisionDetection={closestCenter}
+      sensors={sensors}
+    >
+      <div className="flex items-center justify-between mb-3" role="region" aria-label="Pipeline filters">
         <div className="flex items-center gap-2 text-sm flex-wrap">
           <input className="border rounded px-2 py-1 bg-background" placeholder="Search" onChange={e => setFilters((f: any) => ({ ...f, q: e.target.value }))} />
           <input className="border rounded px-2 py-1 bg-background" placeholder="City" onChange={e => setFilters((f: any) => ({ ...f, city: e.target.value }))} />
@@ -139,13 +195,15 @@ export default function PipelineBoard() {
         </div>
       </div>
       {/* TODO: Side drawer for deal details can be added here; using modal pattern for now */}
-      <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-7 gap-4">
+      <div id="pipeline-root" className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-7 gap-4" role="list" aria-label="Pipeline board">
         {STAGES.map(stage => (
-          <StageColumn key={stage} stage={stage} filters={filters} onMove={moveStage} refreshKey={refreshKey}
-            onEmail={openEmail} onSMS={openSMS} onSchedule={openSchedule}
-            icon={{ LEAD:'🧑‍🤝‍🧑', QUALIFIED:'📞', SHOWING:'🏠', OFFER:'🤝', ESCROW:'📑', CLOSED:'🔑', LOST:'❌' }[stage]}
-            onOpen={openDrawer}
-          />
+          <div key={stage} role="listitem" aria-label={`Column ${stage}`}>
+            <StageColumn stage={stage} filters={filters} onMove={moveStage} refreshKey={refreshKey}
+              onEmail={openEmail} onSMS={openSMS} onSchedule={openSchedule}
+              icon={{ LEAD:'🧑‍🤝‍🧑', QUALIFIED:'📞', SHOWING:'🏠', OFFER:'🤝', ESCROW:'📑', CLOSED:'🔑', LOST:'❌' }[stage]}
+              onOpen={openDrawer}
+            />
+          </div>
         ))}
       </div>
       {/* Side Drawer */}
@@ -157,20 +215,26 @@ export default function PipelineBoard() {
             {/* Thread Viewer */}
             <div className="p-4 space-y-3">
               <div className="font-semibold">{activeDeal?.title || 'Deal'}</div>
-              {activeDeal?.emailThreads?.[0]?.id ? (
-                <a className="text-xs underline" href={`/dashboard/inbox/${activeDeal.emailThreads[0].id}`}>Open email thread</a>
-              ) : (
-                <div className="text-xs text-muted-foreground">No linked email thread</div>
-              )}
-              <div className="text-sm text-muted-foreground">Upcoming events</div>
-              <div className="space-y-2">
-                {drawerData.events.slice(0,3).map((e:any)=>(
-                  <motion.div key={e.id} className="p-2 border rounded" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-                    <div className="text-sm">{e.summary || 'Event'}</div>
-                    <div className="text-xs text-muted-foreground">{e.start?.dateTime || e.start?.date}</div>
-                  </motion.div>
-                ))}
-                {drawerData.events.length===0 && <div className="text-xs text-muted-foreground">No upcoming events</div>}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="min-h-[320px]">
+                  {drawerThreadId ? (
+                    <DealThreadPanel dealId={activeDeal?.id} threadId={drawerThreadId} />
+                  ) : (
+                    <div className="text-xs text-muted-foreground">No linked email thread</div>
+                  )}
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Upcoming events</div>
+                  <div className="space-y-2 mt-2">
+                    {drawerData.events.slice(0,3).map((e:any)=>(
+                      <motion.div key={e.id} className="p-2 border rounded" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+                        <div className="text-sm">{e.summary || 'Event'}</div>
+                        <div className="text-xs text-muted-foreground">{e.start?.dateTime || e.start?.date}</div>
+                      </motion.div>
+                    ))}
+                    {drawerData.events.length===0 && <div className="text-xs text-muted-foreground">No upcoming events</div>}
+                  </div>
+                </div>
               </div>
             </div>
           </motion.div>
