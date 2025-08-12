@@ -20,11 +20,7 @@ export async function GET(request: NextRequest) {
       where: {
         userId: session.user.id
       },
-      select: {
-        id: true,
-        provider: true,
-        providerUserId: true,
-      }
+      select: { id: true, provider: true, providerUserId: true }
     });
 
     return NextResponse.json({ accounts });

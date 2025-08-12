@@ -38,12 +38,27 @@ if (config.okta.clientId && config.okta.clientSecret && config.okta.issuer) {
 // Add Google provider if configured
 if (config.google.clientId && config.google.clientSecret) {
   console.log("Adding Google provider");
+  const gmailScopes = [
+    'openid',
+    'email',
+    'profile',
+    'https://www.googleapis.com/auth/gmail.readonly',
+    'https://www.googleapis.com/auth/gmail.modify',
+    'https://www.googleapis.com/auth/gmail.metadata'
+  ].join(' ')
   providers.push(
     GoogleProvider({
       clientId: config.google.clientId,
       clientSecret: config.google.clientSecret,
       allowDangerousEmailAccountLinking: true,
-      // Keep defaults to isolate callback issues; request extended scopes later after login
+      authorization: {
+        params: {
+          access_type: 'offline',
+          prompt: 'consent',
+          include_granted_scopes: 'true',
+          scope: gmailScopes,
+        }
+      }
     })
   );
 } else {

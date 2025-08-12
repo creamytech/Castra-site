@@ -13,6 +13,7 @@ export async function getGoogleAuthForUser(userId: string) {
     access_token: accessToken || undefined,
     refresh_token: refreshToken,
   })
+  // Ensure required scopes present; if not, caller should re-consent
   oauth2.on('tokens', async (tokens) => {
     if (tokens.access_token) {
       const ttl = tokens.expiry_date ? Math.max(60, Math.floor((tokens.expiry_date - Date.now()) / 1000) - 30) : 300
