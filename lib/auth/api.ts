@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSession } from '@/lib/auth/require'
-import { prisma } from '@/lib/prisma'
+import { prisma as prismaApp } from '@/lib/prisma'
+import { prisma as prismaSecure } from '@/lib/securePrisma'
 import { logAudit } from '@/lib/audit/log'
 
 export type ApiHandler = (
@@ -15,7 +16,8 @@ export function withAuth(handler: ApiHandler, options?: { action?: string }) {
       // Set RLS user id for this request scope (best-effort)
       try {
         if (ctx?.session?.user?.id) {
-          await prisma.$executeRawUnsafe(`SELECT set_config('app.user_id', $1, true)`, ctx.session.user.id)
+          await prismaApp.$executeRawUnsafe(`SELECT set_config('app.user_id', $1, true)`, ctx.session.user.id)
+          await prismaSecure.$executeRawUnsafe(`SELECT set_config('app.user_id', $1, true)`, ctx.session.user.id)
         }
       } catch {}
       const res = await handler({ req: request, ctx }, routeCtx)

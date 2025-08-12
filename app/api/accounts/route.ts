@@ -24,6 +24,10 @@ export const GET = withAuth(async ({ ctx }) => {
           })
         }
         accounts = await prisma.mailAccount.findMany({ where: { userId: ctx.session.user.id }, select: { id: true, provider: true, providerUserId: true } })
+        if (!accounts.length) {
+          const raw: any[] = await (prisma as any).$queryRawUnsafe('SELECT id, provider, "providerUserId" FROM "MailAccount" WHERE "userId" = $1', ctx.session.user.id)
+          if (raw?.length) accounts = raw as any
+        }
       } catch {}
     }
     return NextResponse.json({ accounts })
