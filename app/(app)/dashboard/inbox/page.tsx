@@ -145,7 +145,10 @@ export default function DashboardInboxPage() {
         setLoadingSummary(true)
         const res = await apiFetch('/api/email/summarize', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ threadId }) })
         const j = await res.json().catch(()=>({}))
-        if ((res as any).ok && j.summary) setSummary(j.summary)
+        if ((res as any).ok && j.summary) {
+          const text = typeof j.summary === 'string' ? j.summary : (j.summary?.tldr || '')
+          setSummary(text)
+        }
       } catch {}
       finally { setLoadingSummary(false) }
     }
