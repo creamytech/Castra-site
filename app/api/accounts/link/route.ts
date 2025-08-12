@@ -1,0 +1,28 @@
+import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/api'
+import { prisma } from '@/lib/securePrisma'
+
+export const dynamic = 'force-dynamic'
+
+export const POST = withAuth(async ({ ctx }) => {
+  try {
+    // Bridge NextAuth Account -> MailAccount for Google
+    // Use secure client to write; NextAuth tables are accessible without RLS
+    const accounts = await (prisma as any).account.findMany({ where: { userId: ctx.session.user.id, provider: 'google' }, select: { providerAccountId: true } })
+    let created = 0
+    for (const a of accounts) {
+      if (!a.providerAccountId) continue
+      await prisma.mailAccount.upsert({
+        where: { providerUserId: a.providerAccountId },
+        create: { userId: ctx.session.user.id, provider: 'google', providerUserId: a.providerAccountId, refreshTokenEnc: Buffer.alloc(0) },
+        update: { userId: ctx.session.user.id }
+      })
+      created++
+    }
+    return NextResponse.json({ ok: true, linked: created })
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || 'failed' }, { status: 500 })
+  }
+}, { action: 'accounts.link' })
+
+
