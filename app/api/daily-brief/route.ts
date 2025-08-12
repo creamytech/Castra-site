@@ -75,7 +75,8 @@ export const PATCH = withAuth(async ({ req, ctx }) => {
         return NextResponse.json({ ok: true, queuedFor: sendAt.toISOString() })
       }
       // fall-through: send now
-      const toEmail = draft.meta?.to || draft.meta?.recipient || draft.meta?.email
+      const meta: any = draft.meta as any
+      const toEmail = meta?.to || meta?.recipient || meta?.email
       const subject = payload?.subject || draft.subject
       const bodyText = payload?.bodyText || draft.bodyText
       if (!toEmail) return NextResponse.json({ error: 'missing recipient' }, { status: 400 })
