@@ -10,7 +10,10 @@ export const GET = withAuth(async ({ ctx }) => {
   try {
     // Simple health checks
     const cacheOk = await pingCache()
-    await prisma.$queryRaw`SELECT 1`
+    // Avoid forcing DB connection if DATABASE_URL is unset during static build
+    if (process.env.DATABASE_URL) {
+      await prisma.$queryRaw`SELECT 1`
+    }
     const m = snapshotMetrics()
     const gmail = {
       pubsubEvents: await metricGet('gmail.pubsub.received'),
