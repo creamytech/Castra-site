@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { config } from '@/lib/config'
 
-export async function GET() {
+export async function GET(req: Request) {
   const debugInfo = {
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
@@ -34,7 +34,8 @@ export async function GET() {
     // Check if we're in development mode
     developmentMode: process.env.NODE_ENV === 'development',
     // Check if adapter will be disabled
-    adapterDisabled: process.env.NODE_ENV === 'development',
+    adapterDisabled: false,
+    cookies: Object.fromEntries(req.headers.get('cookie') ? req.headers.get('cookie')!.split(';').map(s => s.trim().split('=')).map(([k,v]) => [k, !!v]) : []),
   }
 
   return NextResponse.json(debugInfo)

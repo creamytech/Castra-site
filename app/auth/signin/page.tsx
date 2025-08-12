@@ -111,6 +111,16 @@ export default function SignInPage() {
                     Privacy Policy
                   </a>
                 </p>
+              <div className="mt-2">
+                <a
+                  href="/api/debug-auth"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-gray-400 underline"
+                >
+                  Debug auth env & cookies
+                </a>
+              </div>
               </div>
             </div>
           </div>
