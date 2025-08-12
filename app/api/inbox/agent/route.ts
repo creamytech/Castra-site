@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/api'
 import { prisma } from '@/lib/prisma'
+import { applyInboxRules } from '@/src/ai/classifier/rules'
 
 export const dynamic = 'force-dynamic'
 
@@ -68,6 +69,28 @@ export const POST = withAuth(async ({ req, ctx }) => {
     if (/draft|follow\s?-?up|reply/.test(query.toLowerCase())) {
       const target = rows[0]
       if (target?.lastId) suggestions.unshift({ type: 'draft', threadId: target.id, messageId: target.lastId })
+    }
+
+    // Fallback: if no EmailThread rows matched, derive from Message for recency and score via rules
+    if (suggestions.length <= 1) {
+      const msgs = await prisma.message.findMany({ where: { userId: ctx.session.user.id }, orderBy: { internalDate: 'desc' }, take: 100 })
+      const derived = msgs.map((m: any) => {
+        const rules = applyInboxRules({ subject: m.subject || '', text: m.snippet || '', headers: { from: m.from || '' } })
+        const score = Math.max(0, Math.min(100, rules.rulesScore + (rules.extracted.phone ? 5 : 0) + (rules.extracted.timeAsk ? 5 : 0)))
+        const unread = Array.isArray(m.labels) ? m.labels.includes('UNREAD') : false
+        return { id: m.threadId, subject: m.subject, score, preview: m.snippet, unread, hasAttachment: false, lastId: m.id }
+      })
+      let rows2 = derived
+      if (typeof filters.minScore === 'number') rows2 = rows2.filter(r => (r.score ?? 0) >= filters.minScore)
+      if (filters.unreadOnly) rows2 = rows2.filter(r => r.unread)
+      rows2.sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+      for (const r of rows2.slice(0, 5)) {
+        suggestions.push({ type: 'open', threadId: r.id, subject: r.subject, score: r.score, preview: r.preview })
+      }
+      if (/draft|follow\s?-?up|reply/.test(query.toLowerCase())) {
+        const target = rows2[0]
+        if (target?.lastId) suggestions.unshift({ type: 'draft', threadId: target.id, messageId: target.lastId })
+      }
     }
 
     return NextResponse.json({ success: true, suggestions })
