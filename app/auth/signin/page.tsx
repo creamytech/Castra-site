@@ -23,8 +23,9 @@ export default function SignInPage() {
   const handleGoogleSignIn = () => {
     console.log('Google sign-in clicked')
     setLoading(true)
-    // Use default redirect behavior
-    signIn('google', { callbackUrl: '/dashboard' }).then((result) => {
+    // Explicitly pass callbackUrl as absolute to avoid NEXTAUTH_URL mismatch
+    const callbackUrl = `${window.location.origin}/dashboard`
+    signIn('google', { callbackUrl }).then((result) => {
       console.log('Google sign-in result:', result)
       if (result?.error) {
         setError(result.error)

@@ -26,7 +26,7 @@ export function middleware(req: NextRequest) {
     "worker-src 'self' blob:",
     "frame-ancestors 'none'"
   ].join('; '))
-  res.headers.set('Referrer-Policy', 'no-referrer')
+  res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
   res.headers.set('X-Content-Type-Options', 'nosniff')
   res.headers.set('X-Frame-Options', 'DENY')
   res.headers.set('Permissions-Policy', 'microphone=(self), camera=(), geolocation=()')
