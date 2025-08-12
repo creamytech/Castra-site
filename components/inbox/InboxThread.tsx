@@ -1,7 +1,7 @@
 "use client"
 
 import useSWR from 'swr'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { apiFetch } from '@/lib/http'
 import DOMPurify from 'dompurify'
 import { ThreadHeader } from '@/components/inbox/ThreadHeader'
@@ -25,7 +25,7 @@ export default function InboxThread({ threadId }: { threadId: string }) {
   // Event detail: { threadId, subject, draft }
   // Only applies if threadId matches the currently open thread
   // Then sets subject and draft and brings composer into view
-  React.useEffect(() => {
+  useEffect(() => {
     const handler = (e: any) => {
       const detail = e?.detail || {}
       if (!detail?.threadId || detail.threadId !== threadId) return

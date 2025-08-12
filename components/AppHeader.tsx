@@ -3,6 +3,7 @@
 import { useSession, signOut } from 'next-auth/react'
 import Link from 'next/link'
 import QuickActions from './QuickActions'
+import NotificationsBell from './NotificationsBell'
 
 export default function AppHeader() {
   const { data: session } = useSession()
@@ -12,15 +13,18 @@ export default function AppHeader() {
   }
 
   return (
-    <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-      <div className="flex items-center justify-between">
+    <header className="sticky top-0 z-40 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b px-4 sm:px-6 py-2">
+      <div className="flex items-center justify-between gap-3">
         <div className="flex items-center space-x-4">
-          <h1 className="text-xl font-semibold text-gray-800 dark:text-white">
-            Castra
-          </h1>
+          <nav className="text-xs text-muted-foreground hidden md:flex items-center gap-1" aria-label="Breadcrumb">
+            <Link href="/dashboard" className="hover:underline">Dashboard</Link>
+            <span>/</span>
+            <span className="text-foreground">Home</span>
+          </nav>
         </div>
         
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center gap-2">
+          <NotificationsBell />
           <QuickActions />
           
           <div className="flex items-center space-x-2">
