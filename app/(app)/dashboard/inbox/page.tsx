@@ -16,7 +16,7 @@ export default function DashboardInboxPage() {
   const [filter, setFilter] = useState('all')
   const [folder, setFolder] = useState<'inbox'|'unread'|'starred'|'spam'|'trash'|'drafts'|'all'>('all')
   const [filters, setFilters] = useState<any>({ status: [], minScore: 0, unreadOnly: false, hasPhone: false, hasPrice: false })
-  const [category, setCategory] = useState<'primary'|'promotions'|'social'|'updates'|'forums'|'all'>('primary')
+  // Categories removed; filter dropdown will be used instead
   const [syncing, setSyncing] = useState(false)
   const [toast, setToast] = useState<string>('')
   const [threadId, setThreadId] = useState<string>('')
@@ -169,14 +169,36 @@ export default function DashboardInboxPage() {
     <>
     <div className="p-0 sm:p-0 grid grid-cols-1 md:grid-cols-5 gap-0">
       <div className="order-1 md:order-none md:col-span-1 space-y-3 md:sticky md:top-16 md:self-start p-4 border-r bg-background/60 backdrop-blur animate-slide-in">
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search…" className="w-full border rounded px-3 py-2 bg-background" aria-label="Search inbox" />
+          <details className="relative">
+            <summary className="list-none px-3 py-2 text-xs rounded border cursor-pointer hover:bg-accent/50">Filters</summary>
+            <div className="absolute right-0 mt-2 w-80 p-3 bg-popover border rounded shadow-lg space-y-2 z-20">
+              <label className="text-xs text-muted-foreground">Status</label>
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                {['lead','potential','follow_up','no_lead'].map(s => (
+                  <label key={s} className="inline-flex items-center gap-1"><input type="checkbox" checked={filters.status?.includes(s)} onChange={(e)=>{
+                    setFilters((cur:any)=>{ const set = new Set(cur.status||[]); e.target.checked ? set.add(s) : set.delete(s); return { ...cur, status: Array.from(set) } })
+                  }} /> {s.replace('_',' ')}</label>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs text-muted-foreground">Min score</label>
+                  <input type="number" min={0} max={100} value={filters.minScore||0} onChange={e=>setFilters((f:any)=>({ ...f, minScore: Number(e.target.value||0) }))} className="w-full border rounded px-2 py-1 bg-background" />
+                </div>
+                <div className="flex items-end"><label className="inline-flex items-center gap-2 text-xs"><input type="checkbox" checked={filters.unreadOnly||false} onChange={e=>setFilters((f:any)=>({ ...f, unreadOnly: e.target.checked }))} /> Unread only</label></div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="inline-flex items-center gap-2 text-xs"><input type="checkbox" checked={filters.hasPhone||false} onChange={e=>setFilters((f:any)=>({ ...f, hasPhone: e.target.checked }))} /> Has phone</label>
+                <label className="inline-flex items-center gap-2 text-xs"><input type="checkbox" checked={filters.hasPrice||false} onChange={e=>setFilters((f:any)=>({ ...f, hasPrice: e.target.checked }))} /> Has price</label>
+              </div>
+            </div>
+          </details>
         </div>
         <SidebarNav
           folder={folder}
           onChangeFolder={(f)=>setFolder(f)}
-          category={category}
-          onChangeCategory={(c)=>setCategory(c)}
           onCompose={()=>setShowCompose(true)}
           syncing={syncing}
           onSync={sync}
@@ -188,7 +210,7 @@ export default function DashboardInboxPage() {
       <div className="order-3 md:order-none md:col-span-3 min-h-[70vh] p-4 relative">
         {/* Email list column */}
         <div className="space-y-2">
-          <InboxList q={debouncedQ} filter={filter} onSelect={openThread} filters={filters} folder={folder} category={category} selectedId={threadId} selectedIds={selectedIds} onToggleSelect={toggleSelect} onItems={(it)=>{ itemsRef.current = it }} />
+          <InboxList q={debouncedQ} filter={filter} onSelect={openThread} filters={filters} folder={folder} selectedId={threadId} selectedIds={selectedIds} onToggleSelect={toggleSelect} onItems={(it)=>{ itemsRef.current = it }} />
         </div>
         {selectedIds.length > 0 && (
           <div className="fixed left-1/2 -translate-x-1/2 bottom-6 z-30 px-3 py-2 rounded-full border bg-popover shadow-lg flex items-center gap-2 text-xs">

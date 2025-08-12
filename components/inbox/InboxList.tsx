@@ -24,13 +24,12 @@ function formatListTime(value?: string) {
   return d.toLocaleDateString()
 }
 
-export default function InboxList({ q, filter, onSelect, filters, folder, category, onItems, selectedId, selectedIds = [], onToggleSelect }: { q: string; filter: string; onSelect: (id: string) => void; filters?: any, folder?: string, category?: string, onItems?: (items: any[]) => void, selectedId?: string, selectedIds?: string[], onToggleSelect?: (id: string, index: number, ev?: { shiftKey?: boolean }) => void }) {
+export default function InboxList({ q, filter, onSelect, filters, folder, onItems, selectedId, selectedIds = [], onToggleSelect }: { q: string; filter: string; onSelect: (id: string) => void; filters?: any, folder?: string, onItems?: (items: any[]) => void, selectedId?: string, selectedIds?: string[], onToggleSelect?: (id: string, index: number, ev?: { shiftKey?: boolean }) => void }) {
   const params = new URLSearchParams()
   if (q) params.set('q', q)
   if (filter === 'hasDeal') params.set('hasDeal', 'true')
   if (filter === 'unlinked') params.set('hasDeal', 'false')
   if (folder) params.set('folder', folder)
-  if (category) params.set('category', category)
   const { data, mutate, isLoading } = useSWR(`/api/inbox/threads?${params.toString()}`, fetcher, { refreshInterval: 15000, revalidateOnFocus: true })
   const threadsRaw = data?.threads || []
   // client-side filter for status/minScore/fields

@@ -9,8 +9,6 @@ type CategoryKey = 'primary'|'promotions'|'social'|'updates'|'forums'|'all'
 export default function SidebarNav({
   folder,
   onChangeFolder,
-  category,
-  onChangeCategory,
   onCompose,
   syncing,
   onSync,
@@ -18,8 +16,6 @@ export default function SidebarNav({
 }: {
   folder: FolderKey
   onChangeFolder: (f: FolderKey) => void
-  category: CategoryKey
-  onChangeCategory: (c: CategoryKey) => void
   onCompose?: () => void
   syncing?: boolean
   onSync?: () => void
@@ -35,14 +31,7 @@ export default function SidebarNav({
     { key: 'all', label: 'All Mail', icon: Send },
   ]
 
-  const CATS: { key: CategoryKey; label: string }[] = [
-    { key: 'primary', label: 'Primary' },
-    { key: 'promotions', label: 'Promotions' },
-    { key: 'social', label: 'Social' },
-    { key: 'updates', label: 'Updates' },
-    { key: 'forums', label: 'Forums' },
-    { key: 'all', label: 'All' },
-  ]
+  // Categories removed per new design; default logic handled client-side
 
   return (
     <aside className="space-y-3 animate-slide-in">
@@ -82,26 +71,7 @@ export default function SidebarNav({
         ))}
       </nav>
 
-      <div className="pt-2">
-        <div className="text-xs text-muted-foreground mb-1">Categories</div>
-        <details className="relative">
-          <summary className="list-none px-3 py-2 rounded-md border flex items-center justify-between cursor-pointer hover:bg-accent/50">
-            <span className="text-sm">{CATS.find(c=>c.key===category)?.label || 'Primary'}</span>
-            <ChevronDown size={14} className="opacity-70" />
-          </summary>
-          <div className="absolute z-20 mt-2 w-full bg-popover border rounded-md shadow-lg overflow-hidden">
-            {CATS.map((c) => (
-              <button
-                key={c.key}
-                onClick={() => onChangeCategory(c.key)}
-                className={cn('w-full text-left px-3 py-2 text-sm hover:bg-accent', category === c.key ? 'bg-primary/10' : '')}
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
-        </details>
-      </div>
+      {/* Categories removed */}
     </aside>
   )
 }
