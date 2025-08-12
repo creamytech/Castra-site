@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/api'
-import { prisma } from '@/lib/prisma'
+import { prisma } from '@/lib/securePrisma'
+import { decodeEntities } from '@/lib/securePrisma'
 import { cacheGet, cacheSet } from '@/lib/cache'
 import { enqueue } from '@/lib/agent/queue'
 import { getGoogleAuthForUser, gmailClient } from '@/lib/gmail/client'
@@ -119,7 +120,7 @@ export const GET = withAuth(async ({ req, ctx }) => {
       const latestMessagesRaw = threadIds.length ? await prisma.emailMessage.findMany({
         where: { threadId: { in: threadIds } },
         orderBy: { date: 'desc' },
-        select: { threadId: true, intent: true, snippet: true, bodyText: true, from: true, date: true, internalRefs: true },
+        select: { id: true, threadId: true, intent: true, snippet: true, bodyText: true, from: true, date: true, internalRefs: true },
         take: Math.min(threadIds.length * 3, 1500)
       }) : []
       const latestByThread = new Map<string, any>()
@@ -188,7 +189,7 @@ export const GET = withAuth(async ({ req, ctx }) => {
         const priority = computePriority(score, unreadFlag, rules, llm)
         const quickActions = buildQuickActions({ rules, threadId: t.id, lastFrom: last?.from || '', subject: t.subject || '' })
 
-        return { id: t.id, userId: t.userId, subject: t.subject, lastSyncedAt: t.lastSyncedAt, lastMessageAt, deal: null, status, score, priority, reasons, extracted, quickActions, preview: last?.snippet || last?.bodyText || '', unread: unreadFlag, labelIds, fromName, fromEmail, confidence, needs_confirmation }
+        return { id: t.id, userId: t.userId, subject: t.subject, lastSyncedAt: t.lastSyncedAt, lastMessageAt, latestMessageId: last?.id || null, deal: null, status, score, priority, reasons, extracted, quickActions, preview: last?.snippet || last?.bodyText || '', unread: unreadFlag, labelIds, fromName, fromEmail, confidence, needs_confirmation }
       }))
 
       const matchFolder = (tr: any) => {
@@ -254,7 +255,7 @@ export const GET = withAuth(async ({ req, ctx }) => {
           update: { subject: t.subject, lastSyncedAt: new Date(t.lastSyncedAt), status, score, reasons: rules.reasons as any, extracted: rules.extracted as any },
         })
       } catch {}
-      return { ...t, status, score, reasons: rules.reasons, extracted: rules.extracted }
+      return { ...t, status, score, reasons: rules.reasons, extracted: rules.extracted, latestMessageId: last?.id || null }
     }))
     return NextResponse.json({ total, page, limit, threads })
   } catch (e: any) {

@@ -40,6 +40,12 @@ export function ThreadHeader({ lead, onStatusChange, threadId, dealId }: { lead:
         </span>
         <span className={`border rounded-full w-7 h-7 grid place-items-center text-xs score-${scoreClass} bg-background/60 shadow-inner`} aria-label={`Score ${lead.score ?? 0}`} style={{ ['--sweep' as any]: `${sweep}%` }}>{lead.score ?? 0}</span>
         <div className="ml-auto flex items-center gap-1">
+          <button onClick={()=>{
+            // Inline suggest reply trigger: use last message if ThreadSidebar is open
+            if (typeof window !== 'undefined' && threadId) {
+              window.dispatchEvent(new CustomEvent('inbox:suggest-reply', { detail: { threadId } }))
+            }
+          }} className="px-2 py-1 text-xs rounded-md border bg-primary/10 text-primary hover:bg-primary/20 transition" title="Suggest AI reply">Suggest reply</button>
           <button onClick={()=>onStatusChange("lead")} className="px-2 py-1 text-xs rounded-md border bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 transition" title="Mark Lead">Lead</button>
           <button onClick={()=>onStatusChange("potential")} className="px-2 py-1 text-xs rounded-md border bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 transition" title="Mark Potential">Potential</button>
           <button onClick={()=>onStatusChange("no_lead")} className="px-2 py-1 text-xs rounded-md border bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 transition" title="Mark Not Lead">No Lead</button>

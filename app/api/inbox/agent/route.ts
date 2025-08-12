@@ -1,5 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/api'
+import { prisma } from '@/lib/securePrisma'
+import { getDecryptedObject } from '@/lib/storage'
+import { logAudit } from '@/lib/audit/log'
+
+export const dynamic = 'force-dynamic'
+
+export const GET = withAuth(async ({ ctx, req }) => {
+  try {
+    const messageId = req.nextUrl.searchParams.get('messageId') || ''
+    const msg = await prisma.secureMessage.findUnique({ where: { id: messageId } })
+    if (!msg?.bodyRef) return NextResponse.json({ body: null })
+    const buf = await getDecryptedObject(msg.bodyRef)
+    await logAudit({ orgId: ctx.orgId, userId: ctx.session.user.id, action: 'DECRYPT', target: `message:${messageId}` })
+    return NextResponse.json({ body: buf.toString('utf8') })
+  } catch (e) {
+    return NextResponse.json({ error: 'Failed' }, { status: 500 })
+  }
+}, { action: 'inbox.message.get' })
+
+import { NextRequest, NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/api'
 import { prisma } from '@/lib/prisma'
 import OpenAI from 'openai'
 

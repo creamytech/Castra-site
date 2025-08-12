@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { getGoogleOAuth } from "@/lib/google";
-import { prisma } from "@/lib/prisma";
+import { getGoogleAuthForUser } from "@/lib/gmail/client";
+import { prisma } from "@/lib/securePrisma";
+import { putEncryptedObject } from "@/lib/storage";
 import { google } from "googleapis";
 
 export const dynamic = "force-dynamic";
@@ -14,8 +15,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const oauth2Client = await getGoogleOAuth(session.user.id);
-    const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+    const { oauth2 } = await getGoogleAuthForUser(session.user.id);
+    const gmail = google.gmail({ version: 'v1', auth: oauth2 });
 
     let nextPageToken: string | undefined = undefined;
     let totalSynced = 0;
@@ -61,16 +62,24 @@ export async function POST(request: NextRequest) {
           }
           const payload = JSON.parse(JSON.stringify(messageDetail.data));
 
-          await prisma.message.upsert({
-            where: { gmailId: message.id! },
-            update: { from, subject, snippet, internalDate, labels, payload },
-            create: {
-              gmailId: message.id!,
-              threadId: messageDetail.data.threadId || '',
-              userId: session.user.id,
-              from, subject, snippet, internalDate, labels, payload
-            }
-          });
+          // Secure storage path: create/update Thread and SecureMessage, store body to object storage
+          // Map mailbox/account lazily (placeholder: single mailbox per user via account)
+          const account = await prisma.mailAccount.findFirst({ where: { userId: session.user.id, provider: 'google' } })
+          if (!account) continue
+          const mailbox = await prisma.mailbox.upsert({ where: { accountId_email: { accountId: account.id, email: session.user.email || 'me' } as any }, create: { accountId: account.id, email: session.user.email || 'me' }, update: {} }) as any
+          const thread = await prisma.thread.upsert({ where: { providerThreadId: messageDetail.data.threadId || message.id! }, create: { providerThreadId: messageDetail.data.threadId || message.id!, mailboxId: mailbox.id, latestAt: internalDate }, update: { latestAt: internalDate } })
+          let bodyRef: string | null = null
+          if (bodyHtml || bodyText) {
+            const objectKey = `mail/${mailbox.id}/${message.id}`
+            const buf = Buffer.from(bodyHtml || bodyText, 'utf8')
+            await putEncryptedObject(buf, objectKey)
+            bodyRef = objectKey
+          }
+          await prisma.secureMessage.upsert({
+            where: { providerMessageId: message.id! },
+            update: { historyId: messageDetail.data.historyId || null, receivedAt: internalDate, hasAttachment: false, bodyRef },
+            create: { threadId: thread.id, providerMessageId: message.id!, historyId: messageDetail.data.historyId || null, fromEnc: Buffer.from(from), toEnc: Buffer.from(''), ccEnc: null, bccEnc: null, snippetEnc: Buffer.from(snippet), receivedAt: internalDate, hasAttachment: false, bodyRef }
+          })
           totalSynced++;
         } catch (e) {
           console.error(`Error syncing message ${message.id}:`, e);

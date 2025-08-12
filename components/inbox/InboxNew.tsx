@@ -5,7 +5,16 @@ export type Status = 'lead' | 'potential' | 'no_lead' | 'vendor' | 'newsletter' 
 export const STATUS_LABEL: Record<Status, string> = { lead: 'Lead', potential: 'Potential', no_lead: 'No Lead', vendor: 'Vendor', newsletter: 'Newsletter', follow_up: 'Follow‑up' }
 export function scoreColor(score: number) { if (score >= 80) return 'good'; if (score >= 60) return 'warn'; return 'dim' }
 
-type Filter = Partial<{ status: Status[]; source: string[]; minScore: number; unreadOnly: boolean; hasPhone: boolean; hasPrice: boolean }>
+type Filter = Partial<{
+  status: Status[];
+  source: string[];
+  minScore: number;
+  unreadOnly: boolean;
+  hasPhone: boolean;
+  hasPrice: boolean;
+  hasAttachment: boolean;
+  timeSensitive: boolean;
+}>
 type OnFilter = (f: Filter) => void
 
 export function InboxFilterBar({ value, onChange }: { value: Filter; onChange: OnFilter }) {
@@ -23,6 +32,29 @@ export function InboxFilterBar({ value, onChange }: { value: Filter; onChange: O
   const statuses: Status[] = ['lead', 'potential', 'no_lead', 'vendor', 'newsletter', 'follow_up']
   return (
     <div className="toolbar" role="toolbar" aria-label="Inbox filters">
+      <div className="seg" aria-label="Quick filters">
+        <button className="btn" aria-pressed={!!value.unreadOnly} onClick={() => onChange({ ...value, unreadOnly: !value.unreadOnly })} title="Unread only">
+          Unread
+        </button>
+        <button className="btn" aria-pressed={Array.isArray(value.status) && value.status.includes('lead')} onClick={() => toggle('status', 'lead')} title="Leads">
+          Leads
+        </button>
+        <button className="btn" aria-pressed={!!value.timeSensitive} onClick={() => onChange({ ...value, timeSensitive: !value.timeSensitive })} title="Time‑sensitive">
+          ⏱️ Time‑sensitive
+        </button>
+        <label className="btn" title="Has attachments">
+          <input type="checkbox" checked={!!value.hasAttachment} onChange={(e) => onChange({ ...value, hasAttachment: e.target.checked })} />&nbsp;Attachments
+        </label>
+        <label className="btn" title="Auto‑categorize new emails">
+          <input type="checkbox" onChange={(e)=>{
+            const enabled = e.target.checked
+            if (typeof window !== 'undefined') {
+              window.localStorage.setItem('inbox:autoCategorize', enabled ? '1' : '0')
+              window.dispatchEvent(new CustomEvent('inbox:auto-categorize', { detail: { enabled } }))
+            }
+          }} />&nbsp;Auto‑categorize
+        </label>
+      </div>
       <div className="seg" aria-label="Status filters">
         {statuses.map((s) => (
           <button key={s} className="btn" aria-pressed={value.status?.includes(s) || false} onClick={() => toggle('status', s)} title={`Filter: ${STATUS_LABEL[s]}`}>
@@ -39,6 +71,9 @@ export function InboxFilterBar({ value, onChange }: { value: Filter; onChange: O
         </label>
         <label className="btn" title="Has price">
           <input type="checkbox" checked={!!value.hasPrice} onChange={(e) => onChange({ ...value, hasPrice: e.target.checked })} />&nbsp;Price
+        </label>
+        <label className="btn" title="Has attachments">
+          <input type="checkbox" checked={!!value.hasAttachment} onChange={(e) => onChange({ ...value, hasAttachment: e.target.checked })} />&nbsp;Attachments
         </label>
       </div>
       <div className="seg" aria-label="Score">

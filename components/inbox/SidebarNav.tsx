@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from 'react'
 const cn = (...cls: Array<string | false | null | undefined>) => cls.filter(Boolean).join(' ')
 import { Inbox, Star, Send, FileText, Ban, Trash2, Mail, ChevronDown } from 'lucide-react'
 
@@ -21,6 +22,7 @@ export default function SidebarNav({
   onSync?: () => void
   counts?: Partial<Record<FolderKey, number>>
 }) {
+  const [dragKey, setDragKey] = useState<FolderKey | null>(null)
   const FOLDERS: { key: FolderKey; label: string; icon: any }[] = [
     { key: 'inbox', label: 'Inbox', icon: Inbox },
     { key: 'unread', label: 'Unread', icon: Mail },
@@ -59,9 +61,31 @@ export default function SidebarNav({
             key={key}
             onClick={() => onChangeFolder(key)}
             className={cn(
-              'w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
-              folder === key ? 'bg-primary/10 text-foreground' : 'hover:bg-accent'
+              'w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors border',
+              folder === key ? 'bg-primary/10 text-foreground' : 'hover:bg-accent',
+              dragKey === key ? 'border-primary ring-2 ring-primary/40' : 'border-transparent'
             )}
+            onDragOver={(e)=>{
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move'
+            }}
+            onDragEnter={(e)=>{ e.preventDefault(); setDragKey(key) }}
+            onDragLeave={(e)=>{ e.preventDefault(); setDragKey((prev)=> prev === key ? null : prev) }}
+            onDrop={async (e)=>{
+              try {
+                const data = JSON.parse(e.dataTransfer.getData('text/plain'))
+                if (data?.type === 'thread' && data?.id) {
+                  // Map drop target to bulk action
+                  const id = data.id as string
+                  if (key === 'trash') await fetch('/api/inbox/threads/bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [id], action: 'trash' }) })
+                  if (key === 'spam') await fetch('/api/inbox/threads/bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [id], action: 'spam' }) })
+                  if (key === 'archived') await fetch('/api/inbox/threads/bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [id], action: 'archive' }) })
+                  if (key === 'starred') await fetch('/api/inbox/threads/bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [id], action: 'star' }) })
+                  window.dispatchEvent(new Event('inbox-refresh'))
+                }
+              } catch {}
+              setDragKey(null)
+            }}
           >
             <Icon size={16} className={cn('shrink-0', folder === key ? 'text-primary' : 'text-muted-foreground')} />
             <span className="flex-1 text-left truncate">{label}</span>

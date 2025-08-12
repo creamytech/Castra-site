@@ -3,7 +3,9 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import OktaProvider from "next-auth/providers/okta";
 import GoogleProvider from "next-auth/providers/google";
 import AzureADProvider from "next-auth/providers/azure-ad";
+import { prisma as appPrisma } from "./securePrisma";
 import { prisma } from "./prisma";
+import { encryptRefreshToken } from './token'
 import { PrismaClient } from "@prisma/client";
 import { config } from "./config";
 
@@ -165,6 +167,30 @@ export const authOptions: NextAuthOptions = {
         }
       }
       
+      // On OAuth callback, persist secure MailAccount with encrypted refresh token
+      try {
+        if (account?.provider === 'google' && user?.id && account?.providerAccountId) {
+          const refresh = account.refresh_token as string | undefined
+          const providerUserId = account.providerAccountId
+          if (refresh) {
+            const refreshTokenEnc = await encryptRefreshToken(refresh)
+            await appPrisma.mailAccount.upsert({
+              where: { providerUserId },
+              create: { userId: user.id, provider: 'google', providerUserId, refreshTokenEnc },
+              update: { userId: user.id, refreshTokenEnc }
+            })
+          } else {
+            await appPrisma.mailAccount.upsert({
+              where: { providerUserId },
+              create: { userId: user.id, provider: 'google', providerUserId, refreshTokenEnc: Buffer.alloc(0) },
+              update: { userId: user.id }
+            })
+          }
+        }
+      } catch (e) {
+        console.error('secure MailAccount upsert failed', e)
+      }
+
       const allowed = !!(account?.provider === 'google' || account?.type === 'credentials')
       console.log("Sign-in allowed for:", account?.provider || account?.type, '->', allowed);
       return allowed;

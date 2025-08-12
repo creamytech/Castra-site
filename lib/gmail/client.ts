@@ -1,25 +1,27 @@
 import { google } from 'googleapis'
-import { prisma } from '@/lib/prisma'
-import { decryptField, encryptField } from '@/src/lib/crypto/field'
+import { prisma } from '@/lib/securePrisma'
+import { decryptRefreshToken, encryptRefreshToken, cacheAccessToken, getCachedAccessToken } from '@/lib/token'
 
 export async function getGoogleAuthForUser(userId: string) {
-  const account = await prisma.account.findFirst({ where: { userId, provider: 'google' } })
+  const account = await prisma.mailAccount.findFirst({ where: { userId, provider: 'google' } })
   if (!account) throw new Error('No Google account linked')
-  const accessToken = await maybeDecrypt(account.access_token)
-  const refreshToken = await maybeDecrypt(account.refresh_token)
-  if (!accessToken && !refreshToken) throw new Error('Missing Google tokens')
+
+  let accessToken = await getCachedAccessToken(userId, 'google')
   const oauth2 = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET)
+  const refreshToken = await decryptRefreshToken(account.refreshTokenEnc as any)
   oauth2.setCredentials({
     access_token: accessToken || undefined,
-    refresh_token: refreshToken || undefined,
-    expiry_date: account.expires_at ? account.expires_at * 1000 : undefined,
+    refresh_token: refreshToken,
   })
   oauth2.on('tokens', async (tokens) => {
-    const updates: any = {}
-    if (tokens.access_token) updates.access_token = await maybeEncrypt(tokens.access_token)
-    if (tokens.refresh_token) updates.refresh_token = await maybeEncrypt(tokens.refresh_token)
-    if (tokens.expiry_date) updates.expires_at = Math.floor(tokens.expiry_date / 1000)
-    if (Object.keys(updates).length) await prisma.account.update({ where: { id: account.id }, data: updates })
+    if (tokens.access_token) {
+      const ttl = tokens.expiry_date ? Math.max(60, Math.floor((tokens.expiry_date - Date.now()) / 1000) - 30) : 300
+      await cacheAccessToken(userId, 'google', tokens.access_token, ttl)
+    }
+    if (tokens.refresh_token) {
+      const enc = await encryptRefreshToken(tokens.refresh_token)
+      await prisma.mailAccount.update({ where: { id: account.id }, data: { refreshTokenEnc: enc } })
+    }
   })
   return { oauth2, account }
 }
@@ -28,16 +30,6 @@ export function gmailClient(oauth2: any) {
   return google.gmail({ version: 'v1', auth: oauth2 })
 }
 
-async function maybeDecrypt(val?: string | null): Promise<string | null> {
-  if (!val) return val ?? null
-  if (val.startsWith('enc:')) return decryptField(val.slice(4))
-  return val
-}
-
-async function maybeEncrypt(val?: string | null): Promise<string | null> {
-  if (!val) return val ?? null
-  if (val.startsWith('enc:')) return val
-  return 'enc:' + await encryptField(val)
-}
+// plaintext tokens are not persisted
 
 

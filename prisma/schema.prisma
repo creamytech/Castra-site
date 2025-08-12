@@ -61,6 +61,7 @@ model OrgMember {
 
 model AuditLog {
   id        String   @id @default(cuid())
+  // For existing org-scoped audit logs
   orgId     String
   userId    String?
   action    String
@@ -116,6 +117,8 @@ model User {
   auditLogs     AuditLog[]
   accounts      Account[]
   sessions      Session[]
+  // Secure mail accounts
+  mailAccounts  MailAccount[]
   
   // CRM Relations
   contacts      Contact[]
@@ -171,6 +174,85 @@ model Message {
   
   @@index([userId, internalDate])
   @@index([threadId])
+}
+
+// ---------------- Secure Email Storage (encrypted metadata-only) ----------------
+
+model MailAccount {
+  id             String  @id @default(cuid())
+  userId         String
+  provider       String
+  providerUserId String  @unique
+  refreshTokenEnc Bytes
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  mailboxes      Mailbox[]
+
+  @@index([userId])
+}
+
+model Mailbox {
+  id        String  @id @default(cuid())
+  accountId String
+  email     String
+  account   MailAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  labels    Label[]
+  threads   Thread[]
+
+  @@index([accountId])
+}
+
+model Thread {
+  id               String   @id @default(cuid())
+  mailboxId        String
+  providerThreadId String   @unique
+  subjectEnc       Bytes?
+  latestAt         DateTime
+  mailbox          Mailbox  @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
+  messages         SecureMessage[]
+
+  @@index([mailboxId, latestAt])
+}
+
+model SecureMessage {
+  id                 String   @id @default(cuid())
+  threadId           String
+  providerMessageId  String   @unique
+  historyId          String?
+  fromEnc            Bytes
+  toEnc              Bytes
+  ccEnc              Bytes?
+  bccEnc             Bytes?
+  snippetEnc         Bytes?
+  receivedAt         DateTime
+  hasAttachment      Boolean  @default(false)
+  bodyRef            String?
+  thread             Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  labels             MessageLabel[]
+
+  @@index([threadId, receivedAt])
+}
+
+model Label {
+  id         String  @id @default(cuid())
+  mailboxId  String
+  name       String
+  externalId String?
+  mailbox    Mailbox @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
+  messages   MessageLabel[]
+
+  @@unique([mailboxId, name])
+}
+
+model MessageLabel {
+  messageId String
+  labelId   String
+  message   SecureMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  label     Label   @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([messageId, labelId])
 }
 
 // Chat Models

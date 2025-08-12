@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/securePrisma";
 
 export const dynamic = "force-dynamic";
 
@@ -16,21 +16,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const accounts = await prisma.account.findMany({
+    const accounts = await prisma.mailAccount.findMany({
       where: {
         userId: session.user.id
       },
       select: {
         id: true,
         provider: true,
-        type: true,
-        access_token: true,
-        refresh_token: true,
-        expires_at: true,
-        token_type: true,
-        scope: true,
-        id_token: true,
-        session_state: true
+        providerUserId: true,
       }
     });
 

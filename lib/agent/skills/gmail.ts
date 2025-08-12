@@ -1,12 +1,9 @@
 import { google } from 'googleapis'
-import { prisma } from '@/lib/prisma'
+import { getGoogleAuthForUser } from '@/lib/gmail/client'
 
 export async function getOAuthForUser(userId: string) {
-  const account = await prisma.account.findFirst({ where: { userId, provider: 'google' } })
-  if (!account?.access_token) throw new Error('Google account not connected')
-  const oauth2Client = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, process.env.GOOGLE_REDIRECT_URI)
-  oauth2Client.setCredentials({ access_token: account.access_token, refresh_token: account.refresh_token })
-  return oauth2Client
+  const { oauth2 } = await getGoogleAuthForUser(userId)
+  return oauth2
 }
 
 export async function sendEmail(userId: string, to: string, subject: string, body: string, threadId?: string) {

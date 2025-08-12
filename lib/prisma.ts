@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { withOptimize } from "@prisma/extension-optimize";
+// prefer securePrisma for application data; this file remains for legacy code paths
 
 // Ensure Prisma has a DATABASE_URL. Some platforms expose only POSTGRES_URL.
 if (!process.env.DATABASE_URL && process.env.POSTGRES_URL) {

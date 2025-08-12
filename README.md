@@ -55,6 +55,37 @@ Required environment variables:
 - `OPENAI_API_KEY`: OpenAI API key
 - `GOOGLE_CLIENT_ID` & `GOOGLE_CLIENT_SECRET`: Google OAuth credentials
 
+### Secure Email Storage
+
+Add the following to `.env.local`:
+
+```
+DATABASE_URL=...
+REDIS_URL=...
+KMS_PROVIDER=gcp|aws
+GCP_KMS_KEY_RESOURCE=projects/.../locations/.../keyRings/.../cryptoKeys/...
+AWS_KMS_KEY_ID=arn:aws:kms:...
+OBJECT_STORE=s3|gcs
+S3_BUCKET=...
+GCS_BUCKET=...
+APP_ENCRYPTION_KEY= # base64 32 bytes (dev fallback only)
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+NEXTAUTH_SECRET=...
+```
+
+### Secure Email Storage Overview
+
+- Metadata in Postgres; bodies/attachments encrypted in object storage
+- Field-level AES-256-GCM encryption via KMS-derived DEK
+- Postgres RLS isolates tenants; API sets `app.user_id` via request context
+- Access tokens cached in Redis (short TTL); only encrypted refresh tokens persisted
+
+Runbook:
+- `pnpm prisma migrate dev -n "secure_email_storage"`
+- Set `KMS_PROVIDER` and keys, `OBJECT_STORE` and bucket envs
+- To rotate keys, invalidate app workers and refresh KMS DEK cache
+
 ## Recent Updates
 
 - ✅ Fixed Google API authentication and token refresh

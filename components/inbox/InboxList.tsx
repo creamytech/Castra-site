@@ -3,7 +3,7 @@
 import useSWR from 'swr'
 import { useEffect, useMemo } from 'react'
 import { FixedSizeList as List } from 'react-window'
-import { Archive, Star as StarIcon, Paperclip, MailOpen, MoreHorizontal, Reply } from 'lucide-react'
+import { Archive, Star as StarIcon, Paperclip, MailOpen, MoreHorizontal, Reply, Sparkles } from 'lucide-react'
 import { apiFetch } from '@/lib/http'
 import { STATUS_LABEL, ScoreRing } from './InboxNew'
 
@@ -38,7 +38,9 @@ export default function InboxList({ q, filter, onSelect, filters, folder, onItem
   if (typeof filters?.minScore === 'number') threads = threads.filter((t: any) => (t.score ?? 0) >= filters.minScore)
   if (filters?.hasPhone) threads = threads.filter((t: any) => !!t.extracted?.phone)
   if (filters?.hasPrice) threads = threads.filter((t: any) => !!t.extracted?.price)
-  if (filters?.hasAttachment) threads = threads.filter((t: any) => Array.isArray(t.attachments) ? t.attachments.length > 0 : false)
+  if (filters?.hasAttachment) threads = threads.filter((t: any) => Array.isArray(t.attachments) ? t.attachments.length > 0 : !!t.hasAttachment)
+  if (filters?.unreadOnly) threads = threads.filter((t: any) => !!t.unread)
+  if (filters?.timeSensitive) threads = threads.filter((t: any) => (t.reasons || []).some((r: string) => /urgent|asap|today|deadline|offer|expire/i.test(r) || /urgent|asap|today|deadline|offer|expire/i.test(t.preview || '') || /urgent|asap|today|deadline|offer|expire/i.test(t.subject || '')))
   // Sorting: latest (default), best score
   const sortBy = filters?.sortBy || 'latest'
   if (sortBy === 'latest') {
@@ -47,7 +49,7 @@ export default function InboxList({ q, filter, onSelect, filters, folder, onItem
     threads.sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0))
   }
 
-  const rowHeight = (filters?.density || 'comfortable') === 'compact' ? 64 : 88
+  const rowHeight = (filters?.density || 'comfortable') === 'compact' ? 68 : 96
   const items = threads
   if (onItems) onItems(items)
 
@@ -86,10 +88,14 @@ export default function InboxList({ q, filter, onSelect, filters, folder, onItem
     const t: any = items[index]
     if (!t) return null
     const isSelected = selectedIds.includes(t.id)
+    const lastAt = new Date(t.lastMessageAt || t.lastSyncedAt || Date.now())
+    const daysOld = Math.floor((Date.now() - lastAt.getTime()) / (24 * 60 * 60 * 1000))
+    const needsFollowUp = t.unread && daysOld >= 3
+    const aiTldr = (t.summary && (typeof t.summary === 'string' ? t.summary : t.summary?.tldr)) || t.aiSummary || ''
     return (
       <div style={style}>
         <div
-          className={`relative pl-2 px-3 py-2 border rounded-lg cursor-pointer flex items-start gap-3 touch-manipulation group transition-transform duration-150 ${t.unread ? 'bg-primary/5 hover:bg-primary/10 border-primary/30' : 'bg-card/90 hover:bg-muted/50'} hover:scale-[1.005] ${isSelected ? 'ring-2 ring-primary/60' : ''}`}
+          className={`relative pl-3 pr-3 py-3 border rounded-lg cursor-pointer flex items-start gap-3 touch-manipulation group transition-colors duration-150 ${t.unread ? 'bg-primary/10 hover:bg-primary/15 border-primary/40' : 'bg-card/95 hover:bg-muted/50'} ${isSelected ? 'ring-2 ring-primary/60' : ''}`}
           onClick={(e) => { const target = e.target as HTMLElement; if (target.closest('input,button,textarea,select,a,[data-interactive="true"]')) return; onSelect(t.id) }}
           role="button"
           tabIndex={0}
@@ -115,22 +121,43 @@ export default function InboxList({ q, filter, onSelect, filters, folder, onItem
               )}
               {!!t.labelIds?.includes?.('STARRED') && <StarIcon size={12} className="text-yellow-400" />}
               {!!t.hasAttachment && <Paperclip size={12} className="opacity-60" />}
-              {(t.reasons || []).slice(0, 2).map((r: string, i: number) => (
-                <span key={i} className="chip shrink-0 rounded-full bg-background/60">{String(r).toLowerCase()}</span>
-              ))}
-              <div className="ml-auto text-[10px] text-muted-foreground shrink-0 flex items-center gap-2">
+              <div className="ml-auto text-[11px] text-muted-foreground shrink-0 flex items-center gap-2">
                 <span>{formatListTime(t.lastMessageAt || t.lastSyncedAt)}</span>
                 {t.lastSyncedAt && <span className="px-1 rounded bg-muted/60">synced</span>}
               </div>
             </div>
             <div className="text-sm truncate">
-              <span className={`${t.unread ? 'font-semibold' : 'font-normal'}`}>{t.subject || '(No subject)'}</span>
-              {t.preview && <span className="text-muted-foreground"> — {t.preview}</span>}
+              <span className={`${t.unread ? 'font-semibold' : 'font-medium'}`}>{t.subject || '(No subject)'}</span>
+              {t.preview && <span className="text-muted-foreground/90"> — <span className="opacity-80">{t.preview}</span></span>}
             </div>
-            <div className="opacity-0 group-hover:opacity-100 transition flex gap-1 mt-1 flex-wrap">
+            <div className="mt-1 flex items-center gap-2 flex-wrap">
+              {(t.reasons || []).slice(0, 3).map((r: string, i: number) => (
+                <span key={i} className="chip shrink-0 rounded-full bg-background/60 text-[11px]">{String(r).toLowerCase()}</span>
+              ))}
+              {needsFollowUp && <span className="chip shrink-0 rounded-full bg-amber-500/20 text-amber-200 text-[11px]">Follow up • {daysOld}d</span>}
+            </div>
+            {!!aiTldr && (
+              <div className="mt-1 text-xs text-muted-foreground italic truncate">AI: {String(aiTldr).slice(0, 140)}</div>
+            )}
+            <div className="opacity-0 group-hover:opacity-100 transition flex gap-1 mt-2 flex-wrap">
               <button data-interactive="true" title="Reply" onClick={(e)=>{ e.stopPropagation(); onSelect(t.id) }} className="px-2 py-1 border rounded text-xs inline-flex items-center gap-1"><Reply size={12}/> Reply</button>
               <button data-interactive="true" title="Archive" onClick={async (e)=>{ e.stopPropagation(); try { await apiFetch('/api/inbox/threads/bulk', { method:'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [t.id], action: 'archive' }) }); } catch {} }} className="px-2 py-1 border rounded text-xs inline-flex items-center gap-1"><Archive size={12}/> Archive</button>
               <button data-interactive="true" title="Mark read" onClick={async (e)=>{ e.stopPropagation(); try { await apiFetch('/api/inbox/threads/bulk', { method:'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [t.id], action: 'read' }) }); } catch {} }} className="px-2 py-1 border rounded text-xs inline-flex items-center gap-1"><MailOpen size={12}/> Read</button>
+              {t.latestMessageId && (
+                <button
+                  data-interactive="true"
+                  title="Suggest AI reply"
+                  onClick={async (e)=>{
+                    e.stopPropagation();
+                    try {
+                      await apiFetch('/api/email/smart-replies', { method:'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messageId: t.latestMessageId }) })
+                    } catch {}
+                  }}
+                  className="px-2 py-1 border rounded text-xs inline-flex items-center gap-1"
+                >
+                  <Sparkles size={12}/> Suggest reply
+                </button>
+              )}
               {(Array.isArray(t.quickActions) ? t.quickActions : []).map((qa: any, i: number) => (
                 <button key={i} data-interactive="true" className="px-2 py-1 border rounded text-xs inline-flex items-center gap-1" onClick={(e)=>{ e.stopPropagation(); window.dispatchEvent(new CustomEvent('inbox:quick-action', { detail: { action: qa, threadId: t.id } })) }}>{qa.label}</button>
               ))}
@@ -144,13 +171,13 @@ export default function InboxList({ q, filter, onSelect, filters, folder, onItem
             </div>
           </div>
         </div>
-        {t.unread && <span className="absolute left-0 top-0 bottom-0 w-1 rounded-l bg-primary/60" aria-hidden></span>}
+        {t.unread && <span className="absolute left-0 top-2 bottom-2 w-1.5 rounded bg-primary/70" aria-hidden></span>}
       </div>
     )
   }
 
   return (
-    <div className="space-y-2 overflow-auto" style={{ maxHeight: 'calc(100vh - 180px)' }}>
+    <div className="space-y-3 overflow-auto" style={{ maxHeight: 'calc(100vh - 180px)' }}>
       {isLoading && (
         <div className="space-y-2">
           <div className="h-6 rounded skeleton"/>
