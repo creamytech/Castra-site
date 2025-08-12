@@ -31,8 +31,23 @@ export default function NotificationsBell() {
 
   useEffect(() => {
     load()
-    const id = setInterval(load, 20000)
-    return () => clearInterval(id)
+    const id = setInterval(load, 30000)
+    let unsub: (() => void) | null = null
+    ;(async () => {
+      try {
+        const { default: Pusher } = await import('pusher-js')
+        if (!process.env.NEXT_PUBLIC_PUSHER_KEY || !process.env.NEXT_PUBLIC_PUSHER_CLUSTER) return
+        const p = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY as string, { cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER as string, authTransport: 'ajax', auth: { headers: {} } })
+        const channelName = `private-user-${(window as any).__userId || 'me'}`
+        const ch = p.subscribe(channelName)
+        ch.bind('notification', (data: any) => {
+          setItems(prev => [data, ...prev].slice(0, 50))
+          setUnread(u => u + 1)
+        })
+        unsub = () => { try { ch.unbind_all(); p.unsubscribe(channelName); p.disconnect() } catch {} }
+      } catch {}
+    })()
+    return () => { clearInterval(id); unsub?.() }
   }, [])
 
   return (

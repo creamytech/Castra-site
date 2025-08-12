@@ -333,6 +333,18 @@ model Lead {
   // For email linkage (optional, used by drafts)
   threadId    String?
   providerMsgId String?
+  // Intelligence
+  score       Int?
+  reasons     Json?
+  attrs       Json?
+  subject     String?
+  bodySnippet String?
+  fromEmail   String?
+  fromName    String?
+  // Overrides / Locks
+  isLocked       Boolean  @default(false)
+  overrideStatus String?
+  lockedAt       DateTime?
   
   // Relations
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)

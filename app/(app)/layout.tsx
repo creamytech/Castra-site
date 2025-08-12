@@ -14,6 +14,8 @@ import { CastraWordmark } from "@/components/brand/CastraWordmark";
 import { ToastProvider } from "@/components/ui/ToastProvider";
 import NotificationsBell from "@/components/NotificationsBell";
 import dynamic from "next/dynamic";
+import MobileBottomNav from "@/components/ui/MobileBottomNav";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export default function AppLayout({
   children,
@@ -165,9 +167,11 @@ export default function AppLayout({
 
         {/* Main Content */}
         <main className="p-4 sm:p-6">
-          <TransitionProvider>
-            {children}
-          </TransitionProvider>
+          <ErrorBoundary>
+            <TransitionProvider>
+              {children}
+            </TransitionProvider>
+          </ErrorBoundary>
         </main>
       </div>
 
@@ -188,6 +192,8 @@ export default function AppLayout({
 
       {/* Floating Voice Widget */}
       {isClient && <DynamicVoice />}
+      {/* Mobile Bottom Navigation */}
+      <MobileBottomNav />
     </div>
     </ToastProvider>
   );

@@ -27,9 +27,28 @@ createWorker(async (job) => {
     const { connectionId, messageId } = job.data as IngestJob
     const { gmail, connection, user } = await getAuthorizedGmail(connectionId)
     const normalized = await normalizeMessage(gmail, messageId)
-    if ((prisma as any).eventLog?.create) {
-      await (prisma as any).eventLog.create({ data: { userId: user.id, type: 'ingest', meta: { messageId } } })
-    }
+    // Persist minimal EmailThread/EmailMessage for traceability (idempotent upserts)
+    try {
+      await (prisma as any).emailThread.upsert({
+        where: { id: normalized.threadId || messageId },
+        update: { lastSyncedAt: new Date() },
+        create: { id: normalized.threadId || messageId, userId: user.id, subject: normalized.subject || null },
+      })
+      await (prisma as any).emailMessage.upsert({
+        where: { id: messageId },
+        update: { snippet: normalized.snippet || null, bodyText: normalized.body || null },
+        create: {
+          id: messageId,
+          threadId: normalized.threadId || messageId,
+          userId: user.id,
+          from: normalized.fromEmail || '',
+          to: [], cc: [],
+          date: new Date(),
+          snippet: normalized.snippet || null,
+          bodyText: normalized.body || null,
+        },
+      })
+    } catch {}
     await job.queue.add('classify-lead', { connectionId, messageId, normalized }, { jobId: `classify-${connectionId}-${messageId}` })
     return { ok: true }
   }
@@ -62,9 +81,27 @@ createWorker(async (job) => {
     const existing = await (prisma as any).lead?.findFirst?.({ where: { providerMsgId: messageId, userId: user.id } })
     let lead
     if (existing) {
-      lead = await (prisma as any).lead.update({ where: { id: existing.id }, data: { subject, bodySnippet: snippet, threadId, fromEmail, fromName, source: 'gmail', attrs: { ...(llm.fields||{}), extracted: extractEntities(subject||'', body||'') }, reasons: llm.reason.split(';').slice(0, 3), score, status } })
+      if (existing.isLocked) {
+        // Respect override lock: only update attrs/reasons/score, keep status
+        lead = await (prisma as any).lead.update({ where: { id: existing.id }, data: { subject, bodySnippet: snippet, threadId, fromEmail, fromName, attrs: { ...(llm.fields||{}), extracted: extractEntities(subject||'', body||'') }, reasons: llm.reason.split(';').slice(0, 3), score } })
+      } else {
+        lead = await (prisma as any).lead.update({ where: { id: existing.id }, data: { subject, bodySnippet: snippet, threadId, fromEmail, fromName, source: 'gmail', attrs: { ...(llm.fields||{}), extracted: extractEntities(subject||'', body||'') }, reasons: llm.reason.split(';').slice(0, 3), score, status } })
+      }
     } else {
       lead = await (prisma as any).lead.create({ data: { userId: user.id, providerMsgId: messageId, threadId, subject, bodySnippet: snippet, fromEmail, fromName, source: 'gmail', attrs: { ...(llm.fields||{}), extracted: extractEntities(subject||'', body||'') }, reasons: llm.reason.split(';').slice(0, 3), score, status } })
+      // Auto-create Contact + Deal in pipeline when a new lead qualifies
+      try {
+        if (status === 'lead' || score >= ((user as any).threshold ?? 70)) {
+          // Create contact if not exists by email
+          let contact = await (prisma as any).contact.findFirst({ where: { userId: user.id, email: fromEmail || undefined } })
+          if (!contact) {
+            const first = (fromName || '').split(' ')[0] || 'Lead'
+            const last = (fromName || '').split(' ').slice(1).join(' ') || ''
+            contact = await (prisma as any).contact.create({ data: { userId: user.id, firstName: first, lastName: last, email: fromEmail || undefined } })
+          }
+          await (prisma as any).deal.create({ data: { userId: user.id, title: subject || 'New Lead', stage: 'LEAD', type: 'BUYER', contactId: contact.id, leadId: lead.id, priceTarget: (llm.fields as any)?.price ? Number(String((llm.fields as any).price).replace(/[^0-9]/g,'')) : null } })
+        }
+      } catch {}
     }
 
     if (score >= ((user as any).threshold ?? 70)) {
@@ -85,7 +122,15 @@ createWorker(async (job) => {
     if (open) {
       await prisma.draft.update({ where: { id: open.id }, data: { subject: composed.subject, bodyText: composed.bodyText, proposedTimes: composed.proposedTimes as any } })
     } else {
-      await (prisma as any).draft.create({ data: { userId: lead.userId, leadId: lead.id, threadId: lead.threadId ?? '', subject: composed.subject, bodyText: composed.bodyText, followupType: composed.followupType, tone: composed.tone, callToAction: composed.callToAction, proposedTimes: composed.proposedTimes as any, meta: { model: composed.model, reasons: (lead as any).reasons, score: (lead as any).score } } })
+      // Respect quiet hours: if current hour in quiet window, create as 'snoozed' until quietEnd else 'queued'
+      let status = 'queued'
+      const policy = await (prisma as any).autonomyPolicy?.findFirst?.({ where: { userId: lead.userId, stage: 'LEAD' } })
+      if (policy?.quietStart != null && policy.quietEnd != null) {
+        const now = new Date(); const hour = now.getHours()
+        const inQuiet = policy.quietStart < policy.quietEnd ? (hour >= policy.quietStart && hour < policy.quietEnd) : (hour >= policy.quietStart || hour < policy.quietEnd)
+        if (inQuiet) status = 'snoozed'
+      }
+      await (prisma as any).draft.create({ data: { userId: lead.userId, leadId: lead.id, threadId: lead.threadId ?? '', status, subject: composed.subject, bodyText: composed.bodyText, followupType: composed.followupType, tone: composed.tone, callToAction: composed.callToAction, proposedTimes: composed.proposedTimes as any, meta: { model: composed.model, reasons: (lead as any).reasons, score: (lead as any).score, to: lead.fromEmail || undefined } } })
     }
     await (prisma as any).eventLog?.create?.({ data: { userId: lead.userId, type: 'draft_created', meta: { leadId } } })
     return { ok: true }
@@ -117,6 +162,9 @@ createWorker(async (job) => {
     const lead = await prisma.lead.findUnique({ where: { id: leadId }, include: { user: true } })
     if (!lead || !lead.user) return
     await sendLeadEmail({ to: lead.user.email as string, lead })
+    try {
+      await prisma.notification.create({ data: { userId: lead.userId, type: 'lead', title: 'New Lead', body: lead.subject || lead.title || '', link: `/dashboard/inbox` } })
+    } catch {}
     if ((prisma as any).eventLog?.create) {
       await (prisma as any).eventLog.create({ data: { userId: lead.userId, type: 'notify', meta: { leadId } } })
     }

@@ -6,6 +6,23 @@ export const dynamic = 'force-dynamic'
 
 export const POST = withAuth(async ({ req, ctx }) => {
   try {
+    const { threadId, leadId, subject, bodyText } = await req.json()
+    if (!threadId || !leadId) return NextResponse.json({ error: 'threadId and leadId required' }, { status: 400 })
+    const draft = await prisma.draft.create({ data: { userId: ctx.session.user.id, threadId, leadId, subject, bodyText, status: 'queued', meta: {} } })
+    return NextResponse.json({ ok: true, draft })
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || 'failed' }, { status: 500 })
+  }
+}, { action: 'drafts.create' })
+
+import { NextRequest, NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/api'
+import { prisma } from '@/lib/prisma'
+
+export const dynamic = 'force-dynamic'
+
+export const POST = withAuth(async ({ req, ctx }) => {
+  try {
     const { threadId, leadId, subject, bodyText } = await req.json().catch(() => ({}))
     if (!threadId || !subject || !bodyText) {
       return NextResponse.json({ error: 'threadId, subject, bodyText required' }, { status: 400 })
