@@ -11,7 +11,11 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createClient(): PrismaClient {
-  const base = new PrismaClient();
+  const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+  if (!url) {
+    throw new Error('DATABASE_URL (or POSTGRES_URL) is required');
+  }
+  const base = new PrismaClient({ datasources: { db: { url } } });
   if (process.env.OPTIMIZE_API_KEY) {
     return base.$extends(withOptimize({ apiKey: process.env.OPTIMIZE_API_KEY })) as unknown as PrismaClient;
   }
