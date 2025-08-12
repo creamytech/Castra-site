@@ -72,11 +72,17 @@ export const authOptions: NextAuthOptions = {
   debug: true,
   // Rely on env vars via config, but set explicitly to avoid env resolution issues
   secret: config.auth.secret,
-  trustHost: true,
-  events: {
-    async error(message) {
-      // Surface detailed callback issues in logs (Vercel logs)
-      console.error('[next-auth] event:error', message)
+  logger: {
+    error(code, metadata) {
+      console.error('[next-auth] error', code, metadata)
+    },
+    warn(code) {
+      console.warn('[next-auth] warn', code)
+    },
+    debug(code, metadata) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.debug('[next-auth] debug', code, metadata)
+      }
     },
   },
   callbacks: {
