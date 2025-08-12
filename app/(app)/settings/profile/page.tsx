@@ -9,6 +9,8 @@ export default function ProfileSettingsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [theme, setTheme] = useState<'classic'|'sunset'|'ocean'|'forest'|'lux'>('classic')
+  const [uploading, setUploading] = useState(false)
+  const [preview, setPreview] = useState<string | null>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -63,7 +65,44 @@ export default function ProfileSettingsPage() {
 
       <div className="p-4 border rounded bg-card space-y-2">
         <div className="font-semibold">Agent Profile</div>
-        <div className="text-sm text-muted-foreground">Coming soon: edit display name, phone, signature, and AI voice/style.</div>
+        <div className="text-sm text-muted-foreground mb-2">Upload a profile photo.</div>
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-full overflow-hidden bg-muted flex items-center justify-center">
+            {preview ? (
+              <img src={preview} alt="preview" className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-2xl">👤</span>
+            )}
+          </div>
+          <div className="space-y-2">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={async (e) => {
+                const f = e.target.files?.[0]
+                if (!f) return
+                const reader = new FileReader()
+                reader.onload = async () => {
+                  const dataUrl = String(reader.result || '')
+                  setPreview(dataUrl)
+                  setUploading(true)
+                  try {
+                    const r = await fetch('/api/profile/avatar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dataUrl }) })
+                    if (!r.ok) {
+                      const j = await r.json().catch(()=>({}))
+                      alert(j?.error || 'Failed to upload avatar')
+                    }
+                  } finally {
+                    setUploading(false)
+                  }
+                }
+                reader.readAsDataURL(f)
+              }}
+              className="text-sm"
+            />
+            {uploading && <div className="text-xs text-muted-foreground">Uploading…</div>}
+          </div>
+        </div>
       </div>
 
       <div className="p-4 border rounded bg-card space-y-3">

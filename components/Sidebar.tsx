@@ -38,9 +38,13 @@ export default function Sidebar() {
   }
 
   return (
-    <div className={`fixed left-0 top-0 h-full bg-card text-card-foreground border-r border-border transition-all duration-300 overflow-y-auto ${
-      isCollapsed ? 'w-16' : 'w-64'
-    }`}>
+    <div
+      className={`group fixed left-0 top-0 h-full bg-card text-card-foreground border-r border-border overflow-y-auto transition-all duration-300 ${
+        isCollapsed ? 'w-16' : 'w-64'
+      } hover:w-64`}
+      onMouseEnter={() => setIsCollapsed(false)}
+      onMouseLeave={() => setIsCollapsed(true)}
+    >
       {/* Header */}
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
@@ -50,13 +54,9 @@ export default function Sidebar() {
               <span className="font-bold text-lg text-foreground">Castra</span>
             )}
           </Link>
-          <button
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="p-2 rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors"
-            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {isCollapsed ? '→' : '←'}
-          </button>
+          <div className="hidden md:block text-xs text-muted-foreground">
+            {isCollapsed ? '' : ' '}
+          </div>
         </div>
       </div>
 
