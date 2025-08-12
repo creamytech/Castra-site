@@ -26,7 +26,7 @@ export async function GET() {
       }
     } catch {}
 
-    const deals = await prisma.deal.groupBy({ by: ['stage'], where: { userId }, _count: { _all: true } })
+    const deals = await (prisma as any).deal.groupBy({ by: ['stage'], where: { userId }, _count: { _all: true } })
     const dealCounts: Record<string, number> = {}
     for (const d of deals) dealCounts[d.stage] = d._count._all
 

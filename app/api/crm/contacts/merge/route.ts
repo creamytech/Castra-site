@@ -16,20 +16,19 @@ export const POST = withAuth(async ({ ctx, req }) => {
   if (!dup || !prim) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   // Merge fields
-  await prisma.$transaction(async (tx) => {
-    await tx.deal.updateMany({ where: { contactId: dup.id }, data: { contactId: prim.id } })
-    await tx.lead.updateMany({ where: { contactId: dup.id }, data: { contactId: prim.id } })
-    await tx.interaction.updateMany({ where: { contactId: dup.id }, data: { contactId: prim.id } })
-    const merged = await tx.contact.update({ where: { id: prim.id }, data: {
+  await prisma.$transaction([
+    prisma.deal.updateMany({ where: { contactId: dup.id, userId, orgId }, data: { contactId: prim.id } }),
+    prisma.lead.updateMany({ where: { contactId: dup.id, userId, orgId }, data: { contactId: prim.id } }),
+    prisma.interaction.updateMany({ where: { contactId: dup.id, userId, orgId }, data: { contactId: prim.id } }),
+    prisma.contact.update({ where: { id: prim.id }, data: {
       email: prim.email || dup.email,
       phone: prim.phone || dup.phone,
       firstName: prim.firstName || dup.firstName,
       lastName: prim.lastName || dup.lastName,
       tags: Array.from(new Set([...(prim.tags||[]), ...(dup.tags||[])])),
-    } })
-    await tx.contact.delete({ where: { id: dup.id } })
-    return merged
-  })
+    } }),
+    prisma.contact.delete({ where: { id: dup.id } })
+  ])
   return NextResponse.json({ ok: true })
 }, { action: 'crm.contacts.merge' })
 

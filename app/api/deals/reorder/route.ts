@@ -18,22 +18,15 @@ export const PATCH = withAuth(async ({ req, ctx }) => {
       if (moving.stage !== anchor.stage) return NextResponse.json({ error: 'Stage mismatch' }, { status: 400 })
       const targetStage = anchor.stage
       const started = Date.now()
-      await prisma.$transaction(async (tx) => {
-        // Fetch ordered list
-        const list = await tx.deal.findMany({ where: { userId: ctx.session.user.id, orgId: ctx.orgId, stage: targetStage as any }, orderBy: { position: 'asc' } })
-        // Remove moving from list
-        const filtered = list.filter(d => d.id !== moving.id)
-        // Find anchor index and insert
-        const idx = filtered.findIndex(d => d.id === anchor.id)
-        const insertIdx = insertAfter ? (idx + 1) : idx
-        if (insertIdx < 0) throw new Error('Anchor not in list')
-        filtered.splice(insertIdx, 0, moving)
-        // Reassign positions with gaps (100 spacing)
-        for (let i = 0; i < filtered.length; i++) {
-          const d = filtered[i]
-          await tx.deal.update({ where: { id: d.id }, data: { position: (i + 1) * 100 } })
-        }
-      })
+      // Compute new positions then apply in a single transactional batch
+      const list = await prisma.deal.findMany({ where: { userId: ctx.session.user.id, orgId: ctx.orgId, stage: targetStage as any }, orderBy: { position: 'asc' } })
+      const filtered = list.filter(d => d.id !== moving.id)
+      const idx = filtered.findIndex(d => d.id === anchor.id)
+      const insertIdx = insertAfter ? (idx + 1) : idx
+      if (insertIdx < 0) return NextResponse.json({ error: 'Anchor not in list' }, { status: 400 })
+      filtered.splice(insertIdx, 0, moving)
+      const updates = filtered.map((d, i) => prisma.deal.update({ where: { id: d.id }, data: { position: (i + 1) * 100 } }))
+      await prisma.$transaction(updates)
       await logAudit({ orgId: ctx.orgId!, userId: ctx.session.user.id, action: 'deal_reordered', target: moving.id, meta: { stage: targetStage, anchorId, insertAfter, durationMs: Date.now()-started } })
       return NextResponse.json({ success: true })
     }

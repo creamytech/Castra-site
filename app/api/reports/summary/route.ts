@@ -18,11 +18,11 @@ export const GET = withAuth(async ({ ctx, req }) => {
   if (cached) return NextResponse.json(cached)
 
   // Leads by source (30d)
-  const leadsBySource = await prisma.lead.groupBy({
+  const leadsBySource = await (prisma as any).lead.groupBy({
     by: ['source'],
     where: { userId: owner === 'team' ? undefined as any : userId, orgId, createdAt: { gte: since } },
     _count: { _all: true }
-  }).then(rows => rows.map(r => ({ source: r.source, count: (r as any)._count._all })))
+  }).then((rows: any[]) => rows.map((r: any) => ({ source: r.source, count: r._count._all })))
 
   // Time to first reply: approximate via first Activity EMAIL with direction 'out'
   const activities = await prisma.activity.findMany({
@@ -53,7 +53,7 @@ export const GET = withAuth(async ({ ctx, req }) => {
   }
 
   // Stage conversion counts (current snapshot)
-  const stageConv = await prisma.deal.groupBy({ by: ['stage'], where: { userId: owner === 'team' ? undefined as any : userId, orgId }, _count: { _all: true } }).then(rows => rows.map(r => ({ stage: r.stage, count: (r as any)._count._all })))
+  const stageConv = await (prisma as any).deal.groupBy({ by: ['stage'], where: { userId: owner === 'team' ? undefined as any : userId, orgId }, _count: { _all: true } }).then((rows: any[]) => rows.map((r: any) => ({ stage: r.stage, count: r._count._all })))
 
   const payload = { leadsBySource, firstReply, stageConv }
   await cacheSet(cacheKey, payload, 90)

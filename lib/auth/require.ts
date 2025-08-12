@@ -11,11 +11,12 @@ export async function requireSession(): Promise<LoadedContext> {
   if (!member?.orgId) {
     // Auto-provision a default organization for first-time users
     const orgName = session.user.name || session.user.email || 'My Organization'
-    const created = await prisma.$transaction(async (tx) => {
-      const org = await tx.org.create({ data: { name: orgName } })
-      const m = await tx.orgMember.create({ data: { orgId: org.id, userId: session.user.id, role: 'OWNER' as any } })
-      return { org, m }
-    })
+    const [org, m] = await prisma.$transaction([
+      prisma.org.create({ data: { name: orgName } }),
+      // Placeholder; member will be created after org id is known in a second step
+    ]) as any
+    const createdMember = await prisma.orgMember.create({ data: { orgId: org.id, userId: session.user.id, role: 'OWNER' as any } })
+    const created = { org, m: createdMember }
     member = { ...created.m, org: created.org } as any
   }
   const ensured = member as unknown as { orgId: string; role: any }

@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       const listRes: any = await gmail.users.messages.list({
         userId: 'me',
         maxResults: 50,
-        q: 'in:anywhere',
+        q: 'in:inbox newer_than:14d',
         pageToken: nextPageToken
       });
 
@@ -34,13 +34,31 @@ export async function POST(request: NextRequest) {
 
       for (const message of messages) {
         try {
-          const messageDetail: any = await gmail.users.messages.get({ userId: 'me', id: message.id! });
+          // Shallow-first partial fetch
+          const messageDetail: any = await gmail.users.messages.get({ userId: 'me', id: message.id!, format: 'metadata', metadataHeaders: ['From','Subject','Date','To','List-Unsubscribe','Precedence','Return-Path'], fields: 'threadId,id,snippet,payload/headers,internalDate,etag' as any });
           const headers = messageDetail.data.payload?.headers || [];
           const from = headers.find((h: any) => h.name === 'From')?.value || '';
           const subject = headers.find((h: any) => h.name === 'Subject')?.value || '';
           const snippet = messageDetail.data.snippet || '';
           const internalDate = new Date(parseInt(messageDetail.data.internalDate || '0'));
           const labels = messageDetail.data.labelIds || [];
+          let bodyText = '';
+          let bodyHtml = '';
+          const likelyLead = /(tour|showing|offer|interested|schedule|budget|price|appointment)/i.test(`${subject} ${snippet}`);
+          const vendorish = /(unsubscribe|list-unsubscribe|no-reply|news|promo|marketing)/i.test(JSON.stringify(headers));
+          if (likelyLead && !vendorish) {
+            const full = await gmail.users.messages.get({ userId: 'me', id: message.id!, format: 'full', fields: 'payload/parts,payload/body' as any });
+            const parts: any[] = [];
+            const walk = (p: any) => { if (!p) return; parts.push(p); (p.parts || []).forEach((pp: any) => walk(pp)) };
+            walk((full.data as any).payload);
+            for (const p of parts) {
+              const b64 = p.body?.data; if (!b64) continue;
+              const buff = Buffer.from(b64.replace(/-/g, '+').replace(/_/g, '/'), 'base64');
+              const text = buff.toString('utf-8');
+              if (p.mimeType?.includes('text/plain')) bodyText += text;
+              if (p.mimeType?.includes('text/html')) bodyHtml += text;
+            }
+          }
           const payload = JSON.parse(JSON.stringify(messageDetail.data));
 
           await prisma.message.upsert({

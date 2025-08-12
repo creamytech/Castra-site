@@ -1,25 +1,53 @@
 import 'dotenv/config'
-import { createWorker } from '../lib/queue'
+import { createGmailWorker } from '../lib/queue'
 import { prisma } from '@/lib/prisma'
 import { classifyLead } from '../ai/classifyLead'
 import { ruleScore, blend, decideStatus } from '../ai/rules'
 import { sendLeadEmail } from '../lib/notify'
 import { normalizeMessage, listHistorySince, saveHistoryCursor } from '../lib/gmail-helpers'
+import { metricIncr } from '@/lib/cache'
 import { getAuthorizedGmail } from '@/lib/google'
 
 type FetchJob = { connectionId: string }
 type IngestJob = { connectionId: string; messageId: string }
 type ClassifyJob = { connectionId: string; messageId: string; normalized: any }
+type IngestBatchJob = { connectionId: string; messageIds: string[] }
 
-createWorker(async (job) => {
+createGmailWorker(async (job) => {
   if (job.name === 'fetch-updates') {
     const { connectionId } = job.data as FetchJob
     const { gmail, connection } = await getAuthorizedGmail(connectionId)
-    const { messageIds, newHistoryId } = await listHistorySince(gmail, connection)
-    if (newHistoryId) await saveHistoryCursor(connection.id, newHistoryId)
-    for (const id of messageIds) {
-      await job.queue.add('ingest-message', { connectionId, messageId: id }, { jobId: `ingest-${connectionId}-${id}` })
+    let messageIds: string[] = []
+    let newHistoryId: string | undefined
+    try {
+      const out = await listHistorySince(gmail, connection)
+      messageIds = out.messageIds
+      newHistoryId = out.newHistoryId
+    } catch (err: any) {
+      // If historyId too old, reissue watch and backfill with last 7 days inbox
+      if (String(err?.message || '').includes('historyId')) {
+        const labels = await gmail.users.labels.list({ userId: 'me' })
+        const leadsLabelId = (labels.data.labels || []).find((l:any) => (l.name || '').toLowerCase() === 'leads')?.id
+        const labelIds = ['INBOX', ...(leadsLabelId ? [leadsLabelId] : [])]
+        await gmail.users.watch({ userId: 'me', requestBody: { topicName: process.env.GOOGLE_PUBSUB_TOPIC!, labelIds, labelFilterAction: 'include' } })
+        const list = await gmail.users.messages.list({ userId: 'me', q: 'in:inbox newer_than:7d', maxResults: 100 })
+        messageIds = (list.data.messages || []).map(m => m.id!).filter(Boolean)
+      } else {
+        throw err
+      }
     }
+    if (newHistoryId) await saveHistoryCursor(connection.id, newHistoryId)
+    // Coalesce: single batch job
+    if (messageIds.length) {
+      await job.queue.add('ingest-batch', { connectionId, messageIds }, {
+        jobId: `ingest-batch-${connectionId}-${Date.now()}`,
+        attempts: 5,
+        backoff: { type: 'exponential', delay: 1000 },
+        removeOnComplete: 1000,
+        removeOnFail: 1000
+      })
+    }
+    await metricIncr('gmail.history.events', messageIds.length)
     return { found: messageIds.length }
   }
 
@@ -27,11 +55,18 @@ createWorker(async (job) => {
     const { connectionId, messageId } = job.data as IngestJob
     const { gmail, connection, user } = await getAuthorizedGmail(connectionId)
     const normalized = await normalizeMessage(gmail, messageId)
+    // Thread-level dedupe: skip if older than lastInternalDate or locked
+    const threadId = normalized.threadId || messageId
+    const thread = await (prisma as any).emailThread.findUnique?.({ where: { id: threadId } })
+    const currentInternalDate = Number((await gmail.users.messages.get({ userId: 'me', id: messageId, fields: 'internalDate' as any })).data.internalDate || '0')
+    if (thread?.lastSyncedAt && currentInternalDate && new Date(currentInternalDate).getTime() <= new Date(thread.lastSyncedAt).getTime()) {
+      return { skipped: 'stale' }
+    }
     // Persist minimal EmailThread/EmailMessage for traceability (idempotent upserts)
     try {
       await (prisma as any).emailThread.upsert({
         where: { id: normalized.threadId || messageId },
-        update: { lastSyncedAt: new Date() },
+        update: { lastSyncedAt: new Date(), subject: normalized.subject || null },
         create: { id: normalized.threadId || messageId, userId: user.id, subject: normalized.subject || null },
       })
       await (prisma as any).emailMessage.upsert({
@@ -49,8 +84,46 @@ createWorker(async (job) => {
         },
       })
     } catch {}
-    await job.queue.add('classify-lead', { connectionId, messageId, normalized }, { jobId: `classify-${connectionId}-${messageId}` })
+    await job.queue.add('classify-lead', { connectionId, messageId, normalized }, {
+      jobId: `classify-${connectionId}-${messageId}`,
+      attempts: 5,
+      backoff: { type: 'exponential', delay: 1000 },
+      removeOnComplete: 1000,
+      removeOnFail: 1000
+    })
+    await metricIncr('gmail.messages.normalized', 1)
     return { ok: true }
+  }
+
+  if (job.name === 'ingest-batch') {
+    const { connectionId, messageIds } = job.data as IngestBatchJob
+    const { gmail, user } = await getAuthorizedGmail(connectionId)
+    let processed = 0
+    for (const messageId of messageIds) {
+      try {
+        const normalized = await normalizeMessage(gmail, messageId)
+        const threadId = normalized.threadId || messageId
+        const thread = await (prisma as any).emailThread.findUnique?.({ where: { id: threadId } })
+        const internalDateMs = normalized.internalDateMs || 0
+        if (thread?.lastSyncedAt && internalDateMs && new Date(internalDateMs).getTime() <= new Date(thread.lastSyncedAt).getTime()) {
+          continue
+        }
+        await (prisma as any).emailThread.upsert({
+          where: { id: threadId },
+          update: { lastSyncedAt: new Date(), subject: normalized.subject || null },
+          create: { id: threadId, userId: user.id, subject: normalized.subject || null },
+        })
+        await (prisma as any).emailMessage.upsert({
+          where: { id: messageId },
+          update: { snippet: normalized.snippet || null, bodyText: normalized.body || null },
+          create: { id: messageId, threadId, userId: user.id, from: normalized.fromEmail || '', to: [], cc: [], date: new Date(internalDateMs || Date.now()), snippet: normalized.snippet || null, bodyText: normalized.body || null },
+        })
+        processed++
+      } catch (e) {
+        console.warn('[ingest-batch] error for', messageId)
+      }
+    }
+    return { processed }
   }
 
   if (job.name === 'classify-lead') {

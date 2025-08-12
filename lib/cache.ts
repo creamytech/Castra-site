@@ -58,6 +58,19 @@ export async function pingCache() {
   try { await r.ping(); return true } catch { return false }
 }
 
+// Simple metrics using Redis keys `metrics:<key>`
+export async function metricIncr(key: string, by = 1, ttlSeconds = 24 * 3600) {
+  const r = getClient(); if (!r) return
+  try {
+    await r.multi().incrby(`metrics:${key}`, by).expire(`metrics:${key}`, ttlSeconds).exec()
+  } catch {}
+}
+
+export async function metricGet(key: string): Promise<number> {
+  const r = getClient(); if (!r) return 0
+  try { const v = await r.get(`metrics:${key}`); return v ? Number(v) : 0 } catch { return 0 }
+}
+
 interface CacheEntry {
   value: string
   timestamp: number

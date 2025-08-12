@@ -7,10 +7,10 @@ const globalForPrisma = globalThis as unknown as {
 
 const base = new PrismaClient();
 // Attach Optimize extension when API key is present
-export const prisma = globalForPrisma.prisma ?? (
-  process.env.OPTIMIZE_API_KEY
-    ? base.$extends(withOptimize({ apiKey: process.env.OPTIMIZE_API_KEY }))
-    : base
-);
+const client = process.env.OPTIMIZE_API_KEY
+  ? (base.$extends(withOptimize({ apiKey: process.env.OPTIMIZE_API_KEY })) as unknown as PrismaClient)
+  : base;
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+export const prisma: PrismaClient = (globalForPrisma.prisma as PrismaClient) ?? client;
+
+if (process.env.NODE_ENV !== "production") (globalForPrisma as any).prisma = prisma as any;

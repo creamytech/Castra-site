@@ -12,7 +12,7 @@ export const GET = withAuth(async ({ ctx, req }) => {
   const orgId = ctx.orgId
 
   // Compute earliest inbound per thread (first received message date)
-  const inbound = await prisma.emailMessage.groupBy({
+  const inbound = await (prisma as any).emailMessage.groupBy({
     by: ['threadId'],
     where: { userId, orgId, date: { gte: since } },
     _min: { date: true },
