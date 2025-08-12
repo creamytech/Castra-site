@@ -98,6 +98,10 @@ export const authOptions: NextAuthOptions = {
     },
   },
   callbacks: {
+    async jwt({ token, user }: any) {
+      if (user?.id) token.id = user.id
+      return token
+    },
     async redirect({ url, baseUrl }) {
       try {
         console.log('[next-auth] redirect callback', { url, baseUrl })
@@ -171,11 +175,11 @@ export const authOptions: NextAuthOptions = {
       console.log("Sign-in allowed for:", account?.provider || account?.type);
       return true;
     },
-    async session({ session, user }: any) {
+    async session({ session, user, token }: any) {
       console.log("Session Callback:", { 
         hasUser: !!user,
-        userId: user?.id,
-        userEmail: user?.email,
+        userId: user?.id || token?.id,
+        userEmail: user?.email || session?.user?.email,
         sessionKeys: session ? Object.keys(session) : []
       });
       
@@ -184,10 +188,9 @@ export const authOptions: NextAuthOptions = {
         session.user = {};
       }
       
-      // Set user ID from database user
-      if (user?.id) {
-        session.user.id = user.id;
-      }
+      // Set user ID from database user or JWT token
+      if (user?.id) session.user.id = user.id;
+      if (!session.user.id && token?.id) session.user.id = token.id as any;
       
       // Set other user properties
       if (user?.email) {
@@ -212,7 +215,7 @@ export const authOptions: NextAuthOptions = {
   },
   providers,
   session: {
-    strategy: "database",
+    strategy: "jwt",
   },
   pages: {
     signIn: "/auth/signin",
