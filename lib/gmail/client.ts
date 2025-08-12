@@ -31,7 +31,7 @@ export async function getGoogleAuthForUser(userId: string) {
     const adapter = await (prisma as any).account.findFirst({ where: { userId, provider: 'google' }, select: { refresh_token: true } })
     if (adapter?.refresh_token) {
       const enc = await encryptRefreshToken(adapter.refresh_token)
-      await (prisma as any).mailAccount.update({ where: { id: account.id }, data: { refreshTokenEnc: enc } })
+      await withRLS(userId, async (tx)=> (tx as any).mailAccount.update({ where: { providerUserId: (account as any).providerUserId }, data: { refreshTokenEnc: enc } }))
       refreshTokenBuf = enc
     } else {
       throw new Error('Missing refresh token; please reconnect Google (prompt=consent)')
@@ -45,7 +45,7 @@ export async function getGoogleAuthForUser(userId: string) {
     const adapter = await (prisma as any).account.findFirst({ where: { userId, provider: 'google' }, select: { refresh_token: true } })
     if (adapter?.refresh_token) {
       const enc = await encryptRefreshToken(adapter.refresh_token)
-      await (prisma as any).mailAccount.update({ where: { id: account.id }, data: { refreshTokenEnc: enc } })
+      await withRLS(userId, async (tx)=> (tx as any).mailAccount.update({ where: { providerUserId: (account as any).providerUserId }, data: { refreshTokenEnc: enc } }))
       refreshToken = adapter.refresh_token
     } else {
       throw e
