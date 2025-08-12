@@ -23,7 +23,34 @@ export async function getGoogleAuthForUser(userId: string) {
 
   let accessToken = await getCachedAccessToken(userId, 'google')
   const oauth2 = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET)
-  const refreshToken = await decryptRefreshToken(account.refreshTokenEnc as any)
+  // Ensure we have a valid encrypted refresh token payload
+  let refreshTokenBuf: Buffer | null = Buffer.isBuffer(account.refreshTokenEnc) ? account.refreshTokenEnc as any : null
+  const minGcmLen = 12 + 16 + 1
+  if (!refreshTokenBuf || refreshTokenBuf.length < minGcmLen) {
+    // Attempt to repair from adapter
+    const adapter = await (prisma as any).account.findFirst({ where: { userId, provider: 'google' }, select: { refresh_token: true } })
+    if (adapter?.refresh_token) {
+      const enc = await encryptRefreshToken(adapter.refresh_token)
+      await (prisma as any).mailAccount.update({ where: { id: account.id }, data: { refreshTokenEnc: enc } })
+      refreshTokenBuf = enc
+    } else {
+      throw new Error('Missing refresh token; please reconnect Google (prompt=consent)')
+    }
+  }
+  let refreshToken: string
+  try {
+    refreshToken = await decryptRefreshToken(refreshTokenBuf as any)
+  } catch (e) {
+    // Try to recover from adapter
+    const adapter = await (prisma as any).account.findFirst({ where: { userId, provider: 'google' }, select: { refresh_token: true } })
+    if (adapter?.refresh_token) {
+      const enc = await encryptRefreshToken(adapter.refresh_token)
+      await (prisma as any).mailAccount.update({ where: { id: account.id }, data: { refreshTokenEnc: enc } })
+      refreshToken = adapter.refresh_token
+    } else {
+      throw e
+    }
+  }
   oauth2.setCredentials({
     access_token: accessToken || undefined,
     refresh_token: refreshToken,
