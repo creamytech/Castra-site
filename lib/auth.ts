@@ -206,7 +206,8 @@ export const authOptions: NextAuthOptions = {
         console.error('secure MailAccount upsert failed', e)
       }
 
-      const allowed = !!(account?.provider === 'google' || account?.type === 'credentials')
+      // Allow only if email is present; block if the adapter can't create user (OAuthCreateAccount)
+      const allowed = !!((account?.provider === 'google' && user?.email) || account?.type === 'credentials')
       console.log("Sign-in allowed for:", account?.provider || account?.type, '->', allowed);
       return allowed;
     },
