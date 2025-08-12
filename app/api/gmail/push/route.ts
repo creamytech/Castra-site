@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { gmailQueue } from '@/src/lib/queue'
 import { metricIncr } from '@/lib/cache'
+import { Queue } from 'bullmq'
+import IORedis from 'ioredis'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
+
+const connection = new IORedis(process.env.REDIS_URL || '', { maxRetriesPerRequest: null })
+const gmailQueue = new Queue('gmail', { connection })
 
 // Google Pub/Sub push endpoint
 export async function POST(req: NextRequest) {

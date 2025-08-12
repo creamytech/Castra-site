@@ -68,7 +68,8 @@ export async function normalizeMessage(gmail: gmail_v1.Gmail, id: string) {
     data = meta.data
     etag = (meta.data as any).etag
   }
-  const headers = Object.fromEntries((data.payload?.headers ?? []).map((h) => [h.name!, h.value ?? ''])) as Record<string, string>
+  const headers = Object.fromEntries(((data.payload?.headers ?? []) as Array<{ name?: string; value?: string }>).
+    map((h: { name?: string; value?: string }) => [h.name as string, h.value ?? ''])) as Record<string, string>
   const subject = headers['Subject'] ?? ''
   const fromRaw = headers['From'] ?? ''
   const m = fromRaw.match(/^(?:"?([^"]*)"?\s)?<?([^>]+)>?$/)
