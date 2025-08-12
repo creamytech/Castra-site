@@ -1,10 +1,20 @@
 import Redis from 'ioredis'
 
 const redisUrl = process.env.REDIS_URL
+let warnedInvalid = false
 let client: Redis | null = null
 
 function getClient(): Redis | null {
   if (!redisUrl) return null
+  // Validate URL to avoid DNS lookups on random tokens
+  const validScheme = /^redis(s)?:\/\//i.test(redisUrl)
+  if (!validScheme) {
+    if (!warnedInvalid) {
+      console.warn('[cache] REDIS_URL is set but not a valid redis:// or rediss:// URL; caching disabled')
+      warnedInvalid = true
+    }
+    return null
+  }
   if (!client) client = new Redis(redisUrl, { maxRetriesPerRequest: 2, enableOfflineQueue: false })
   return client
 }

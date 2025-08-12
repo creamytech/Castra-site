@@ -17,7 +17,12 @@ export function middleware(req: NextRequest) {
     "media-src 'self' blob: https:",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:",
     "style-src 'self' 'unsafe-inline'",
-    "connect-src 'self' https://api.openai.com https://www.googleapis.com https://*.twilio.com blob: data: wss:",
+    // Allow Google OAuth and APIs just in case any client flows use them
+    "connect-src 'self' https://api.openai.com https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com https://*.twilio.com blob: data: wss:",
+    // Permit frames from Google accounts if needed for certain auth UX
+    "frame-src 'self' https://accounts.google.com",
+    // Allow form submissions back to our site and Google auth endpoints
+    "form-action 'self' https://accounts.google.com",
     "worker-src 'self' blob:",
     "frame-ancestors 'none'"
   ].join('; '))
@@ -62,7 +67,8 @@ function cryptoRandom() {
 }
 
 export const config = {
-  matcher: ['/((?!_next|static|.*\\..*).*)'],
+  // Exclude NextAuth routes to avoid any header/CSP interference during OAuth
+  matcher: ['/((?!_next|static|api/auth|.*\\..*).*)'],
 }
 
 // If you need withAuth, merge matchers instead of redefining config

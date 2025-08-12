@@ -70,6 +70,15 @@ console.log("Configured providers:", providers.map(p => p.id));
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   debug: true,
+  // Rely on env vars via config, but set explicitly to avoid env resolution issues
+  secret: config.auth.secret,
+  trustHost: true,
+  events: {
+    async error(message) {
+      // Surface detailed callback issues in logs (Vercel logs)
+      console.error('[next-auth] event:error', message)
+    },
+  },
   callbacks: {
     async signIn({ user, account, profile, email }: any) {
       console.log("SignIn Callback:", { 
