@@ -24,7 +24,7 @@ function formatListTime(value?: string) {
   return d.toLocaleDateString()
 }
 
-export default function InboxList({ q, filter, onSelect, filters, folder, category, onItems, selectedId }: { q: string; filter: string; onSelect: (id: string) => void; filters?: any, folder?: string, category?: string, onItems?: (items: any[]) => void, selectedId?: string }) {
+export default function InboxList({ q, filter, onSelect, filters, folder, category, onItems, selectedId, selectedIds = [], onToggleSelect }: { q: string; filter: string; onSelect: (id: string) => void; filters?: any, folder?: string, category?: string, onItems?: (items: any[]) => void, selectedId?: string, selectedIds?: string[], onToggleSelect?: (id: string, index: number, ev?: { shiftKey?: boolean }) => void }) {
   const params = new URLSearchParams()
   if (q) params.set('q', q)
   if (filter === 'hasDeal') params.set('hasDeal', 'true')
@@ -54,17 +54,21 @@ export default function InboxList({ q, filter, onSelect, filters, folder, catego
   function Row({ index, style }: any) {
     const t: any = items[index]
     if (!t) return null
+    const isSelected = selectedIds.includes(t.id)
     return (
       <div style={style}>
         <div
-          className={`px-3 py-2 border rounded-lg cursor-pointer flex items-start gap-3 touch-manipulation group transition-transform duration-150 ${t.unread ? 'bg-primary/5 hover:bg-primary/10 border-primary/30' : 'bg-card/90 hover:bg-muted/50'} hover:scale-[1.005]'}`}
+          className={`px-3 py-2 border rounded-lg cursor-pointer flex items-start gap-3 touch-manipulation group transition-transform duration-150 ${t.unread ? 'bg-primary/5 hover:bg-primary/10 border-primary/30' : 'bg-card/90 hover:bg-muted/50'} hover:scale-[1.005] ${isSelected ? 'ring-2 ring-primary/60' : ''}`}
           onClick={() => onSelect(t.id)}
           role="button"
           tabIndex={0}
           aria-selected={selectedId === t.id}
           onKeyDown={(e)=>{ if(e.key==='Enter' || e.key===' '){ onSelect(t.id) } }}
         >
-          <div className="pt-1 pulse"><ScoreRing score={typeof t.score === 'number' ? t.score : 0} /></div>
+          <div className="pt-1 flex items-center gap-2">
+            <input type="checkbox" aria-label="Select thread" checked={isSelected} onChange={(e)=>{ e.stopPropagation(); onToggleSelect?.(t.id, index, { shiftKey: (e as any).shiftKey }) }} className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity" />
+            <ScoreRing score={typeof t.score === 'number' ? t.score : 0} />
+          </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 min-w-0">
               <div className={`truncate ${t.unread ? 'font-semibold' : 'font-medium'}`}>{t.fromName || t.fromEmail || 'Unknown sender'}</div>

@@ -20,6 +20,7 @@ export default function DashboardInboxPage() {
   const [syncing, setSyncing] = useState(false)
   const [toast, setToast] = useState<string>('')
   const [threadId, setThreadId] = useState<string>('')
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [overlayOpen, setOverlayOpen] = useState<boolean>(false)
   const [summary, setSummary] = useState<string>('')
   const [loadingSummary, setLoadingSummary] = useState<boolean>(false)
@@ -120,6 +121,27 @@ export default function DashboardInboxPage() {
   const openThread = (id: string) => { setThreadId(id); setOverlayOpen(true) }
   const closeThread = () => { setOverlayOpen(false); setThreadId(''); setSummary('') }
 
+  // Bulk selection with shift support
+  const lastIndexRef = useRef<number>(-1)
+  const toggleSelect = (id: string, index: number, ev?: { shiftKey?: boolean }) => {
+    setSelectedIds(prev => {
+      const has = prev.includes(id)
+      let next = has ? prev.filter(x=>x!==id) : [...prev, id]
+      if (ev?.shiftKey && lastIndexRef.current >= 0 && itemsRef.current.length) {
+        const start = Math.min(lastIndexRef.current, index)
+        const end = Math.max(lastIndexRef.current, index)
+        const range = itemsRef.current.slice(start, end+1).map((t:any)=>t.id)
+        const set = new Set(next)
+        range.forEach(i=> set.add(i))
+        next = Array.from(set)
+      }
+      lastIndexRef.current = index
+      return next
+    })
+  }
+
+  const clearSelection = () => setSelectedIds([])
+
   const doComposeSend = async () => {
     try {
       setComposeBusy(true)
@@ -166,8 +188,17 @@ export default function DashboardInboxPage() {
       <div className="order-3 md:order-none md:col-span-3 min-h-[70vh] p-4 relative">
         {/* Email list column */}
         <div className="space-y-2">
-          <InboxList q={debouncedQ} filter={filter} onSelect={openThread} filters={filters} folder={folder} category={category} selectedId={threadId} onItems={(it)=>{ itemsRef.current = it }} />
+          <InboxList q={debouncedQ} filter={filter} onSelect={openThread} filters={filters} folder={folder} category={category} selectedId={threadId} selectedIds={selectedIds} onToggleSelect={toggleSelect} onItems={(it)=>{ itemsRef.current = it }} />
         </div>
+        {selectedIds.length > 0 && (
+          <div className="fixed left-1/2 -translate-x-1/2 bottom-6 z-30 px-3 py-2 rounded-full border bg-popover shadow-lg flex items-center gap-2 text-xs">
+            <div>{selectedIds.length} selected</div>
+            <button className="px-2 py-1 border rounded" onClick={clearSelection}>Clear</button>
+            <button className="px-2 py-1 border rounded" onClick={async()=>{ await apiFetch('/api/inbox/threads/bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: selectedIds, action: 'archive' }) }); clearSelection(); }}>Archive</button>
+            <button className="px-2 py-1 border rounded" onClick={async()=>{ await apiFetch('/api/inbox/threads/bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: selectedIds, action: 'read' }) }); clearSelection(); }}>Mark read</button>
+            <button className="px-2 py-1 border rounded" onClick={()=>{/* TODO: move */}}>Move</button>
+          </div>
+        )}
         {/* Overlay detail replaces the list until closed */}
         {overlayOpen && (
           <div className="absolute inset-0 bg-background/95 backdrop-blur border rounded-md shadow-lg animate-slide-in overflow-hidden flex flex-col">
