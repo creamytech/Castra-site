@@ -118,9 +118,9 @@ export const GET = withAuth(async ({ req, ctx }) => {
       const threadIds = rows.map(r => r.id)
       const latestMessagesRaw = threadIds.length ? await prisma.emailMessage.findMany({
         where: { threadId: { in: threadIds } },
-        orderBy: [ { threadId: 'asc' }, { date: 'desc' } ],
+        orderBy: { date: 'desc' },
         select: { threadId: true, intent: true, snippet: true, bodyText: true, from: true, date: true, internalRefs: true },
-        take: Math.min(threadIds.length * 5, 2000)
+        take: Math.min(threadIds.length * 3, 1500)
       }) : []
       const latestByThread = new Map<string, any>()
       for (const m of latestMessagesRaw) {

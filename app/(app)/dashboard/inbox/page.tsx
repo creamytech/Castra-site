@@ -29,7 +29,7 @@ export default function DashboardInboxPage() {
   const [composeSubject, setComposeSubject] = useState('')
   const [composeBody, setComposeBody] = useState('')
   const [composeBusy, setComposeBusy] = useState(false)
-  const { mutate } = useSWRConfig()
+  const { mutate, cache } = useSWRConfig()
   const sync = async () => {
     try {
       setSyncing(true)
