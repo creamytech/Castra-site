@@ -87,8 +87,9 @@ export default function ConnectPage() {
   }
 
   const handleConnect = (provider: string) => {
-    // Redirect to sign-in with specific provider
-    window.location.href = `/api/auth/signin/${provider}?callbackUrl=${encodeURIComponent('/app/dashboard')}`
+    // Redirect to sign-in with specific provider (use absolute callback and correct path)
+    const callbackUrl = `${window.location.origin}/dashboard`
+    window.location.href = `/api/auth/signin/${provider}?callbackUrl=${encodeURIComponent(callbackUrl)}`
   }
 
   const handleDisconnect = async (provider: string) => {
