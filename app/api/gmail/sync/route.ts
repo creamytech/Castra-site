@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getGoogleAuthForUser } from "@/lib/gmail/client";
+import { getLabelMap, syncSinceHistoryId } from "@/lib/gmail/history";
 import { prisma } from "@/lib/securePrisma";
 import { putEncryptedObject } from "@/lib/storage";
 import { google } from "googleapis";
@@ -17,6 +18,18 @@ export async function POST(request: NextRequest) {
 
     const { oauth2 } = await getGoogleAuthForUser(session.user.id);
     const gmail = google.gmail({ version: 'v1', auth: oauth2 });
+
+    // If client provides historyId, perform incremental delta sync
+    const { historyId } = await request.json().catch(()=>({})) as any
+    if (historyId) {
+      const account = await prisma.mailAccount.findFirst({ where: { userId: session.user.id, provider: 'google' } })
+      if (!account) return NextResponse.json({ error: 'no account' }, { status: 400 })
+      const mailbox = await prisma.mailbox.findFirst({ where: { accountId: account.id } })
+      if (!mailbox) return NextResponse.json({ error: 'no mailbox' }, { status: 400 })
+      const newHistoryId = await syncSinceHistoryId(session.user.id, mailbox.id, String(historyId))
+      const labels = await getLabelMap(session.user.id)
+      return NextResponse.json({ success: true, newHistoryId, labels })
+    }
 
     let nextPageToken: string | undefined = undefined;
     let totalSynced = 0;
