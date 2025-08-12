@@ -21,6 +21,24 @@ export default function InboxThread({ threadId }: { threadId: string }) {
   const [subject, setSubject] = useState('')
   const [picked, setPicked] = useState<{start:string,end:string}|null>(null)
 
+  // Listen for external prefill events from the Inbox Agent
+  // Event detail: { threadId, subject, draft }
+  // Only applies if threadId matches the currently open thread
+  // Then sets subject and draft and brings composer into view
+  React.useEffect(() => {
+    const handler = (e: any) => {
+      const detail = e?.detail || {}
+      if (!detail?.threadId || detail.threadId !== threadId) return
+      if (detail?.subject) setSubject(detail.subject)
+      if (detail?.draft) setDraft(detail.draft)
+      // Attempt to focus composer textarea
+      const el = document.querySelector('#inbox-composer-body') as HTMLTextAreaElement | null
+      if (el) el.focus()
+    }
+    if (typeof window !== 'undefined') window.addEventListener('inbox:prefill-draft', handler as any)
+    return () => { if (typeof window !== 'undefined') window.removeEventListener('inbox:prefill-draft', handler as any) }
+  }, [threadId])
+
   const aiDraft = async () => {
     const lastId = thread?.messages?.slice(-1)?.[0]?.id
     if (!lastId) return
