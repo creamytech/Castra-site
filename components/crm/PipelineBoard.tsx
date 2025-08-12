@@ -8,6 +8,15 @@ import NewDealDialog from './NewDealDialog'
 import DealThreadPanel from './DealThreadPanel'
 
 const STAGES = ['LEAD','QUALIFIED','SHOWING','OFFER','ESCROW','CLOSED','LOST']
+const STAGE_TINT: Record<string, string> = {
+  LEAD: 'border-t-2 border-amber-400',
+  QUALIFIED: 'border-t-2 border-green-400',
+  SHOWING: 'border-t-2 border-blue-400',
+  OFFER: 'border-t-2 border-yellow-400',
+  ESCROW: 'border-t-2 border-teal-400',
+  CLOSED: 'border-t-2 border-purple-400',
+  LOST: 'border-t-2 border-red-400',
+}
 
 export default function PipelineBoard() {
   const [loading, setLoading] = useState(true)
@@ -195,10 +204,10 @@ export default function PipelineBoard() {
         </div>
       </div>
       {/* TODO: Side drawer for deal details can be added here; using modal pattern for now */}
-      <div id="pipeline-root" className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-7 gap-4" role="list" aria-label="Pipeline board">
+      <div id="pipeline-root" className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-7 gap-4 md:gap-5 overflow-x-auto snap-x snap-mandatory md:overflow-visible" role="list" aria-label="Pipeline board">
         {STAGES.map(stage => (
-          <div key={stage} role="listitem" aria-label={`Column ${stage}`}>
-            <StageColumn stage={stage} filters={filters} onMove={moveStage} refreshKey={refreshKey}
+          <div key={stage} role="listitem" aria-label={`Column ${stage}`} className="snap-start">
+            <StageColumn stage={stage} stageTintClass={STAGE_TINT[stage]} filters={filters} onMove={moveStage} refreshKey={refreshKey}
               onEmail={openEmail} onSMS={openSMS} onSchedule={openSchedule}
               icon={{ LEAD:'🧑‍🤝‍🧑', QUALIFIED:'📞', SHOWING:'🏠', OFFER:'🤝', ESCROW:'📑', CLOSED:'🔑', LOST:'❌' }[stage]}
               onOpen={openDrawer}

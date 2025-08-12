@@ -33,6 +33,11 @@ export default function DealCard({ deal, onMove, onEmail, onSMS, onSchedule, onO
     }
     return {}
   }
+  const leadStatus = (deal as any)?.emailThreads?.[0]?.status || ''
+  const leadScore = (deal as any)?.emailThreads?.[0]?.score as number | undefined
+  const isLead = leadStatus === 'lead' || (leadScore != null && leadScore >= 70)
+  const initials = (deal?.contacts?.[0]?.contact?.firstName || deal?.title || '?').slice(0,1)
+
   return (
     <div
       tabIndex={0}
@@ -40,13 +45,22 @@ export default function DealCard({ deal, onMove, onEmail, onSMS, onSchedule, onO
       data-deal-id={deal.id}
       data-stage={deal.stage}
       data-updated-at={deal.updatedAt}
-      className="p-3 rounded-lg border border-border bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-pink-500/10 hover:from-indigo-500/20 hover:via-purple-500/20 hover:to-pink-500/20 transition-colors cursor-pointer touch-manipulation select-none focus:outline-none focus:ring-2 focus:ring-primary"
+      className="p-3 rounded-lg bg-card shadow-sm hover:shadow transition-shadow cursor-pointer touch-manipulation select-none focus:outline-none focus:ring-2 focus:ring-primary border border-border/50"
       onClick={() => onOpen ? onOpen(deal.id) : router.push(`/crm/deals/${deal.id}`)}
     >
-      <div className="font-medium truncate">{deal.title}</div>
-      <div className="text-xs text-muted-foreground truncate">{deal.city || ''} {deal.priceTarget ? `• $${deal.priceTarget.toLocaleString()}` : ''}</div>
+      <div className="flex items-start gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <div className="font-semibold truncate">{deal.title}</div>
+            {isLead && <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-400/30">Lead</span>}
+            <div className="ml-auto text-xs text-foreground/80">{deal.value ? `$${Number(deal.value).toLocaleString()}` : (deal.priceTarget ? `$${Number(deal.priceTarget).toLocaleString()}` : '')}</div>
+          </div>
+          <div className="text-xs text-muted-foreground truncate">{deal.propertyAddr || deal.city || ''}</div>
+        </div>
+        <div className="w-6 h-6 rounded-full bg-muted text-[10px] grid place-items-center" aria-hidden>{initials}</div>
+      </div>
       {deal.nextAction && (
-        <div className="text-xs mt-1">Next: {deal.nextAction}{deal.nextDue ? ` by ${new Date(deal.nextDue).toLocaleDateString()}` : ''}</div>
+        <div className="text-[11px] mt-1 text-foreground/90">Next: {deal.nextAction}{deal.nextDue ? ` by ${new Date(deal.nextDue).toLocaleDateString()}` : ''}</div>
       )}
       <div className="mt-2 flex items-center gap-2 flex-wrap">
         <button onClick={(e)=>{ e.stopPropagation(); if ((deal as any)?.emailThreads?.[0]?.id) { window.location.href = `/dashboard/inbox/${(deal as any).emailThreads[0].id}` } else { onEmail?.(deal) } }} className="text-xs px-2 py-1 rounded bg-muted hover:bg-muted/80 inline-flex items-center gap-1"><Mail className="w-3 h-3" /> Email</button>

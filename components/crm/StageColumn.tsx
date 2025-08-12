@@ -6,7 +6,7 @@ import DraggableCard from './DraggableCard'
 import { useDroppable } from '@dnd-kit/core'
 import EmptyStage from './EmptyStage'
 
-export default function StageColumn({ stage, filters, onMove, refreshKey, onEmail, onSMS, onSchedule, icon, onOpen }: { stage: string; filters: any; onMove: (dealId: string, toStage: string) => void; refreshKey?: number; onEmail?: (deal: any)=>void; onSMS?: (deal:any)=>void; onSchedule?: (deal:any)=>void; icon?: string; onOpen?: (dealId: string)=>void }) {
+export default function StageColumn({ stage, stageTintClass, filters, onMove, refreshKey, onEmail, onSMS, onSchedule, icon, onOpen }: { stage: string; stageTintClass?: string; filters: any; onMove: (dealId: string, toStage: string) => void; refreshKey?: number; onEmail?: (deal: any)=>void; onSMS?: (deal:any)=>void; onSchedule?: (deal:any)=>void; icon?: string; onOpen?: (dealId: string)=>void }) {
   const [items, setItems] = useState<any[]>([])
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
@@ -55,7 +55,7 @@ export default function StageColumn({ stage, filters, onMove, refreshKey, onEmai
   }
 
   return (
-    <div ref={setNodeRef} role="list" aria-label={`Column ${stage}`} className={`bg-card border border-border rounded-lg p-0 flex flex-col min-h-[200px] ${isOver ? 'ring-2 ring-primary' : ''}`}>
+    <div ref={setNodeRef} role="list" aria-label={`Column ${stage}`} className={`bg-card border border-border rounded-lg p-0 flex flex-col min-h-[200px] ${stageTintClass || ''} ${isOver ? 'ring-2 ring-primary' : ''}`}>
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 px-3 py-2 border-b">
         <div className="flex items-center justify-between">
           <div className="text-sm font-semibold">{icon ? <span className="mr-1" aria-hidden>{icon}</span> : null}<span aria-label={`Stage ${stage}`}>{stage}</span> <span className="text-xs text-muted-foreground">· {total} · ${'{'}totalValue.toLocaleString(){'}'}</span></div>

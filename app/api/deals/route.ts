@@ -40,7 +40,11 @@ export const GET = withAuth(async ({ req, ctx }) => {
         orderBy: [ { stage: 'asc' }, { position: 'asc' as any }, { updatedAt: 'desc' } ],
         skip: (page - 1) * pageSize,
         take: pageSize,
-        include: { contacts: { include: { contact: true } }, activities: { take: 1, orderBy: { occurredAt: 'desc' } } }
+        include: {
+          contacts: { include: { contact: true } },
+          activities: { take: 1, orderBy: { occurredAt: 'desc' } },
+          emailThreads: { select: { id: true, status: true, score: true } }
+        }
       })
     ])
 
