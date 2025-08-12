@@ -12,7 +12,7 @@ async function createDealFromThread(threadId: string) {
 
 const fetcher = (url: string) => apiFetch(url).then(r => r.json())
 
-export default function ThreadSidebar({ threadId }: { threadId: string }) {
+export default function ThreadSidebar({ threadId }: { threadId?: string }) {
   const [dealId, setDealId] = useState('')
   const { data } = useSWR(threadId ? `/api/inbox/threads/${threadId}` : null, fetcher)
   const thread = data?.thread
@@ -66,7 +66,7 @@ export default function ThreadSidebar({ threadId }: { threadId: string }) {
   return (
     <div className="p-3 border rounded bg-card space-y-2">
       <div className="flex items-center justify-between">
-        <div className="font-semibold text-sm">Thread</div>
+        <div className="font-semibold text-sm">AI Assistant</div>
         {thread?.status && (
           <div className="text-xs">
             <span className="badge" data-status={thread.status}>{STATUS_LABEL[thread.status as keyof typeof STATUS_LABEL] || thread.status}</span>
@@ -82,8 +82,7 @@ export default function ThreadSidebar({ threadId }: { threadId: string }) {
       <button onClick={createDeal} className="px-2 py-1 rounded border text-xs w-full">+ New Deal from email</button>
 
       <div className="pt-2 border-t space-y-2">
-        <div className="font-semibold text-sm">AI Assistant</div>
-        <button onClick={runAi} className="px-2 py-1 rounded bg-primary text-primary-foreground text-xs w-full">AI Draft</button>
+        <button onClick={runAi} disabled={!lastId} className="px-2 py-1 rounded bg-primary text-primary-foreground text-xs w-full disabled:opacity-50">AI Draft</button>
         {draft && (
           <>
             <textarea className="w-full border rounded bg-background p-2 text-sm" rows={5} value={draft} onChange={(e)=>setDraft(e.target.value)} />

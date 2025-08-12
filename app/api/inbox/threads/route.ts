@@ -175,6 +175,7 @@ export const GET = withAuth(async ({ req, ctx }) => {
           case 'starred': return labels.includes('STARRED')
           case 'spam': return labels.includes('SPAM')
           case 'trash': return labels.includes('TRASH')
+          case 'archived': return !labels.includes('INBOX') && !labels.includes('SPAM') && !labels.includes('TRASH')
           case 'drafts': return labels.includes('DRAFT')
           case 'inbox':
           default:

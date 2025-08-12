@@ -129,9 +129,15 @@ export default function InboxList({ q, filter, onSelect, filters, folder, onItem
             </div>
             <div className="opacity-0 group-hover:opacity-100 transition flex gap-1 mt-1">
               <button data-interactive="true" title="Reply" onClick={(e)=>{ e.stopPropagation(); onSelect(t.id) }} className="px-2 py-1 border rounded text-xs inline-flex items-center gap-1"><Reply size={12}/> Reply</button>
-              <button data-interactive="true" title="Archive" onClick={(e)=>{ e.stopPropagation(); /* todo hook archive */ }} className="px-2 py-1 border rounded text-xs inline-flex items-center gap-1"><Archive size={12}/> Archive</button>
-              <button data-interactive="true" title="Mark read" onClick={(e)=>{ e.stopPropagation(); /* optimistic mark read */ }} className="px-2 py-1 border rounded text-xs inline-flex items-center gap-1"><MailOpen size={12}/> Read</button>
-              <button data-interactive="true" title="More" onClick={(e)=>{ e.stopPropagation(); }} className="px-2 py-1 border rounded text-xs inline-flex items-center gap-1"><MoreHorizontal size={12}/></button>
+              <button data-interactive="true" title="Archive" onClick={async (e)=>{ e.stopPropagation(); try { await apiFetch('/api/inbox/threads/bulk', { method:'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [t.id], action: 'archive' }) }); } catch {} }} className="px-2 py-1 border rounded text-xs inline-flex items-center gap-1"><Archive size={12}/> Archive</button>
+              <button data-interactive="true" title="Mark read" onClick={async (e)=>{ e.stopPropagation(); try { await apiFetch('/api/inbox/threads/bulk', { method:'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [t.id], action: 'read' }) }); } catch {} }} className="px-2 py-1 border rounded text-xs inline-flex items-center gap-1"><MailOpen size={12}/> Read</button>
+              <details data-interactive="true" className="relative">
+                <summary className="px-2 py-1 border rounded text-xs inline-flex items-center gap-1 list-none cursor-pointer select-none"><MoreHorizontal size={12}/> More</summary>
+                <div className="absolute z-20 mt-1 right-0 w-40 bg-popover border rounded shadow-lg text-xs">
+                  <button className="w-full text-left px-3 py-2 hover:bg-accent" onClick={async (e)=>{ e.stopPropagation(); try { await apiFetch('/api/inbox/threads/bulk', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ids:[t.id], action:'unread' }) }); } catch {} }}>Mark unread</button>
+                  <button className="w-full text-left px-3 py-2 hover:bg-accent" onClick={(e)=>{ e.stopPropagation(); onSelect(t.id) }}>Open</button>
+                </div>
+              </details>
             </div>
           </div>
         </div>

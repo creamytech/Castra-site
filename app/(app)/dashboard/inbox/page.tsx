@@ -262,7 +262,8 @@ export default function DashboardInboxPage() {
         )}
       </div>
       <div className="order-2 md:order-none md:col-span-1 p-4 bg-card/40 border-l">
-        {threadId && <ThreadSidebar threadId={threadId} />}
+        {/* Global inbox sidebar now always shows AI assistant, not only within a thread */}
+        <ThreadSidebar threadId={threadId || ''} />
         <div className="mt-4">
           <div className="text-xs text-muted-foreground mb-1">Agent</div>
           <div className="border rounded p-2 space-y-2 text-xs">

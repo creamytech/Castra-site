@@ -64,21 +64,21 @@ export default function SummaryCard({ data, threadId, dealId }: { data: SummaryD
       )}
 
       {Array.isArray(data.keyPoints) && data.keyPoints.length > 0 && (
-        <div>
-          <div className="text-xs text-muted-foreground mb-1">Key points</div>
+        <details>
+          <summary className="text-xs text-muted-foreground mb-1 cursor-pointer select-none">Key points</summary>
           <ul className="list-disc pl-5 space-y-1 text-[13px]">
             {data.keyPoints.map((p, i) => <li key={i}>{p}</li>)}
           </ul>
-        </div>
+        </details>
       )}
 
       {Array.isArray(data.actionItems) && data.actionItems.length > 0 && (
-        <div>
-          <div className="text-xs text-muted-foreground mb-1">Action items</div>
+        <details>
+          <summary className="text-xs text-muted-foreground mb-1 cursor-pointer select-none">Action items</summary>
           <ul className="list-disc pl-5 space-y-1 text-[13px]">
             {data.actionItems.map((a, i) => <li key={i}>{a}</li>)}
           </ul>
-        </div>
+        </details>
       )}
 
       <div className="flex flex-wrap gap-1">

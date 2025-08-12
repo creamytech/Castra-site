@@ -3,7 +3,7 @@
 const cn = (...cls: Array<string | false | null | undefined>) => cls.filter(Boolean).join(' ')
 import { Inbox, Star, Send, FileText, Ban, Trash2, Mail, ChevronDown } from 'lucide-react'
 
-type FolderKey = 'inbox'|'unread'|'starred'|'drafts'|'spam'|'trash'|'all'
+type FolderKey = 'inbox'|'unread'|'starred'|'drafts'|'spam'|'trash'|'archived'|'all'
 type CategoryKey = 'primary'|'promotions'|'social'|'updates'|'forums'|'all'
 
 export default function SidebarNav({
@@ -28,6 +28,7 @@ export default function SidebarNav({
     { key: 'drafts', label: 'Drafts', icon: FileText },
     { key: 'spam', label: 'Spam', icon: Ban },
     { key: 'trash', label: 'Trash', icon: Trash2 },
+    { key: 'archived', label: 'Archived', icon: Inbox },
     { key: 'all', label: 'All Mail', icon: Send },
   ]
 
