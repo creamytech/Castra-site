@@ -1,7 +1,7 @@
 "use client"
 
 import useSWR from 'swr'
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { FixedSizeList as List } from 'react-window'
 import { Archive, Star as StarIcon, Paperclip, MailOpen, MoreHorizontal, Reply } from 'lucide-react'
 import { apiFetch } from '@/lib/http'
@@ -50,6 +50,30 @@ export default function InboxList({ q, filter, onSelect, filters, folder, onItem
   const rowHeight = (filters?.density || 'comfortable') === 'compact' ? 64 : 88
   const items = threads
   if (onItems) onItems(items)
+
+  // Keyboard shortcuts: j/k navigate, u toggle unread (noop placeholder), e archive (placeholder)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (['INPUT','TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return
+      if (e.key === 'j' || e.key === 'k') {
+        e.preventDefault()
+        const idx = Math.max(0, items.findIndex((t:any)=>t.id===selectedId))
+        const next = e.key === 'j' ? Math.min(items.length-1, idx+1) : Math.max(0, idx-1)
+        const id = items[next]?.id
+        if (id) onSelect(id)
+      }
+      if (e.key === 'u') {
+        // optimistic toggle can be added via PATCH
+        e.preventDefault()
+      }
+      if (e.key === 'e') {
+        // archive placeholder
+        e.preventDefault()
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [items, selectedId, onSelect])
 
   function Row({ index, style }: any) {
     const t: any = items[index]
