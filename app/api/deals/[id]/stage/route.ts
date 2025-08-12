@@ -22,9 +22,12 @@ export const PATCH = withAuth(async ({ req, ctx }, { params }: any) => {
     return NextResponse.json({ error: 'Conflict', code: 'VERSION_CONFLICT', currentUpdatedAt: full.updatedAt }, { status: 409 })
   }
 
+    // Allow bi-directional moves from UI button as well
     const fromIdx = ORDER.indexOf(deal.stage as any)
     const toIdx = ORDER.indexOf(stage)
-    if (!(toIdx >= fromIdx || stage === 'LOST')) return NextResponse.json({ error: 'Invalid stage transition' }, { status: 400 })
+    if (toIdx === fromIdx) {
+      return NextResponse.json({ success: true })
+    }
 
   // Enforce close requirements
   if (stage === 'CLOSED' && (value == null || String(value) === '')) {

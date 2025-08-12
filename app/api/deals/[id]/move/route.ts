@@ -20,9 +20,12 @@ export const PATCH = withAuth(async ({ req, ctx }, { params }: any) => {
     return NextResponse.json({ error: 'Conflict', code: 'VERSION_CONFLICT', currentUpdatedAt: deal.updatedAt }, { status: 409 })
   }
 
+    // Allow bi-directional moves via DnD; no-op if same stage
     const fromIdx = ORDER.indexOf(deal.stage as any)
     const toIdx = ORDER.indexOf(toStage)
-    if (!(toIdx >= fromIdx || toStage === 'LOST')) return NextResponse.json({ error: 'Invalid stage transition' }, { status: 400 })
+    if (toIdx === fromIdx) {
+      return NextResponse.json({ success: true })
+    }
 
   // If moving to CLOSED, require value/closeReason; if to LOST require closeReason
   if (toStage === 'CLOSED' && (deal.value == null || String(deal.value) === '')) {

@@ -37,6 +37,7 @@ export default function DealCard({ deal, onMove, onEmail, onSMS, onSchedule, onO
   const leadScore = (deal as any)?.emailThreads?.[0]?.score as number | undefined
   const isLead = leadStatus === 'lead' || (leadScore != null && leadScore >= 70)
   const initials = (deal?.contacts?.[0]?.contact?.firstName || deal?.title || '?').slice(0,1)
+  const scoreColor = isLead ? 'from-emerald-400 to-emerald-700' : 'from-muted to-muted'
 
   return (
     <div
@@ -51,7 +52,14 @@ export default function DealCard({ deal, onMove, onEmail, onSMS, onSchedule, onO
       <div className="flex items-start gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <div className="font-semibold truncate">{deal.title}</div>
+            <div className="relative font-semibold truncate pr-5">
+              {deal.title}
+              {typeof leadScore === 'number' && (
+                <span className="absolute -right-0.5 -top-0.5 inline-block align-middle">
+                  <span className={`inline-block w-[14px] h-[14px] rounded-full bg-[conic-gradient(theme(colors.emerald.400)_${'{'}${'Math.max(0, Math.min(100, leadScore))'}{'}'}%,theme(colors.muted.DEFAULT)_0)]`} aria-label={`Score ${leadScore}`}></span>
+                </span>
+              )}
+            </div>
             {isLead && <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-400/30">Lead</span>}
             <div className="ml-auto text-xs text-foreground/80">{deal.value ? `$${Number(deal.value).toLocaleString()}` : (deal.priceTarget ? `$${Number(deal.priceTarget).toLocaleString()}` : '')}</div>
           </div>

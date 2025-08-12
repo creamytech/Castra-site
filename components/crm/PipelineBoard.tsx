@@ -184,20 +184,27 @@ export default function PipelineBoard() {
       collisionDetection={closestCenter}
       sensors={sensors}
     >
-      <div className="flex items-center justify-between mb-3" role="region" aria-label="Pipeline filters">
-        <div className="flex items-center gap-2 text-sm flex-wrap">
-          <input className="border rounded px-2 py-1 bg-background" placeholder="Search" onChange={e => setFilters((f: any) => ({ ...f, q: e.target.value }))} />
-          <input className="border rounded px-2 py-1 bg-background" placeholder="City" onChange={e => setFilters((f: any) => ({ ...f, city: e.target.value }))} />
-          <input className="border rounded px-2 py-1 bg-background" placeholder="Min $" onChange={e => setFilters((f: any) => ({ ...f, priceMin: e.target.value }))} />
-          <input className="border rounded px-2 py-1 bg-background" placeholder="Max $" onChange={e => setFilters((f: any) => ({ ...f, priceMax: e.target.value }))} />
-          <select className="border rounded px-2 py-1 bg-background" onChange={e=>setFilters((f:any)=>({ ...f, type: e.target.value||undefined }))}>
-            <option value="">All Types</option>
-            <option value="BUYER">Buyer</option>
-            <option value="SELLER">Seller</option>
-            <option value="RENTAL">Rental</option>
-          </select>
-          <label className="inline-flex items-center gap-1 text-xs"><input type="checkbox" onChange={e=>setFilters((f:any)=>({ ...f, hot: e.target.checked }))} /> Hot leads only</label>
-          <label className="inline-flex items-center gap-1 text-xs"><input type="checkbox" onChange={e=>setFilters((f:any)=>({ ...f, archived: e.target.checked }))} /> Show archived</label>
+      <div className="flex items-center justify-between mb-3 gap-2" role="region" aria-label="Pipeline filters">
+        <div className="flex items-center gap-2 text-sm flex-1">
+          <input className="border rounded px-3 py-2 bg-background w-full max-w-xl" placeholder="Search deals, contacts, addresses…" onChange={e => setFilters((f: any) => ({ ...f, q: e.target.value }))} />
+          <details className="relative group">
+            <summary className="list-none px-2 py-2 text-xs rounded border cursor-pointer hover:bg-accent/50">Filters</summary>
+            <div className="absolute right-0 mt-2 w-72 p-3 bg-popover border rounded shadow-lg z-20 space-y-2">
+              <input className="w-full border rounded px-2 py-1 bg-background" placeholder="City" onChange={e => setFilters((f: any) => ({ ...f, city: e.target.value }))} />
+              <div className="grid grid-cols-2 gap-2">
+                <input className="border rounded px-2 py-1 bg-background" placeholder="Min $" onChange={e => setFilters((f: any) => ({ ...f, priceMin: e.target.value }))} />
+                <input className="border rounded px-2 py-1 bg-background" placeholder="Max $" onChange={e => setFilters((f: any) => ({ ...f, priceMax: e.target.value }))} />
+              </div>
+              <select className="w-full border rounded px-2 py-1 bg-background" onChange={e=>setFilters((f:any)=>({ ...f, type: e.target.value||undefined }))}>
+                <option value="">All Types</option>
+                <option value="BUYER">Buyer</option>
+                <option value="SELLER">Seller</option>
+                <option value="RENTAL">Rental</option>
+              </select>
+              <label className="inline-flex items-center gap-2 text-xs"><input type="checkbox" onChange={e=>setFilters((f:any)=>({ ...f, hot: e.target.checked }))} /> Hot only</label>
+              <label className="inline-flex items-center gap-2 text-xs"><input type="checkbox" onChange={e=>setFilters((f:any)=>({ ...f, archived: e.target.checked }))} /> Show archived</label>
+            </div>
+          </details>
         </div>
         <div>
           <NewDealDialog onCreated={() => { setRefreshKey(Date.now()) }} />

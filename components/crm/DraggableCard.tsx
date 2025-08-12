@@ -11,7 +11,7 @@ export default function DraggableCard({ id, children, data }: { id: string; chil
   // Make the whole card the drag handle by applying listeners to a wrapper
   const style: CSSProperties = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 10 } : {}
   return (
-    <div ref={setRefs} style={style} {...listeners} {...attributes} className={(isDragging ? 'opacity-70 ' : '') + 'touch-none select-none'}>
+    <div ref={setRefs} style={style} {...listeners} {...attributes} data-dragging={isDragging ? 'true' : 'false'} className={(isDragging ? 'opacity-90 scale-[1.02] shadow-lg ' : '') + 'touch-none select-none will-change-transform transition-transform'}>
       {children}
     </div>
   )
