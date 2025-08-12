@@ -19,6 +19,7 @@ interface Stats {
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<string>('');
   const [stats, setStats] = useState<Stats>({
     leadsNew: 0,
     emailsToday: 0,
@@ -65,6 +66,7 @@ export default function DashboardPage() {
       if (response.ok) {
         const data = await response.json();
         setStats(data);
+        setLastUpdated(new Date().toLocaleTimeString());
       }
     } catch (error) {
       console.error("Failed to fetch stats:", error);
@@ -132,11 +134,17 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick Stats */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-xs text-muted-foreground">{lastUpdated && `Updated ${lastUpdated}`}</div>
+        <button onClick={fetchStats} className="text-xs px-2 py-1 rounded border hover:bg-muted">Refresh</button>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        {[{label:'New Leads (30d)', value:stats.leadsNew, tint:'#34d399'},{label:'Emails Today', value:stats.emailsToday, tint:'#38bdf8'},{label:'Upcoming Events', value:stats.eventsUpcoming, tint:'#a78bfa'},{label:'Pending Drafts', value:stats.draftsPending, tint:'#fbbf24'}].map((s)=> (
+        {[{label:'New Leads (30d)', key:'leadsNew', tint:'#34d399'},{label:'Emails Today', key:'emailsToday', tint:'#38bdf8'},{label:'Upcoming Events', key:'eventsUpcoming', tint:'#a78bfa'},{label:'Pending Drafts', key:'draftsPending', tint:'#fbbf24'}].map((s)=> (
           <div key={s.label} className="card-gradient p-6 relative overflow-hidden">
             <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full opacity-10" style={{ background: s.tint }} aria-hidden="true" />
-            <div className="text-3xl font-bold">{s.value}</div>
+            <div className="text-3xl font-bold">
+              {loading ? <span className="inline-block h-8 w-16 skeleton rounded"/> : (stats as any)[s.key]}
+            </div>
             <div className="text-sm text-muted-foreground">{s.label}</div>
           </div>
         ))}
@@ -161,7 +169,7 @@ export default function DashboardPage() {
             </Link>
 
             <Link
-              href="/inbox"
+              href="/dashboard/inbox"
               className="block w-full p-4 bg-muted hover:bg-accent hover:text-accent-foreground rounded-lg transition-colors text-left"
             >
               <div className="flex items-center space-x-3">
