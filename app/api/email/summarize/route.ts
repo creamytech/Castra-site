@@ -74,29 +74,32 @@ export const POST = withAuth(async ({ req, ctx }) => {
       messages: [
         {
           role: 'system',
-          content: 'You are a helpful assistant that summarizes email threads. Provide a concise 5-bullet point summary focusing on key points, decisions, and action items. Use bullet points (•) for clarity.'
+          content: 'You are a helpful assistant that summarizes email threads. Return a compact JSON object with fields: tldr (1-2 sentences), keyPoints (array of 3-6 bullets), actionItems (array of actionable bullets), dates (array of date/time strings if any), people (array of names or emails), sentiment (positive|neutral|negative), confidence (low|medium|high). Do not include any extra keys or prose.'
         },
         {
           role: 'user',
-          content: `Summarize this email thread:\n\n${truncatedContent}`
+          content: `Summarize this email thread and return JSON only:\n\n${truncatedContent}`
         }
       ],
-      max_tokens: 300,
+      max_tokens: 400,
       temperature: 0.2,
     })
 
-    const summary = completion.choices[0]?.message?.content || 'Unable to generate summary'
+    const raw = completion.choices[0]?.message?.content || ''
+    let structured: any = null
+    try {
+      structured = JSON.parse(raw)
+    } catch {
+      // Fallback: wrap raw into tldr
+      structured = { tldr: raw.slice(0, 500), keyPoints: [] }
+    }
 
     // Cache the summary
-    setCachedThreadSummary(ctx.session.user.id, threadId, summary)
+    setCachedThreadSummary(ctx.session.user.id, threadId, JSON.stringify(structured))
 
     console.log(`Successfully summarized thread ${threadId}`)
 
-    return NextResponse.json({ 
-      summary, 
-      cached: false,
-      message: 'Summary generated successfully'
-    })
+    return NextResponse.json({ summary: structured, cached: false })
   } catch (error: any) {
     console.error('Failed to summarize email:', error)
     

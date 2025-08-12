@@ -14,11 +14,21 @@ export function ThreadHeader({ lead, onStatusChange }: { lead: any; onStatusChan
     return r.json()
   })
   const summaryData = useMemo(()=>{
-    const text: string = data?.summary || ''
-    const lines = text.split(/\n+/).map(s=>s.trim()).filter(Boolean)
-    const tldr = lines[0] || ''
-    const keyPoints = lines.slice(1, 5)
-    return { tldr, keyPoints, actionItems: [], sentiment: 'neutral' as const, confidence: 'high' as const }
+    const s = data?.summary
+    if (!s) return { tldr: '', keyPoints: [] }
+    if (typeof s === 'string') {
+      const lines = s.split(/\n+/).map((x:string)=>x.trim()).filter(Boolean)
+      return { tldr: lines[0] || '', keyPoints: lines.slice(1,5) }
+    }
+    return {
+      tldr: s.tldr || '',
+      keyPoints: s.keyPoints || [],
+      actionItems: s.actionItems || [],
+      dates: s.dates || [],
+      people: s.people || [],
+      sentiment: s.sentiment || 'neutral',
+      confidence: s.confidence || 'medium'
+    }
   }, [data?.summary])
 
   return (
