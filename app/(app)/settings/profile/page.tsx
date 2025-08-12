@@ -81,22 +81,23 @@ export default function ProfileSettingsPage() {
               onChange={async (e) => {
                 const f = e.target.files?.[0]
                 if (!f) return
-                const reader = new FileReader()
-                reader.onload = async () => {
-                  const dataUrl = String(reader.result || '')
-                  setPreview(dataUrl)
-                  setUploading(true)
-                  try {
-                    const r = await fetch('/api/profile/avatar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dataUrl }) })
-                    if (!r.ok) {
-                      const j = await r.json().catch(()=>({}))
-                      alert(j?.error || 'Failed to upload avatar')
-                    }
-                  } finally {
-                    setUploading(false)
+                setUploading(true)
+                try {
+                  // Preview locally
+                  const reader = new FileReader()
+                  reader.onload = () => setPreview(String(reader.result || ''))
+                  reader.readAsDataURL(f)
+
+                  const fd = new FormData()
+                  fd.append('file', f)
+                  const r = await fetch('/api/profile/avatar', { method: 'POST', body: fd })
+                  if (!r.ok) {
+                    const j = await r.json().catch(()=>({}))
+                    alert(j?.error || 'Failed to upload avatar')
                   }
+                } finally {
+                  setUploading(false)
                 }
-                reader.readAsDataURL(f)
               }}
               className="text-sm"
             />
