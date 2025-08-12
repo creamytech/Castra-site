@@ -75,6 +75,13 @@ export default function InboxList({ q, filter, onSelect, filters, folder, onItem
     return () => window.removeEventListener('keydown', handler)
   }, [items, selectedId, onSelect])
 
+  // External refresh trigger for parent actions
+  useEffect(() => {
+    const fn = () => mutate()
+    window.addEventListener('inbox-refresh', fn as any)
+    return () => window.removeEventListener('inbox-refresh', fn as any)
+  }, [mutate])
+
   function Row({ index, style }: any) {
     const t: any = items[index]
     if (!t) return null
@@ -111,7 +118,10 @@ export default function InboxList({ q, filter, onSelect, filters, folder, onItem
               {(t.reasons || []).slice(0, 2).map((r: string, i: number) => (
                 <span key={i} className="chip shrink-0 rounded-full bg-background/60">{String(r).toLowerCase()}</span>
               ))}
-              <div className="ml-auto text-[10px] text-muted-foreground shrink-0">{formatListTime(t.lastMessageAt || t.lastSyncedAt)}</div>
+              <div className="ml-auto text-[10px] text-muted-foreground shrink-0 flex items-center gap-2">
+                <span>{formatListTime(t.lastMessageAt || t.lastSyncedAt)}</span>
+                {t.lastSyncedAt && <span className="px-1 rounded bg-muted/60">synced</span>}
+              </div>
             </div>
             <div className="text-sm truncate">
               <span className={`${t.unread ? 'font-semibold' : 'font-normal'}`}>{t.subject || '(No subject)'}</span>

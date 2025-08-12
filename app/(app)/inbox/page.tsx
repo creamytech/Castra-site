@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import InboxList from '@/components/inbox/InboxList'
+import BulkActions from '@/components/inbox/BulkActions'
 import InboxThread from '@/components/inbox/InboxThread'
 import ThreadSidebar from '@/components/inbox/ThreadSidebar'
 import { InboxFilterBar, type Status } from '@/components/inbox/InboxNew'
@@ -12,6 +13,7 @@ export default function RealEstateInboxPage() {
   const [filter, setFilter] = useState('all')
   const [threadId, setThreadId] = useState<string>('')
   const [filters, setFilters] = useState<Partial<{ status: Status[]; source: string[]; minScore: number; unreadOnly: boolean; hasPhone: boolean; hasPrice: boolean }>>({})
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
 
   return (
     <div className="p-6 grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -21,7 +23,36 @@ export default function RealEstateInboxPage() {
         </div>
         <Segmented options={[{label:'All', value:'all'},{label:'Has Deal', value:'hasDeal'},{label:'Unlinked', value:'unlinked'}]} value={filter} onChange={setFilter} />
         <InboxFilterBar value={filters} onChange={setFilters as any} />
-        <InboxList q={q} filter={filter} filters={filters} onSelect={(id)=>setThreadId(id)} selectedId={threadId} />
+        <BulkActions
+          selectedCount={selectedIds.length}
+          onMarkRead={async ()=>{
+            await fetch('/api/inbox', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'read', ids: selectedIds }) })
+            setSelectedIds([])
+            window.dispatchEvent(new Event('inbox-refresh'))
+          }}
+          onMarkUnread={async ()=>{
+            await fetch('/api/inbox', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'unread', ids: selectedIds }) })
+            setSelectedIds([])
+            window.dispatchEvent(new Event('inbox-refresh'))
+          }}
+          onArchive={async ()=>{
+            await fetch('/api/inbox', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'delete', ids: selectedIds }) })
+            setSelectedIds([])
+            window.dispatchEvent(new Event('inbox-refresh'))
+          }}
+          onClear={()=>setSelectedIds([])}
+        />
+        <InboxList
+          q={q}
+          filter={filter}
+          filters={filters}
+          onSelect={(id)=>setThreadId(id)}
+          selectedId={threadId}
+          selectedIds={selectedIds}
+          onToggleSelect={(id)=>{
+            setSelectedIds(prev => prev.includes(id) ? prev.filter(x=>x!==id) : [...prev, id])
+          }}
+        />
       </div>
       <div className="md:col-span-3">
         <InboxThread threadId={threadId} />
