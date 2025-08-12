@@ -14,23 +14,101 @@ export const POST = withAuth(async ({ req, ctx }) => {
     if (!prompt) return NextResponse.json({ error: 'prompt required' }, { status: 400 })
     if (!openai) return NextResponse.json({ error: 'LLM not configured' }, { status: 500 })
 
-    // Fetch recent threads/messages for grounding
-    const recent = await prisma.emailMessage.findMany({ where: { userId: ctx.session.user.id }, orderBy: { internalDate: 'desc' }, take: 50 })
-    const condensed = recent.map(m => ({ id: m.id, threadId: m.threadId, from: m.from, subject: m.subject, snippet: m.snippet, date: m.internalDate }))
+    // Define tool functions
+    const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
+      {
+        type: 'function',
+        function: {
+          name: 'search_threads',
+          description: 'Search recent inbox for messages or threads related to a query and return thread links',
+          parameters: {
+            type: 'object',
+            properties: {
+              query: { type: 'string' },
+              limit: { type: 'number' }
+            },
+            required: ['query']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'draft_reply',
+          description: 'Draft a reply for the latest message in a thread',
+          parameters: {
+            type: 'object',
+            properties: {
+              threadId: { type: 'string' },
+              tone: { type: 'string' }
+            },
+            required: ['threadId']
+          }
+        }
+      }
+    ]
 
-    const system = `You are an AI assistant with access to a recent snapshot of the user's email inbox (Gmail). Your job is to:
-1) Answer questions about emails (who said what, when, subjects).
-2) Find relevant threads and return links in the form /dashboard/inbox?threadId=<threadId> (or /dashboard/inbox/<threadId> if applicable).
-3) If the user asks to draft a reply, propose a short reply in plain text.
-Constraints: Only use the provided snapshot; do not claim to have read full contents if only snippet is given.`
-    const user = `User prompt: ${prompt}
-Recent messages (JSON): ${JSON.stringify(condensed)}`
-    const model = process.env.OPENAI_MODEL || 'gpt-4o-mini'
-    const completion = await openai.chat.completions.create({ model, temperature: 0.2, messages: [
+    // Tool executors
+    async function callTool(name: string, args: any) {
+      switch (name) {
+        case 'search_threads': {
+          const q = String(args?.query || '').toLowerCase()
+          const lim = Math.min(Number(args?.limit || 10), 25)
+          const msgs = await prisma.emailMessage.findMany({ where: { userId: ctx.session.user.id }, orderBy: { date: 'desc' }, take: 200 })
+          const seen = new Set<string>()
+          const hits: any[] = []
+          for (const m of msgs) {
+            const hay = `${m.subject || ''} ${m.snippet || ''} ${m.bodyText || ''}`.toLowerCase()
+            if (!q || hay.includes(q)) {
+              if (!seen.has(m.threadId)) {
+                seen.add(m.threadId)
+                hits.push({ threadId: m.threadId, subject: m.subject, from: m.from, date: m.date, snippet: m.snippet, link: `/dashboard/inbox/${m.threadId}` })
+                if (hits.length >= lim) break
+              }
+            }
+          }
+          return { results: hits }
+        }
+        case 'draft_reply': {
+          const threadId = String(args?.threadId || '')
+          const tone = String(args?.tone || 'friendly')
+          const last = await prisma.emailMessage.findFirst({ where: { userId: ctx.session.user.id, threadId }, orderBy: { date: 'desc' } })
+          if (!last) return { error: 'No messages found for thread' }
+          const system = `You are an expert real-estate assistant. Draft a concise reply in the requested tone (${tone}).`
+          const user = `Original message from ${last.from} on ${last.date?.toISOString?.() || ''}:
+${last.bodyText || last.snippet || ''}
+
+Return only the email body in plain text.`
+          const model = process.env.OPENAI_MODEL || 'gpt-4o-mini'
+          const c = await openai!.chat.completions.create({ model, temperature: 0.2, messages: [ { role: 'system', content: system }, { role: 'user', content: user } ] })
+          const body = c.choices[0]?.message?.content?.trim() || ''
+          return { draft: body, subject: 'Re: ' + (last.subject || '') }
+        }
+        default:
+          return { error: 'unknown tool' }
+      }
+    }
+
+    // Initial grounding context
+    const recent = await prisma.emailMessage.findMany({ where: { userId: ctx.session.user.id }, orderBy: { date: 'desc' }, take: 30 })
+    const condensed = recent.map(m => ({ id: m.id, threadId: m.threadId, from: m.from, subject: m.subject, snippet: m.snippet, date: m.date }))
+    const system = `You are an AI assistant with access to a recent snapshot of the user's inbox. You may call tools to search and draft replies. Always include direct thread links when referencing a thread.`
+    const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
       { role: 'system', content: system },
-      { role: 'user', content: user }
-    ] })
-    const content = completion.choices[0]?.message?.content || ''
+      { role: 'user', content: `Prompt: ${prompt}\nRecent messages: ${JSON.stringify(condensed)}` },
+    ]
+    const model = process.env.OPENAI_MODEL || 'gpt-4o-mini'
+    let resp = await openai.chat.completions.create({ model, temperature: 0.2, tools, tool_choice: 'auto', messages })
+    const msg = resp.choices[0]?.message
+    if (msg?.tool_calls && msg.tool_calls.length) {
+      messages.push({ role: 'assistant', content: msg.content || null, tool_calls: msg.tool_calls as any })
+      for (const tc of msg.tool_calls) {
+        const toolResult = await callTool(tc.function.name, JSON.parse(tc.function.arguments || '{}'))
+        messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(toolResult) } as any)
+      }
+      resp = await openai.chat.completions.create({ model, temperature: 0.2, tools, messages })
+    }
+    const content = resp.choices[0]?.message?.content || 'Done.'
     return NextResponse.json({ content })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'failed' }, { status: 500 })
