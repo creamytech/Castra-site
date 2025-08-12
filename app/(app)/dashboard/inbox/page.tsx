@@ -53,9 +53,16 @@ export default function DashboardInboxPage() {
     const t = setTimeout(()=> setDebouncedQ(q), 250)
     return ()=> clearTimeout(t)
   }, [q])
-  // Keyboard shortcuts (list/thread)
+  // Keyboard shortcuts (list/thread + command palette/search)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Slash focuses search
+      if ((e.key === '/' || (e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='k') && !overlayOpen) {
+        e.preventDefault()
+        const input = document.querySelector('input[aria-label="Search inbox"]') as HTMLInputElement | null
+        input?.focus()
+        return
+      }
       if (!overlayOpen) {
         if (e.key.toLowerCase()==='j' || e.key.toLowerCase()==='k') {
           e.preventDefault()

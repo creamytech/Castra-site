@@ -3,6 +3,7 @@
 import useSWR from 'swr'
 import { useMemo } from 'react'
 import { FixedSizeList as List } from 'react-window'
+import { Archive, Star as StarIcon, Paperclip, MailOpen, MoreHorizontal, Reply } from 'lucide-react'
 import { apiFetch } from '@/lib/http'
 import { STATUS_LABEL, ScoreRing } from './InboxNew'
 
@@ -46,7 +47,7 @@ export default function InboxList({ q, filter, onSelect, filters, folder, catego
     threads.sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0))
   }
 
-  const rowHeight = 82
+  const rowHeight = 88
   const items = threads
   if (onItems) onItems(items)
 
@@ -56,7 +57,7 @@ export default function InboxList({ q, filter, onSelect, filters, folder, catego
     return (
       <div style={style}>
         <div
-          className={`px-3 py-2 border rounded-lg cursor-pointer flex items-start gap-3 touch-manipulation group transition-transform duration-150 ${t.unread ? 'bg-primary/5 hover:bg-primary/10 border-primary/30' : 'bg-card/90 hover:bg-muted/50'} hover:scale-[1.005]`}
+          className={`px-3 py-2 border rounded-lg cursor-pointer flex items-start gap-3 touch-manipulation group transition-transform duration-150 ${t.unread ? 'bg-primary/5 hover:bg-primary/10 border-primary/30' : 'bg-card/90 hover:bg-muted/50'} hover:scale-[1.005]'}`}
           onClick={() => onSelect(t.id)}
           role="button"
           tabIndex={0}
@@ -72,6 +73,8 @@ export default function InboxList({ q, filter, onSelect, filters, folder, catego
                   {STATUS_LABEL[t.status as keyof typeof STATUS_LABEL] || t.status}
                 </span>
               )}
+              {!!t.labelIds?.includes?.('STARRED') && <StarIcon size={12} className="text-yellow-400" />}
+              {!!t.hasAttachment && <Paperclip size={12} className="opacity-60" />}
               {(t.reasons || []).slice(0, 2).map((r: string, i: number) => (
                 <span key={i} className="chip shrink-0 rounded-full bg-background/60">{String(r).toLowerCase()}</span>
               ))}
@@ -82,9 +85,10 @@ export default function InboxList({ q, filter, onSelect, filters, folder, catego
               {t.preview && <span className="text-muted-foreground"> — {t.preview}</span>}
             </div>
             <div className="opacity-0 group-hover:opacity-100 transition flex gap-1 mt-1">
-              <button onClick={(e)=>{ e.stopPropagation(); apiFetch(`/api/inbox/threads/${t.id}/status`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'lead' }) }) }} className="px-1.5 py-0.5 border rounded-full text-xs bg-emerald-500/10 hover:bg-emerald-500/20">✅</button>
-              <button onClick={(e)=>{ e.stopPropagation(); apiFetch(`/api/inbox/threads/${t.id}/status`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'potential' }) }) }} className="px-1.5 py-0.5 border rounded-full text-xs bg-amber-500/10 hover:bg-amber-500/20">⚠️</button>
-              <button onClick={(e)=>{ e.stopPropagation(); apiFetch(`/api/inbox/threads/${t.id}/status`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'no_lead' }) }) }} className="px-1.5 py-0.5 border rounded-full text-xs bg-rose-500/10 hover:bg-rose-500/20">🚫</button>
+              <button title="Reply" onClick={(e)=>{ e.stopPropagation(); onSelect(t.id) }} className="px-2 py-1 border rounded text-xs inline-flex items-center gap-1"><Reply size={12}/> Reply</button>
+              <button title="Archive" onClick={(e)=>{ e.stopPropagation(); /* todo hook archive */ }} className="px-2 py-1 border rounded text-xs inline-flex items-center gap-1"><Archive size={12}/> Archive</button>
+              <button title="Mark read" onClick={(e)=>{ e.stopPropagation(); /* optimistic mark read */ }} className="px-2 py-1 border rounded text-xs inline-flex items-center gap-1"><MailOpen size={12}/> Read</button>
+              <button title="More" onClick={(e)=>{ e.stopPropagation(); }} className="px-2 py-1 border rounded text-xs inline-flex items-center gap-1"><MoreHorizontal size={12}/></button>
             </div>
           </div>
         </div>
