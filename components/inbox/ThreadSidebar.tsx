@@ -18,6 +18,8 @@ export default function ThreadSidebar({ threadId }: { threadId: string }) {
   const thread = data?.thread
   const lastId = thread?.messages?.slice(-1)?.[0]?.id
   const [draft, setDraft] = useState('')
+  const [agentQ, setAgentQ] = useState('')
+  const [agentA, setAgentA] = useState('')
   const runAi = async () => {
     if (!lastId) return
     const res = await apiFetch(`/api/inbox/messages/${lastId}/ai-draft`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) })
@@ -88,6 +90,23 @@ export default function ThreadSidebar({ threadId }: { threadId: string }) {
             <button onClick={send} className="px-2 py-1 rounded border text-xs w-full">Send</button>
           </>
         )}
+        <div className="pt-2 space-y-2">
+          <div className="text-xs text-muted-foreground">Ask about your inbox. The assistant can reference recent messages and return thread links.</div>
+          <div className="flex gap-2">
+            <input value={agentQ} onChange={e=>setAgentQ(e.target.value)} placeholder="Ask about an email…" className="flex-1 border rounded px-2 py-1 bg-background text-sm" />
+            <button
+              onClick={async()=>{
+                if (!agentQ) return
+                const res = await apiFetch('/api/inbox/agent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: agentQ }) })
+                const j = await res.json(); if ((res as any).ok) setAgentA(j.content || '')
+              }}
+              className="px-2 py-1 rounded border text-xs"
+            >Ask</button>
+          </div>
+          {agentA && (
+            <div className="text-xs whitespace-pre-wrap border rounded p-2 bg-muted/40">{agentA}</div>
+          )}
+        </div>
       </div>
       <div className="pt-2 border-t space-y-2">
         <div className="font-semibold text-sm">Schedule</div>

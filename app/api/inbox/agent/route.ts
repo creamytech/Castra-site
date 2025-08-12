@@ -1,3 +1,42 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/api'
+import { prisma } from '@/lib/prisma'
+import OpenAI from 'openai'
+
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null
+
+export const POST = withAuth(async ({ req, ctx }) => {
+  try {
+    const { prompt } = await req.json().catch(()=>({})) as { prompt?: string }
+    if (!prompt) return NextResponse.json({ error: 'prompt required' }, { status: 400 })
+    if (!openai) return NextResponse.json({ error: 'LLM not configured' }, { status: 500 })
+
+    // Fetch recent threads/messages for grounding
+    const recent = await prisma.emailMessage.findMany({ where: { userId: ctx.session.user.id }, orderBy: { internalDate: 'desc' }, take: 50 })
+    const condensed = recent.map(m => ({ id: m.id, threadId: m.threadId, from: m.from, subject: m.subject, snippet: m.snippet, date: m.internalDate }))
+
+    const system = `You are an AI assistant with access to a recent snapshot of the user's email inbox (Gmail). Your job is to:
+1) Answer questions about emails (who said what, when, subjects).
+2) Find relevant threads and return links in the form /dashboard/inbox?threadId=<threadId> (or /dashboard/inbox/<threadId> if applicable).
+3) If the user asks to draft a reply, propose a short reply in plain text.
+Constraints: Only use the provided snapshot; do not claim to have read full contents if only snippet is given.`
+    const user = `User prompt: ${prompt}
+Recent messages (JSON): ${JSON.stringify(condensed)}`
+    const model = process.env.OPENAI_MODEL || 'gpt-4o-mini'
+    const completion = await openai.chat.completions.create({ model, temperature: 0.2, messages: [
+      { role: 'system', content: system },
+      { role: 'user', content: user }
+    ] })
+    const content = completion.choices[0]?.message?.content || ''
+    return NextResponse.json({ content })
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || 'failed' }, { status: 500 })
+  }
+})
+
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/api'
 import { prisma } from '@/lib/prisma'
