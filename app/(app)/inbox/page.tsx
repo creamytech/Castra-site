@@ -4,14 +4,14 @@ import { useState } from 'react'
 import InboxList from '@/components/inbox/InboxList'
 import InboxThread from '@/components/inbox/InboxThread'
 import ThreadSidebar from '@/components/inbox/ThreadSidebar'
-import { InboxFilterBar } from '@/components/inbox/InboxNew'
+import { InboxFilterBar, type Status } from '@/components/inbox/InboxNew'
 import { Segmented } from '@/components/ui/Segmented'
 
 export default function RealEstateInboxPage() {
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState('all')
   const [threadId, setThreadId] = useState<string>('')
-  const [filters, setFilters] = useState<{ status?: string[]; minScore?: number; unreadOnly?: boolean; hasPhone?: boolean; hasPrice?: boolean }>({})
+  const [filters, setFilters] = useState<Partial<{ status: Status[]; source: string[]; minScore: number; unreadOnly: boolean; hasPhone: boolean; hasPrice: boolean }>>({})
 
   return (
     <div className="p-6 grid grid-cols-1 md:grid-cols-5 gap-4">
