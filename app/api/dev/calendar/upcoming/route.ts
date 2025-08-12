@@ -1,19 +1,3 @@
-import { NextResponse } from 'next/server'
-import { withAuth } from '@/lib/auth/api'
-import { getGoogleClientsForUser } from '@/lib/google/getClient'
-
-export const dynamic = 'force-dynamic'
-
-export const GET = withAuth(async ({ ctx, req }) => {
-  const { searchParams } = new URL(req.url)
-  const maxResults = Number(searchParams.get('max') ?? 10)
-  const now = new Date().toISOString()
-  const { calendar } = await getGoogleClientsForUser(ctx.session.user.id)
-  const res = await calendar.events.list({ calendarId: 'primary', maxResults, singleEvents: true, orderBy: 'startTime', timeMin: now })
-  const events = (res.data.items || []).map(i => ({ id: i.id, summary: i.summary, start: i.start, end: i.end, status: i.status }))
-  return NextResponse.json({ events })
-}, { action: 'dev.calendar.upcoming' })
-
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/api'
 import { getGoogleAuthForUser } from '@/lib/gmail/client'

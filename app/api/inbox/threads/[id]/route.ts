@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/api'
 import { prisma } from '@/lib/prisma'
+import { applyInboxRules } from '@/src/ai/classifier/rules'
 
 export const dynamic = 'force-dynamic'
 

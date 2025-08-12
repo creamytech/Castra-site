@@ -18,8 +18,8 @@ export const GET = withAuth(async ({ ctx }) => {
     if (p) byPhone.set(p, [...(byPhone.get(p) || []), c.id])
   }
   const duplicates: Array<{ key: string; ids: string[]; type: 'email'|'phone' }> = []
-  for (const [k, ids] of byEmail) if (ids.length > 1) duplicates.push({ key: k, ids, type: 'email' })
-  for (const [k, ids] of byPhone) if (ids.length > 1) duplicates.push({ key: k, ids, type: 'phone' })
+  byEmail.forEach((ids, k) => { if (ids.length > 1) duplicates.push({ key: k, ids, type: 'email' }) })
+  byPhone.forEach((ids, k) => { if (ids.length > 1) duplicates.push({ key: k, ids, type: 'phone' }) })
   return NextResponse.json({ duplicates })
 }, { action: 'crm.contacts.dedupe' })
 

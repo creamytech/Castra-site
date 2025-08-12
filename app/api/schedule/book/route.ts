@@ -2,29 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/api'
 import { prisma } from '@/lib/prisma'
 import { createEvent } from '@/src/lib/google-calendar'
-
-export const dynamic = 'force-dynamic'
-
-export const POST = withAuth(async ({ req, ctx }) => {
-  try {
-    const { leadId, start, end } = await req.json()
-    const lead = await prisma.lead.findFirst({ where: { id: leadId, userId: ctx.session.user.id } })
-    if (!lead) return NextResponse.json({ error: 'not found' }, { status: 404 })
-    const conn = await (prisma as any).connection?.findFirst?.({ where: { userId: ctx.session.user.id, provider: 'google' } })
-    if (!conn?.id) return NextResponse.json({ error: 'no google connection' }, { status: 400 })
-    const toEmail = lead.fromEmail || (lead.attrs as any)?.email
-    if (!toEmail) return NextResponse.json({ error: 'no recipient' }, { status: 400 })
-    const out = await createEvent({ connectionId: conn.id, threadId: lead.threadId || undefined, toEmail, toName: lead.fromName || undefined, summary: `Showing: ${lead.subject || lead.title || ''}`, start, end, description: 'Scheduled via Castra' })
-    return NextResponse.json({ ok: true, event: out })
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'failed' }, { status: 500 })
-  }
-}, { action: 'schedule.book' })
-
-import { NextRequest, NextResponse } from 'next/server'
-import { withAuth } from '@/lib/auth/api'
-import { prisma } from '@/lib/prisma'
-import { createEvent } from '@/src/lib/google-calendar'
 import { sendReplyFromDraft } from '@/src/lib/gmail-send'
 
 export const dynamic = 'force-dynamic'

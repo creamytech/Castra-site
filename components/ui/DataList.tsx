@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { FixedSizeList as VirtualList, ListChildComponentProps } from "react-window"
+import { FixedSizeList as VirtualList } from "react-window"
 
 export interface DataListProps<T> {
   items: T[]
@@ -13,7 +13,7 @@ export interface DataListProps<T> {
 }
 
 export function DataList<T>({ items, itemKey, itemHeight, height, renderRow, className }: DataListProps<T>) {
-  const Row = React.useCallback(({ index, style }: ListChildComponentProps) => {
+  const Row = React.useCallback(({ index, style }: { index: number; style: React.CSSProperties }) => {
     const item = items[index]
     return (
       <div style={style} key={itemKey(item, index)}>

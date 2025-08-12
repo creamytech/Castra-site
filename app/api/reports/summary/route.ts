@@ -33,24 +33,23 @@ export const GET = withAuth(async ({ ctx, req }) => {
   const firstReply: Array<{ bucket: string; p50: number; p95: number }> = []
   if (activities.length) {
     const byDeal = new Map<string, Date[]>()
-    for (const a of activities) {
+    activities.forEach((a) => {
       const arr = byDeal.get(a.dealId) || []
       arr.push(a.occurredAt)
       byDeal.set(a.dealId, arr)
-    }
+    })
     const deltas: number[] = []
-    for (const arr of byDeal.values()) {
+    byDeal.forEach((arr) => {
       arr.sort((a, b) => a.getTime() - b.getTime())
       if (arr.length >= 1) {
-        // naive: assume first outbound vs lead created time
         const firstOut = arr[0].getTime()
         const created = since.getTime()
         deltas.push(Math.max(0, Math.round((firstOut - created) / 60000)))
       }
-    }
+    })
     deltas.sort((a, b) => a - b)
-    const p = (q: number) => deltas.length ? deltas[Math.min(deltas.length - 1, Math.floor(q * (deltas.length - 1)))] : 0
-    firstReply.push({ bucket: '30d', p50: p(0.5), p95: p(0.95) })
+    const p = (q: number) => (deltas.length ? deltas[Math.min(deltas.length - 1, Math.floor(q * (deltas.length - 1)))] : 0)
+    firstReply.push({ bucket: `${days}d`, p50: p(0.5), p95: p(0.95) })
   }
 
   // Stage conversion counts (current snapshot)

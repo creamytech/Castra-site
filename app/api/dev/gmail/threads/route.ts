@@ -1,27 +1,3 @@
-import { NextResponse } from 'next/server'
-import { withAuth } from '@/lib/auth/api'
-import { getGoogleClientsForUser } from '@/lib/google/getClient'
-
-export const dynamic = 'force-dynamic'
-
-export const GET = withAuth(async ({ ctx, req }) => {
-  const { gmail } = await getGoogleClientsForUser(ctx.session.user.id)
-  const { searchParams } = new URL(req.url)
-  const max = Number(searchParams.get('max') ?? 10)
-  const list = await gmail.users.threads.list({ userId: 'me', maxResults: max, q: 'in:anywhere newer_than:7d' })
-  const threads = await Promise.all((list.data.threads || []).map(async (t) => {
-    const full = await gmail.users.threads.get({ userId: 'me', id: t.id! })
-    const messages = full.data.messages || []
-    const last = messages[messages.length - 1]
-    const headers = Object.fromEntries((last?.payload?.headers || []).map(h => [h.name!, h.value || ''])) as Record<string,string>
-    const subject = headers['Subject'] || ''
-    const from = headers['From'] || ''
-    const snippet = last?.snippet || ''
-    return { id: t.id, subject, from, snippet, messageCount: messages.length }
-  }))
-  return NextResponse.json({ threads })
-}, { action: 'dev.gmail.threads' })
-
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/api'
 import { getGoogleAuthForUser, gmailClient } from '@/lib/gmail/client'
