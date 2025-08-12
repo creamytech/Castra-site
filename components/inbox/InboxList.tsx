@@ -38,6 +38,7 @@ export default function InboxList({ q, filter, onSelect, filters, folder, onItem
   if (typeof filters?.minScore === 'number') threads = threads.filter((t: any) => (t.score ?? 0) >= filters.minScore)
   if (filters?.hasPhone) threads = threads.filter((t: any) => !!t.extracted?.phone)
   if (filters?.hasPrice) threads = threads.filter((t: any) => !!t.extracted?.price)
+  if (filters?.hasAttachment) threads = threads.filter((t: any) => Array.isArray(t.attachments) ? t.attachments.length > 0 : false)
   // Sorting: latest (default), best score
   const sortBy = filters?.sortBy || 'latest'
   if (sortBy === 'latest') {

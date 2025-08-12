@@ -174,20 +174,9 @@ export default function DashboardInboxPage() {
           <details className="relative">
             <summary className="list-none px-3 py-2 text-xs rounded border cursor-pointer hover:bg-accent/50">Filters</summary>
             <div className="absolute right-0 mt-2 w-80 p-3 bg-popover border rounded shadow-lg space-y-2 z-20">
-              <label className="text-xs text-muted-foreground">Status</label>
-              <div className="grid grid-cols-3 gap-2 text-xs">
-                {['lead','potential','follow_up','no_lead'].map(s => (
-                  <label key={s} className="inline-flex items-center gap-1"><input type="checkbox" checked={filters.status?.includes(s)} onChange={(e)=>{
-                    setFilters((cur:any)=>{ const set = new Set(cur.status||[]); e.target.checked ? set.add(s) : set.delete(s); return { ...cur, status: Array.from(set) } })
-                  }} /> {s.replace('_',' ')}</label>
-                ))}
-              </div>
               <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-xs text-muted-foreground">Min score</label>
-                  <input type="number" min={0} max={100} value={filters.minScore||0} onChange={e=>setFilters((f:any)=>({ ...f, minScore: Number(e.target.value||0) }))} className="w-full border rounded px-2 py-1 bg-background" />
-                </div>
-                <div className="flex items-end"><label className="inline-flex items-center gap-2 text-xs"><input type="checkbox" checked={filters.unreadOnly||false} onChange={e=>setFilters((f:any)=>({ ...f, unreadOnly: e.target.checked }))} /> Unread only</label></div>
+                <div className="flex items-center gap-2 text-xs"><input type="checkbox" checked={filters.unreadOnly||false} onChange={e=>setFilters((f:any)=>({ ...f, unreadOnly: e.target.checked }))} /> Unread only</div>
+                <div className="flex items-center gap-2 text-xs"><input type="checkbox" checked={filters.hasAttachment||false} onChange={e=>setFilters((f:any)=>({ ...f, hasAttachment: e.target.checked }))} /> Has attachment</div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <label className="inline-flex items-center gap-2 text-xs"><input type="checkbox" checked={filters.hasPhone||false} onChange={e=>setFilters((f:any)=>({ ...f, hasPhone: e.target.checked }))} /> Has phone</label>
@@ -263,6 +252,22 @@ export default function DashboardInboxPage() {
       </div>
       <div className="order-2 md:order-none md:col-span-1 p-4 bg-card/40 border-l">
         {threadId && <ThreadSidebar threadId={threadId} />}
+        <div className="mt-4">
+          <div className="text-xs text-muted-foreground mb-1">Agent</div>
+          <div className="border rounded p-2 space-y-2 text-xs">
+            <div className="text-sm font-medium">Ask the Inbox Agent</div>
+            <div className="text-muted-foreground">Examples: “show hot leads over 80”, “open thread with tour request”, “draft follow-up”.</div>
+            <form onSubmit={(e)=>{ e.preventDefault(); const v = (document.getElementById('agent-q') as HTMLInputElement)?.value||''; if (!v) return; fetch('/api/search?q='+encodeURIComponent(v)).then(()=>{}); }} className="flex gap-2">
+              <input id="agent-q" className="flex-1 border rounded px-2 py-1 bg-background" placeholder="Find leads…" />
+              <button className="px-2 py-1 text-xs rounded bg-primary text-primary-foreground">Ask</button>
+            </form>
+            <div className="flex gap-1 flex-wrap">
+              <button className="px-2 py-1 border rounded" onClick={()=>setFilters((f:any)=>({ ...f, minScore: 80 }))}>Hot ≥ 80</button>
+              <button className="px-2 py-1 border rounded" onClick={()=>setFilters((f:any)=>({ ...f, hasPhone: true }))}>Has phone</button>
+              <button className="px-2 py-1 border rounded" onClick={()=>setFilters((f:any)=>({ ...f, hasAttachment: true }))}>Has attachment</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
