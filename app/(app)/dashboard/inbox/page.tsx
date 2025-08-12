@@ -171,16 +171,27 @@ export default function DashboardInboxPage() {
       <div className="order-1 md:order-none md:col-span-1 space-y-3 md:sticky md:top-16 md:self-start p-4 border-r bg-background/60 backdrop-blur animate-slide-in">
         <div className="flex gap-2 items-center">
           <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search…" className="w-full border rounded px-3 py-2 bg-background" aria-label="Search inbox" />
+          {/* Sort dropdown */}
+          <select className="px-3 py-2 text-xs border rounded bg-background" value={filters.sortBy||'latest'} onChange={e=>setFilters((f:any)=>({ ...f, sortBy: e.target.value }))} aria-label="Sort">
+            <option value="latest">Latest</option>
+            <option value="score">Score</option>
+          </select>
           <details className="relative">
             <summary className="list-none px-3 py-2 text-xs rounded border cursor-pointer hover:bg-accent/50">Filters</summary>
             <div className="absolute right-0 mt-2 w-80 p-3 bg-popover border rounded shadow-lg space-y-2 z-20">
               <div className="grid grid-cols-2 gap-2">
                 <div className="flex items-center gap-2 text-xs"><input type="checkbox" checked={filters.unreadOnly||false} onChange={e=>setFilters((f:any)=>({ ...f, unreadOnly: e.target.checked }))} /> Unread only</div>
-                <div className="flex items-center gap-2 text-xs"><input type="checkbox" checked={filters.hasAttachment||false} onChange={e=>setFilters((f:any)=>({ ...f, hasAttachment: e.target.checked }))} /> Has attachment</div>
+                <div></div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <label className="inline-flex items-center gap-2 text-xs"><input type="checkbox" checked={filters.hasPhone||false} onChange={e=>setFilters((f:any)=>({ ...f, hasPhone: e.target.checked }))} /> Has phone</label>
-                <label className="inline-flex items-center gap-2 text-xs"><input type="checkbox" checked={filters.hasPrice||false} onChange={e=>setFilters((f:any)=>({ ...f, hasPrice: e.target.checked }))} /> Has price</label>
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">Status</div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  {['lead','potential','follow_up','no_lead'].map(s => (
+                    <label key={s} className="inline-flex items-center gap-1"><input type="checkbox" checked={Array.isArray(filters.status) && filters.status.includes(s)} onChange={(e)=>{
+                      setFilters((cur:any)=>{ const set = new Set(cur.status||[]); e.target.checked ? set.add(s) : set.delete(s); return { ...cur, status: Array.from(set) } })
+                    }} /> {s.replace('_',' ')}</label>
+                  ))}
+                </div>
               </div>
               <div className="pt-2 border-t mt-2">
                 <label className="text-xs text-muted-foreground">Density</label>
@@ -262,9 +273,6 @@ export default function DashboardInboxPage() {
               <button className="px-2 py-1 text-xs rounded bg-primary text-primary-foreground">Ask</button>
             </form>
             <div className="flex gap-1 flex-wrap">
-              <button className="px-2 py-1 border rounded" onClick={()=>setFilters((f:any)=>({ ...f, minScore: 80 }))}>Hot ≥ 80</button>
-              <button className="px-2 py-1 border rounded" onClick={()=>setFilters((f:any)=>({ ...f, hasPhone: true }))}>Has phone</button>
-              <button className="px-2 py-1 border rounded" onClick={()=>setFilters((f:any)=>({ ...f, hasAttachment: true }))}>Has attachment</button>
               <button className="px-2 py-1 border rounded" onClick={async()=>{ const r = await fetch('/api/inbox/agent', { method:'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: 'draft a follow-up' }) }); const j = await r.json().catch(()=>({})); const d = (j?.suggestions||[]).find((s:any)=>s.type==='draft'); if (d) { openThread(d.threadId); setTimeout(async()=>{ const res = await fetch(`/api/inbox/messages/${d.messageId}/ai-draft`, { method:'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tone: 'friendly' }) }); const jr = await res.json().catch(()=>({})); if ((res as any).ok) { const evt = new CustomEvent('inbox:prefill-draft', { detail: { threadId: d.threadId, subject: jr.subject, draft: jr.draft } }); window.dispatchEvent(evt); } }, 250); } }}>Draft follow-up</button>
             </div>
           </div>
