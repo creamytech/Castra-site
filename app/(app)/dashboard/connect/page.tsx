@@ -124,6 +124,12 @@ export default function ConnectPage() {
     await signIn('google', { callbackUrl, prompt: 'consent', access_type: 'offline' } as any)
   }
 
+  const handleImportGoogle = async () => {
+    const res = await fetch('/api/integrations/google/import', { method: 'POST' })
+    if (!res.ok) return
+    await fetchAccounts()
+  }
+
   const isConnected = (provider: string) => {
     return accounts.some(account => account.provider === provider)
   }
@@ -209,6 +215,15 @@ export default function ConnectPage() {
                     title="Fix tokens by re-consenting with Google"
                   >
                     Reconnect Google
+                  </button>
+                )}
+                {status.provider === 'google' && (
+                  <button
+                    onClick={handleImportGoogle}
+                    className="px-3 py-1 text-xs bg-purple-500 hover:bg-purple-600 text-white rounded transition-colors"
+                    title="Import refresh token from NextAuth Account (fallback)"
+                  >
+                    Import Token
                   </button>
                 )}
               </div>
