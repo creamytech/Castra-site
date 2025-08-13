@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic'
 
 export const POST = withAuth(async ({ ctx }) => {
   try {
-    const adapter = await prisma.account.findFirst({ where: { userId: ctx.session.user.id, provider: 'google' }, select: { providerAccountId: true, refresh_token: true } })
+    const adapter = await prisma.account.findFirst({ where: { userId: ctx.session.user.id, provider: 'google' }, select: { providerAccountId: true, refresh_token: true, access_token: true } })
     if (!adapter?.refresh_token) return NextResponse.json({ ok: false, reason: 'no-adapter-refresh' }, { status: 400 })
 
     const enc = await encryptRefreshToken(adapter.refresh_token)

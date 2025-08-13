@@ -9,7 +9,12 @@ export async function getAccessTokenForUser(userId: string): Promise<{ accessTok
       select: { id: true, refreshTokenEnc: true }
     })
   })
+  // If no secure refresh token yet, fallback to adapter access_token to keep UX working
   if (!acc?.refreshTokenEnc || !Buffer.isBuffer(acc.refreshTokenEnc) || acc.refreshTokenEnc.length === 0) {
+    const adapter = await (prisma as any).account.findFirst({ where: { userId, provider: 'google' }, select: { access_token: true } })
+    if (adapter?.access_token) {
+      return { accessToken: String(adapter.access_token), expiresIn: 300 }
+    }
     throw new Error('no_refresh_token')
   }
 
