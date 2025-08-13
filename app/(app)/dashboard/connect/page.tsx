@@ -25,6 +25,8 @@ interface ConnectionStatus {
   lastRefresh?: string
   accessToken?: string
   refreshToken?: string
+  needsReconnect?: boolean
+  reason?: string
 }
 
 export default function ConnectPage() {
@@ -64,7 +66,9 @@ export default function ConnectPage() {
           connected: googleConnected,
           lastRefresh: undefined,
           accessToken: undefined,
-          refreshToken: googleConnected ? 'Present' : undefined
+          refreshToken: googleConnected ? 'Present' : undefined,
+          needsReconnect: !googleConnected || googleStatus?.reason === 'no-refresh-token' || googleStatus?.reason === 'invalid_tokens',
+          reason: googleStatus?.reason
         },
         {
           provider: 'azure-ad',
@@ -106,6 +110,14 @@ export default function ConnectPage() {
     } catch (error) {
       console.error('Failed to disconnect:', error)
     }
+  }
+
+  const handleReconnectGoogle = async () => {
+    try {
+      await fetch('/api/integrations/google/reconnect', { method: 'POST' })
+    } catch {}
+    const callbackUrl = `${window.location.origin}/dashboard/connect`
+    window.location.href = `/api/auth/signin/google?prompt=consent&access_type=offline&callbackUrl=${encodeURIComponent(callbackUrl)}`
   }
 
   const isConnected = (provider: string) => {
@@ -167,7 +179,10 @@ export default function ConnectPage() {
                   Last refresh: {status.lastRefresh}
                 </p>
               )}
-              <div className="mt-3">
+              {status.reason && (
+                <p className="text-xs text-red-600 dark:text-red-400 mt-1">{status.reason}</p>
+              )}
+              <div className="mt-3 flex items-center gap-2">
                 {status.connected ? (
                   <button
                     onClick={() => handleDisconnect(status.provider)}
@@ -181,6 +196,15 @@ export default function ConnectPage() {
                     className="px-3 py-1 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors"
                   >
                     Connect
+                  </button>
+                )}
+                {status.provider === 'google' && (
+                  <button
+                    onClick={handleReconnectGoogle}
+                    className="px-3 py-1 text-xs bg-yellow-500 hover:bg-yellow-600 text-white rounded transition-colors"
+                    title="Fix tokens by re-consenting with Google"
+                  >
+                    Reconnect Google
                   </button>
                 )}
               </div>
