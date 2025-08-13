@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/api'
 import { prisma } from '@/lib/prisma'
 import { google } from 'googleapis'
+import { getGmailForUser } from '@/lib/google/gmail'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,12 +12,7 @@ export const POST = withAuth(async ({ req, ctx }) => {
     if (!leadId || !subject || !body) return NextResponse.json({ error: 'leadId, subject, body required' }, { status: 400 })
     const lead = await prisma.lead.findFirst({ where: { id: leadId, userId: ctx.session.user.id } })
     if (!lead) return NextResponse.json({ error: 'lead not found' }, { status: 404 })
-    const account = await prisma.account.findFirst({ where: { userId: ctx.session.user.id, provider: 'google' } })
-    if (!account?.access_token) return NextResponse.json({ error: 'Google account not connected' }, { status: 400 })
-
-    const oauth2Client = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, process.env.GOOGLE_REDIRECT_URI)
-    oauth2Client.setCredentials({ access_token: account.access_token, refresh_token: account.refresh_token })
-    const gmail = google.gmail({ version: 'v1', auth: oauth2Client })
+    const gmail = await getGmailForUser(ctx.session.user.id)
 
     const to = (lead as any).fromEmail || ''
     const threadId = lead.threadId || undefined

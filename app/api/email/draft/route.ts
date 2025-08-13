@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { google } from "googleapis";
+import { getGmailForUser } from "@/lib/google/gmail";
 
 export const dynamic = "force-dynamic";
 
@@ -29,27 +30,8 @@ export async function POST(request: NextRequest) {
     const tone = memories.find(m => m.key === "tone")?.value || "professional";
     const signature = memories.find(m => m.key === "signature")?.value || "";
 
-    // Get Gmail API client
-    const account = await prisma.account.findFirst({
-      where: { userId: session.user.id, provider: "google" }
-    });
-
-    if (!account?.access_token) {
-      return NextResponse.json({ error: "Google account not connected" }, { status: 400 });
-    }
-
-    const oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      process.env.GOOGLE_REDIRECT_URI
-    );
-
-    oauth2Client.setCredentials({
-      access_token: account.access_token,
-      refresh_token: account.refresh_token,
-    });
-
-    const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+    // Get Gmail API client via centralized exchange
+    const gmail = await getGmailForUser(session.user.id)
 
     // Build email content with user's tone and signature
     let emailContent = content;
