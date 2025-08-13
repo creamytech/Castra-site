@@ -1,6 +1,7 @@
 import { google } from "googleapis";
 import { prisma } from "./prisma";
 import { isFeatureEnabled } from "./config";
+import { getAccessTokenForUser } from "@/lib/google/exchange";
 
 export interface GmailThread {
   id: string;
@@ -100,44 +101,12 @@ export async function getGoogleOAuth(userId: string) {
     throw new Error("Google integration not configured");
   }
 
+  const { accessToken } = await getAccessTokenForUser(userId);
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET
   );
-
-  // Get tokens from database
-  const account = await prisma.account.findFirst({
-    where: {
-      userId,
-      provider: "google",
-    },
-  });
-
-  if (!account?.access_token) {
-    throw new Error("Google account not connected - no valid tokens found");
-  }
-
-  // Set up token refresh handler
-  oauth2Client.on('tokens', async (tokens) => {
-    if (tokens.refresh_token) {
-      // Update the database with new tokens
-      await prisma.account.update({
-        where: { id: account.id },
-        data: {
-          access_token: tokens.access_token,
-          refresh_token: tokens.refresh_token,
-          expires_at: tokens.expiry_date ? Math.floor(tokens.expiry_date / 1000) : null,
-        },
-      });
-    }
-  });
-
-  oauth2Client.setCredentials({
-    access_token: account.access_token,
-    refresh_token: account.refresh_token,
-    expiry_date: account.expires_at ? account.expires_at * 1000 : null,
-  });
-
+  oauth2Client.setCredentials({ access_token: accessToken });
   return oauth2Client;
 }
 
