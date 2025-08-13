@@ -93,7 +93,7 @@ export default function ConnectPage() {
     const callbackUrl = `${window.location.origin}/dashboard/connect`
     // Force prompt consent to ensure refresh token and scopes
     if (provider === 'google') {
-      await signIn('google', { callbackUrl, prompt: 'consent', access_type: 'offline' } as any)
+      await signIn('google', { callbackUrl, prompt: 'consent select_account', access_type: 'offline' } as any)
     } else {
       await signIn(provider, { callbackUrl } as any)
     }
@@ -121,7 +121,7 @@ export default function ConnectPage() {
       await fetch('/api/integrations/google/reconnect', { method: 'POST' })
     } catch {}
     const callbackUrl = `${window.location.origin}/dashboard/connect`
-    await signIn('google', { callbackUrl, prompt: 'consent', access_type: 'offline' } as any)
+    await signIn('google', { callbackUrl, prompt: 'consent select_account', access_type: 'offline' } as any)
   }
 
   const handleImportGoogle = async () => {

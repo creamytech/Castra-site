@@ -14,6 +14,13 @@ const handler = NextAuth({
       options: { httpOnly: true, sameSite: 'lax', path: '/', secure: true },
     },
   },
+  callbacks: {
+    ...(authOptions as any).callbacks,
+    async signIn(params: any) {
+      // Ensure we request offline access + consent every time for reliability
+      return (await (authOptions as any).callbacks?.signIn?.(params)) ?? true
+    },
+  },
 })
 
 export { handler as GET, handler as POST }
