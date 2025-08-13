@@ -16,11 +16,14 @@ export const POST = withAuth(async ({ ctx }) => {
 
     const enc = await encryptRefreshToken(adapter.refresh_token)
     await withRLS(ctx.session.user.id, async (tx) => {
-      await (tx as any).mailAccount.upsert({
-        where: { providerUserId: adapter.providerAccountId || '' },
-        create: { userId: ctx.session.user.id, provider: 'google', providerUserId: adapter.providerAccountId || ctx.session.user.id, refreshTokenEnc: enc },
-        update: { userId: ctx.session.user.id, refreshTokenEnc: enc }
-      })
+      const providerUserId = adapter.providerAccountId || ctx.session.user.id
+      // Ensure MailAccount exists by unique key on providerUserId
+      const existing = await (tx as any).mailAccount.findFirst({ where: { provider: 'google', providerUserId } })
+      if (existing) {
+        await (tx as any).mailAccount.update({ where: { id: existing.id }, data: { userId: ctx.session.user.id, refreshTokenEnc: enc } })
+      } else {
+        await (tx as any).mailAccount.create({ data: { userId: ctx.session.user.id, provider: 'google', providerUserId, refreshTokenEnc: enc } })
+      }
     })
 
     return NextResponse.json({ ok: true })
