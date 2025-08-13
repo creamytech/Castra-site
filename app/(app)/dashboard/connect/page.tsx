@@ -1,6 +1,6 @@
 'use client'
 
-import { useSession } from 'next-auth/react'
+import { useSession, signIn } from 'next-auth/react'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
@@ -92,7 +92,11 @@ export default function ConnectPage() {
     // Redirect to sign-in with specific provider (use absolute callback and correct path)
     const callbackUrl = `${window.location.origin}/dashboard/connect`
     // Force prompt consent to ensure refresh token and scopes
-    window.location.href = `/api/auth/signin/${provider}?prompt=consent&access_type=offline&callbackUrl=${encodeURIComponent(callbackUrl)}`
+    if (provider === 'google') {
+      await signIn('google', { callbackUrl, prompt: 'consent', access_type: 'offline' } as any)
+    } else {
+      await signIn(provider, { callbackUrl } as any)
+    }
   }
 
   const handleDisconnect = async (provider: string) => {
@@ -117,7 +121,7 @@ export default function ConnectPage() {
       await fetch('/api/integrations/google/reconnect', { method: 'POST' })
     } catch {}
     const callbackUrl = `${window.location.origin}/dashboard/connect`
-    window.location.href = `/api/auth/signin/google?prompt=consent&access_type=offline&callbackUrl=${encodeURIComponent(callbackUrl)}`
+    await signIn('google', { callbackUrl, prompt: 'consent', access_type: 'offline' } as any)
   }
 
   const isConnected = (provider: string) => {
