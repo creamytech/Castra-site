@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getGoogleAuthForUser } from "@/lib/gmail/client";
+import { getAccessTokenForUser } from "@/lib/google/exchange";
 import { withRLS } from "@/lib/rls";
 import { getLabelMap, syncSinceHistoryId } from "@/lib/gmail/history";
 import { prisma } from "@/lib/securePrisma";
@@ -19,7 +20,10 @@ export async function POST(request: NextRequest) {
 
     // set RLS via helper to avoid context loss and ensure MailAccount exists
     await withRLS(session.user.id, async () => {})
-    const { oauth2 } = await getGoogleAuthForUser(session.user.id);
+    // Use centralized token exchange to ensure rotation/invalid_grant handling
+    const { accessToken } = await getAccessTokenForUser(session.user.id)
+    const oauth2 = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET)
+    oauth2.setCredentials({ access_token: accessToken })
     const gmail = google.gmail({ version: 'v1', auth: oauth2 });
 
     // If client provides historyId, perform incremental delta sync
@@ -113,8 +117,8 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("[gmail-sync]", error);
     const msg = String(error?.message || '')
-    if (/invalid_grant|unauthorized_client|invalid_token/i.test(msg)) {
-      return NextResponse.json({ error: 'INVALID_TOKENS', reconnect: true }, { status: 401 })
+    if (msg === 'invalid_grant' || /token_exchange_failed/i.test(msg) || /invalid_grant|unauthorized_client|invalid_token/i.test(msg)) {
+      return NextResponse.json({ error: 'INVALID_TOKENS', reconnect: true, action: 'reconnect' }, { status: 401 })
     }
     return NextResponse.json({ error: error.message || "Failed to sync Gmail messages" }, { status: 500 });
   }

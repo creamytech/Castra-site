@@ -15,7 +15,7 @@ export const GET = withAuth(async ({ ctx }) => {
         // Auto-create a mailbox with the signed-in user's email (fallback empty)
         mailbox = await (tx as any).mailbox.create({ data: { accountId: account.id, email: ctx.session.user.email || '' } })
       }
-		  const hasRT = Buffer.isBuffer(account.refreshTokenEnc) && account.refreshTokenEnc.length > 0
+      const hasRT = Buffer.isBuffer(account.refreshTokenEnc) && account.refreshTokenEnc.length > 0
       if (!hasRT) return { connected: false, reason: 'no-refresh-token' }
       return { connected: true, accountId: account.id, mailboxId: mailbox.id }
     })
