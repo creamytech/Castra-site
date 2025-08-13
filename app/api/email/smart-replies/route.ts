@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import OpenAI from 'openai'
 import { filterUnsafeLinks, getStyleGuide, getAcceptedDraftSnippets } from '@/lib/personalization'
 import { google } from 'googleapis'
+import { getGmailForUser } from '@/lib/google/gmail'
 
 export const dynamic = 'force-dynamic'
 
@@ -98,12 +99,7 @@ export const PATCH = withAuth(async ({ req, ctx }) => {
     }
 
     // Send via Gmail as a reply draft then send
-    const account = await prisma.account.findFirst({ where: { userId: ctx.session.user.id, provider: 'google' } })
-    if (!account?.access_token) return NextResponse.json({ error: 'Google account not connected' }, { status: 400 })
-
-    const oauth2Client = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, process.env.GOOGLE_REDIRECT_URI)
-    oauth2Client.setCredentials({ access_token: account.access_token, refresh_token: account.refresh_token })
-    const gmail = google.gmail({ version: 'v1', auth: oauth2Client })
+    const gmail = await getGmailForUser(ctx.session.user.id)
 
     const msg = [`To: ${suggestion.to}`, `Subject: ${suggestion.subject}`, '', suggestion.body].join('\n')
     const raw = Buffer.from(msg).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
