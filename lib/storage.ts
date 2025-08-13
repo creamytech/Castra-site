@@ -8,7 +8,13 @@ function s3() {
 }
 
 function gcs() {
-  return new Storage()
+  const projectId = process.env.GCP_PROJECT_ID
+  const clientEmail = process.env.GCP_CLIENT_EMAIL
+  const rawKey = process.env.GCP_PRIVATE_KEY || ''
+  const privateKey = rawKey.includes('\n') ? rawKey.replace(/\\n/g, '\n') : rawKey
+  const hasCreds = !!(clientEmail && privateKey)
+  const opts: any = hasCreds ? { projectId, credentials: { client_email: clientEmail, private_key: privateKey } } : {}
+  return new Storage(opts)
 }
 
 export async function putEncryptedObject(buffer: Buffer, objectKey: string) {
