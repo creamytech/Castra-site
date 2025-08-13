@@ -58,12 +58,17 @@ export async function getGoogleAuthForUser(userId: string) {
   // Probe scopes by attempting a lightweight Gmail call; refresh will happen automatically
   try {
     const gmail = google.gmail({ version: 'v1', auth: oauth2 })
-    await gmail.users.labels.list({ userId: 'me' })
+    await gmail.users.getProfile({ userId: 'me' })
   } catch (e: any) {
     const msg = String(e?.message || '')
     const code = (e?.code || e?.response?.status || '').toString()
     if (code === '403' || /insufficient/i.test(msg)) {
       throw new Error('Re-consent required for Gmail scopes')
+    }
+    if (/invalid_grant|unauthorized_client|invalid_token/i.test(msg) || code === '401') {
+      const err: any = new Error('INVALID_TOKENS')
+      err.code = 401
+      throw err
     }
     throw e
   }

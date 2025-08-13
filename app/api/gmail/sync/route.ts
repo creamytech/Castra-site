@@ -112,6 +112,10 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error("[gmail-sync]", error);
+    const msg = String(error?.message || '')
+    if (/invalid_grant|unauthorized_client|invalid_token/i.test(msg)) {
+      return NextResponse.json({ error: 'INVALID_TOKENS', reconnect: true }, { status: 401 })
+    }
     return NextResponse.json({ error: error.message || "Failed to sync Gmail messages" }, { status: 500 });
   }
 }
