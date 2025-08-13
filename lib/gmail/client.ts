@@ -58,7 +58,7 @@ export async function getGoogleAuthForUser(userId: string) {
   // Probe scopes by attempting a lightweight Gmail call; refresh will happen automatically
   try {
     const gmail = google.gmail({ version: 'v1', auth: oauth2 })
-    await gmail.users.labels.list({ userId: 'me', maxResults: 1 })
+    await gmail.users.labels.list({ userId: 'me' })
   } catch (e: any) {
     const msg = String(e?.message || '')
     const code = (e?.code || e?.response?.status || '').toString()

@@ -7,15 +7,13 @@ import Sidebar from "@/components/Sidebar";
 import TransitionProvider from "./motion/TransitionProvider";
 import AssistantDock from "@/components/AssistantDock";
 import CommandPalette from "@/components/CommandPalette";
-import { UserMenu } from "@/components/user-menu";
 import { FloatingThemeToggle } from "@/components/theme/floating-toggle";
 import { applyTheme, getInitialTheme } from "@/lib/ui/theme";
-import { CastraWordmark } from "@/components/brand/CastraWordmark";
 import { ToastProvider } from "@/components/ui/ToastProvider";
-import NotificationsBell from "@/components/NotificationsBell";
 import dynamic from "next/dynamic";
 import MobileBottomNav from "@/components/ui/MobileBottomNav";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import AppHeader from "@/components/AppHeader";
 
 export default function AppLayout({
   children,
@@ -104,66 +102,7 @@ export default function AppLayout({
       )}
 
       <div className="md:ml-64 ml-0 transition-all duration-300">
-        {/* Header */}
-        <header className="bg-card text-card-foreground border-b border-border px-6 py-4 sticky top-0 z-40 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              {/* Mobile hamburger */}
-              <button
-                className="md:hidden mr-2 px-2 py-1 border rounded"
-                aria-label="Open menu"
-                onClick={() => setMobileSidebarOpen(true)}
-              >
-                ☰
-              </button>
-              <CastraWordmark size="md" />
-            </div>
-            
-            <div className="flex items-center space-x-3">
-              {/* Search Button */}
-              <button
-                onClick={() => setIsCommandPaletteOpen(true)}
-                className="flex items-center space-x-2 px-3 py-2 bg-muted hover:bg-muted/80 rounded-md transition-colors text-muted-foreground hover:text-foreground"
-                title="Search (⌘K)"
-              >
-                <span>🔍</span>
-                <span className="hidden sm:inline">Search</span>
-                <kbd className="hidden sm:inline text-xs bg-background px-1 rounded">
-                  ⌘K
-                </kbd>
-              </button>
-
-              {/* Quick Actions */}
-              <div className="hidden md:flex items-center space-x-2">
-                <button
-                  onClick={() => window.open('/chat', '_blank')}
-                  className="btn-ghost text-sm"
-                  title="New Chat (⌘N)"
-                >
-                  💬 New Chat
-                </button>
-                <button
-                  onClick={() => window.open('/dashboard/inbox', '_blank')}
-                  className="btn-ghost text-sm"
-                  title="Inbox (⌘G I)"
-                >
-                  📧 Inbox
-                </button>
-                <button
-                  onClick={() => window.open('/calendar', '_blank')}
-                  className="btn-ghost text-sm"
-                  title="Calendar (⌘G C)"
-                >
-                  📅 Calendar
-                </button>
-              </div>
-
-              <NotificationsBell />
-              {/* User Menu */}
-              <UserMenu />
-            </div>
-          </div>
-        </header>
+        <AppHeader />
 
         {/* Main Content */}
         <main className="p-4 sm:p-6">
