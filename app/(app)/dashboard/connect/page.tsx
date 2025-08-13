@@ -86,7 +86,7 @@ export default function ConnectPage() {
 
   const handleConnect = async (provider: string) => {
     // Redirect to sign-in with specific provider (use absolute callback and correct path)
-    const callbackUrl = `${window.location.origin}/dashboard`
+    const callbackUrl = `${window.location.origin}/dashboard/connect`
     // Force prompt consent to ensure refresh token and scopes
     window.location.href = `/api/auth/signin/${provider}?prompt=consent&access_type=offline&callbackUrl=${encodeURIComponent(callbackUrl)}`
   }
