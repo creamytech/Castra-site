@@ -6,6 +6,9 @@ import { withRLS } from '@/lib/rls'
 import { prisma } from '@/lib/prisma'
 import { encryptRefreshToken } from '@/lib/token'
 
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
 export const POST = withAuth(async ({ ctx }) => {
   try {
     const adapter = await prisma.account.findFirst({ where: { userId: ctx.session.user.id, provider: 'google' }, select: { providerAccountId: true, refresh_token: true } })
