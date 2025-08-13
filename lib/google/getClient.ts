@@ -1,18 +1,6 @@
 import { google } from 'googleapis'
 import { getAccessTokenForUser } from '@/lib/google/exchange'
 
-async function maybeDecrypt(val?: string | null): Promise<string | null> {
-  if (!val) return val ?? null
-  if (val.startsWith('enc:')) return decryptField(val.slice(4))
-  return val
-}
-
-async function maybeEncrypt(val?: string | null): Promise<string | null> {
-  if (!val) return val ?? null
-  if (val.startsWith('enc:')) return val
-  return 'enc:' + await encryptField(val)
-}
-
 export async function getGoogleClientsForUser(userId: string) {
   const { accessToken } = await getAccessTokenForUser(userId)
   const oauth2Client = new google.auth.OAuth2(
