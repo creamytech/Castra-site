@@ -45,40 +45,38 @@ export default function ConnectPage() {
   const fetchAccounts = async () => {
     try {
       const response = await fetch('/api/accounts', { cache: 'no-store' })
-      if (response.ok) {
-        const data = await response.json()
-        setAccounts(data.accounts || [])
-        
-        // Check if Google is connected and redirect if so
-        const googleConnected = data.accounts?.some((acc: Account) => acc.provider === 'google')
-        if (googleConnected) {
-          router.push('/dashboard')
-          return
-        }
-        
-        // Process connection status
-        const statuses: ConnectionStatus[] = [
-          {
-            provider: 'google',
-            connected: data.accounts?.some((acc: Account) => acc.provider === 'google') || false,
-            lastRefresh: data.accounts?.find((acc: Account) => acc.provider === 'google')?.expires_at 
-              ? new Date(data.accounts.find((acc: Account) => acc.provider === 'google')!.expires_at! * 1000).toLocaleString()
-              : undefined,
-            accessToken: data.accounts?.find((acc: Account) => acc.provider === 'google')?.access_token ? 'Present' : undefined,
-            refreshToken: data.accounts?.find((acc: Account) => acc.provider === 'google')?.refresh_token ? 'Present' : undefined
-          },
-          {
-            provider: 'azure-ad',
-            connected: data.accounts?.some((acc: Account) => acc.provider === 'azure-ad') || false,
-            lastRefresh: data.accounts?.find((acc: Account) => acc.provider === 'azure-ad')?.expires_at 
-              ? new Date(data.accounts.find((acc: Account) => acc.provider === 'azure-ad')!.expires_at! * 1000).toLocaleString()
-              : undefined,
-            accessToken: data.accounts?.find((acc: Account) => acc.provider === 'azure-ad')?.access_token ? 'Present' : undefined,
-            refreshToken: data.accounts?.find((acc: Account) => acc.provider === 'azure-ad')?.refresh_token ? 'Present' : undefined
-          }
-        ]
-        setConnectionStatus(statuses)
+      const googleStatusRes = await fetch('/api/integrations/google/status', { cache: 'no-store' })
+      const data = response.ok ? await response.json() : { accounts: [] }
+      const googleStatus = googleStatusRes.ok ? await googleStatusRes.json() : { connected: false }
+      setAccounts(data.accounts || [])
+
+      // Only treat as connected if refresh token exists (status.connected === true)
+      const googleConnected = !!googleStatus.connected
+      if (googleConnected) {
+        router.push('/dashboard')
+        return
       }
+
+      // Process connection status using verified Google connection
+      const statuses: ConnectionStatus[] = [
+        {
+          provider: 'google',
+          connected: googleConnected,
+          lastRefresh: undefined,
+          accessToken: undefined,
+          refreshToken: googleConnected ? 'Present' : undefined
+        },
+        {
+          provider: 'azure-ad',
+          connected: data.accounts?.some((acc: Account) => acc.provider === 'azure-ad') || false,
+          lastRefresh: data.accounts?.find((acc: Account) => acc.provider === 'azure-ad')?.expires_at 
+            ? new Date(data.accounts.find((acc: Account) => acc.provider === 'azure-ad')!.expires_at! * 1000).toLocaleString()
+            : undefined,
+          accessToken: data.accounts?.find((acc: Account) => acc.provider === 'azure-ad')?.access_token ? 'Present' : undefined,
+          refreshToken: data.accounts?.find((acc: Account) => acc.provider === 'azure-ad')?.refresh_token ? 'Present' : undefined
+        }
+      ]
+      setConnectionStatus(statuses)
     } catch (error) {
       console.error('Failed to fetch accounts:', error)
     } finally {
