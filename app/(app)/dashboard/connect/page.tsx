@@ -125,7 +125,9 @@ export default function ConnectPage() {
   }
 
   const handleImportGoogle = async () => {
-    const res = await fetch('/api/integrations/google/import', { method: 'POST' })
+    // Include CSRF header for middleware
+    const csrf = document.cookie.split('; ').find(c => c.startsWith('csrf='))?.split('=')[1]
+    const res = await fetch('/api/integrations/google/import', { method: 'POST', headers: csrf ? { 'x-csrf': csrf } : {} })
     if (!res.ok) return
     await fetchAccounts()
   }
