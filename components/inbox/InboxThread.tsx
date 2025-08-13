@@ -112,7 +112,7 @@ export default function InboxThread({ threadId }: { threadId: string }) {
           <div key={m.id} className="p-2 border rounded bg-background overflow-auto">
             <div className="flex items-center gap-2 mb-1">
               <div className="w-6 h-6 rounded-full bg-muted grid place-items-center text-[10px]">{String(m.from||'?').slice(0,1).toUpperCase()}</div>
-              <div className="text-xs text-muted-foreground flex-1 truncate">{m.from} • {new Date(m.date || m.internalDate).toLocaleString()}</div>
+              <div className="text-xs text-muted-foreground flex-1 truncate">{m.from} • {formatMessageDate(m)}</div>
             </div>
             {m.bodyHtml ? (
               <details className="group">
@@ -150,4 +150,10 @@ export default function InboxThread({ threadId }: { threadId: string }) {
       </div>
     </div>
   )
+}
+
+function formatMessageDate(m: any) {
+  const d = m?.date ? new Date(m.date) : (m?.internalDate ? new Date(m.internalDate) : null)
+  if (!d || isNaN(d.getTime())) return 'Unknown date'
+  return d.toLocaleString()
 }

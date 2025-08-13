@@ -9,6 +9,8 @@ declare module 'next-auth' {
       image?: string | null
       oktaId?: string
       groups?: string[]
+      orgId?: string | null
+      orgRole?: 'OWNER'|'ADMIN'|'MANAGER'|'AGENT'|'VIEWER' | null
     }
   }
 
@@ -17,6 +19,7 @@ declare module 'next-auth' {
     name?: string | null
     email?: string | null
     image?: string | null
+    orgId?: string | null
   }
 }
 

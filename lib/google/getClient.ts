@@ -12,6 +12,7 @@ export async function getGoogleClientsForUser(userId: string) {
   return {
     gmail: google.gmail({ version: 'v1', auth: oauth2Client }),
     calendar: google.calendar({ version: 'v3', auth: oauth2Client }),
+    people: google.people({ version: 'v1', auth: oauth2Client }),
   }
 }
 

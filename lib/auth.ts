@@ -44,7 +44,7 @@ if (config.google.clientId && config.google.clientSecret) {
     'profile',
     'https://www.googleapis.com/auth/gmail.readonly',
     'https://www.googleapis.com/auth/gmail.modify',
-    'https://www.googleapis.com/auth/gmail.metadata'
+    'https://www.googleapis.com/auth/calendar.readonly'
   ].join(' ')
   providers.push(
     GoogleProvider({
@@ -194,7 +194,7 @@ export const authOptions: NextAuthOptions = {
         }
       }
       
-      // On OAuth callback, persist secure MailAccount with encrypted refresh token
+      // On OAuth callback, persist secure MailAccount with encrypted refresh token, and ensure org membership in a transaction
       try {
         if (account?.provider === 'google' && user?.id && account?.providerAccountId) {
           // Ensure RLS app.user_id is set for this request before writing tenant-scoped tables
@@ -203,6 +203,18 @@ export const authOptions: NextAuthOptions = {
           } catch {}
           const refresh = account.refresh_token as string | undefined
           const providerUserId = account.providerAccountId
+          // Ensure Org + OrgMember exist in a single transaction to avoid FK issues
+          try {
+            const existingMember = await appPrisma.orgMember.findFirst({ where: { userId: user.id } })
+            if (!existingMember) {
+              await appPrisma.$transaction(async (tx) => {
+                const org = await tx.org.create({ data: { name: user.name || user.email || 'My Organization' } })
+                await tx.orgMember.create({ data: { orgId: org.id, userId: user.id, role: 'OWNER' as any } })
+              })
+            }
+          } catch (e) {
+            console.error('Org provisioning failed (non-fatal)', e)
+          }
           if (refresh) {
             const refreshTokenEnc = await encryptRefreshToken(refresh)
             await appPrisma.mailAccount.upsert({
@@ -266,6 +278,16 @@ export const authOptions: NextAuthOptions = {
         userName: session.user?.name
       });
       
+      // Attach org context if available
+      try {
+        if (session.user?.id) {
+          const member = await appPrisma.orgMember.findFirst({ where: { userId: session.user.id }, select: { orgId: true, role: true } })
+          if (member) {
+            (session.user as any).orgId = member.orgId
+            ;(session.user as any).orgRole = member.role
+          }
+        }
+      } catch {}
       return session;
     },
   },

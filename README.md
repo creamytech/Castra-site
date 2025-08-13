@@ -55,6 +55,19 @@ Required environment variables:
 - `OPENAI_API_KEY`: OpenAI API key
 - `GOOGLE_CLIENT_ID` & `GOOGLE_CLIENT_SECRET`: Google OAuth credentials
 
+### Google OAuth Setup
+
+1. In Google Cloud Console, configure OAuth consent screen: App name "Castra", support email, scopes: openid, email, profile, https://www.googleapis.com/auth/gmail.readonly, https://www.googleapis.com/auth/gmail.modify, https://www.googleapis.com/auth/calendar.readonly. Publish to production.
+2. Create OAuth Client (Web), set Authorized redirect URI to `${NEXTAUTH_URL}/api/auth/callback/google`.
+3. Set `.env.local` with `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`.
+4. Verify env quickly:
+
+```bash
+pnpm ts-node --transpile-only scripts/verifyEnv.ts
+```
+
+Then visit `/login`.
+
 ### Secure Email Storage
 
 Add the following to `.env.local`:
