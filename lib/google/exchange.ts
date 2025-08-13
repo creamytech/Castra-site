@@ -9,9 +9,48 @@ export async function getAccessTokenForUser(userId: string): Promise<{ accessTok
       select: { id: true, refreshTokenEnc: true }
     })
   })
-  // If no secure refresh token yet, fallback to adapter access_token to keep UX working
+  // If no secure refresh token yet, try to import from NextAuth adapter (refresh_token). If not available, fallback to access_token temporarily.
   if (!acc?.refreshTokenEnc || !Buffer.isBuffer(acc.refreshTokenEnc) || acc.refreshTokenEnc.length === 0) {
-    const adapter = await (prisma as any).account.findFirst({ where: { userId, provider: 'google' }, select: { access_token: true } })
+    const adapter = await (prisma as any).account.findFirst({ where: { userId, provider: 'google' }, select: { providerAccountId: true, refresh_token: true, access_token: true } })
+    if (adapter?.refresh_token) {
+      const rtEnc = await encryptStringToBytes(String(adapter.refresh_token))
+      if (rtEnc) {
+        await withRLS(userId, async (tx) => {
+          const providerUserId = adapter.providerAccountId || userId
+          const existing = await (tx as any).mailAccount.findFirst({ where: { provider: 'google', providerUserId } })
+          if (existing) {
+            await (tx as any).mailAccount.update({ where: { id: existing.id }, data: { userId, refreshTokenEnc: rtEnc } })
+          } else {
+            await (tx as any).mailAccount.create({ data: { userId, provider: 'google', providerUserId, refreshTokenEnc: rtEnc } })
+          }
+        })
+      }
+      // Now exchange with the freshly imported refresh token
+      const params = new URLSearchParams({
+        client_id: process.env.GOOGLE_CLIENT_ID || '',
+        client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
+        grant_type: 'refresh_token',
+        refresh_token: String(adapter.refresh_token),
+      })
+      const resp = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() })
+      const data: any = await resp.json()
+      if (!resp.ok) {
+        const err = data?.error || data?.error_description || 'exchange_failed'
+        if (String(err) === 'invalid_grant') throw new Error('invalid_grant')
+        throw new Error(`token_exchange_failed:${String(err)}`)
+      }
+      if (data.refresh_token) {
+        const rtNew = await encryptStringToBytes(String(data.refresh_token))
+        if (rtNew) {
+          await withRLS(userId, async (tx) => {
+            const providerUserId = adapter.providerAccountId || userId
+            const existing = await (tx as any).mailAccount.findFirst({ where: { provider: 'google', providerUserId } })
+            if (existing) await (tx as any).mailAccount.update({ where: { id: existing.id }, data: { refreshTokenEnc: rtNew } })
+          })
+        }
+      }
+      return { accessToken: String(data.access_token), expiresIn: Number(data.expires_in || 0) }
+    }
     if (adapter?.access_token) {
       return { accessToken: String(adapter.access_token), expiresIn: 300 }
     }
