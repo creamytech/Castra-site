@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/api'
+import { isFeatureEnabled } from '@/lib/config'
 import { getGoogleAuthForUser, gmailClient } from '@/lib/gmail/client'
 import { extractPlainAndHtml } from '@/lib/google'
 
@@ -7,6 +8,7 @@ export const dynamic = 'force-dynamic'
 
 export const GET = withAuth(async ({ req, ctx }) => {
   try {
+    if (!isFeatureEnabled('gmail')) return NextResponse.json({ error: 'Gmail disabled' }, { status: 503 })
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })

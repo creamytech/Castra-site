@@ -9,6 +9,9 @@ export const runtime = 'nodejs'
 
 export const GET = withAuth(async ({ req, ctx }) => {
   try {
+    if (!isFeatureEnabled('gmail')) {
+      return NextResponse.json({ error: 'Gmail disabled' }, { status: 503 })
+    }
 
     const { searchParams } = new URL(req.url)
     const maxResults = parseInt(searchParams.get('maxResults') || '10')
@@ -37,6 +40,9 @@ export const GET = withAuth(async ({ req, ctx }) => {
 
 export const PATCH = withAuth(async ({ req, ctx }) => {
   try {
+    if (!isFeatureEnabled('gmail')) {
+      return NextResponse.json({ error: 'Gmail disabled' }, { status: 503 })
+    }
 
     const { action, ids, label } = await req.json().catch(() => ({}))
     if (!Array.isArray(ids) || ids.length === 0) return NextResponse.json({ error: 'ids[] required' }, { status: 400 })

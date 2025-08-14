@@ -23,6 +23,11 @@ export const config = {
     clientId: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
   },
+  // Feature flags
+  features: {
+    // Set DISABLE_GOOGLE=1 to hard-disable Google/Gmail/Calendar across the app
+    googleDisabled: process.env.DISABLE_GOOGLE === '1' || process.env.GOOGLE_DISABLED === '1',
+  },
 
   // DocuSign Configuration
   docusign: {
@@ -70,7 +75,7 @@ export function getAuthProviders() {
     providers.push('okta')
   }
 
-  if (config.google.clientId && config.google.clientSecret) {
+  if (!config.features.googleDisabled && config.google.clientId && config.google.clientSecret) {
     providers.push('google')
   }
 
@@ -85,7 +90,7 @@ export function isFeatureEnabled(feature: 'gmail' | 'calendar' | 'crm' | 'docusi
   switch (feature) {
     case 'gmail':
     case 'calendar':
-      return !!(config.google.clientId && config.google.clientSecret)
+      return !config.features.googleDisabled && !!(config.google.clientId && config.google.clientSecret)
     case 'crm':
       return !!config.database.url
     case 'docusign':

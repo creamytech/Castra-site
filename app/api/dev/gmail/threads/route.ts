@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/api'
+import { isFeatureEnabled } from '@/lib/config'
 import { getGoogleAuthForUser, gmailClient } from '@/lib/gmail/client'
 
 export const dynamic = 'force-dynamic'
 
 export const GET = withAuth(async ({ req, ctx }) => {
   try {
+    if (!isFeatureEnabled('gmail')) return NextResponse.json({ error: 'Gmail disabled' }, { status: 503 })
     const { searchParams } = new URL(req.url)
     const q = searchParams.get('q') || ''
     const max = Math.min(Number(searchParams.get('max') || 20), 50)

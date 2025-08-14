@@ -3,6 +3,7 @@
 import { useSession } from 'next-auth/react'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { config } from '@/lib/config'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,7 +51,7 @@ export default function ConnectPage() {
         setAccounts(data.accounts || [])
         
         // Check if Google is connected and redirect if so
-        const googleConnected = data.accounts?.some((acc: Account) => acc.provider === 'google')
+        const googleConnected = !config.features.googleDisabled && data.accounts?.some((acc: Account) => acc.provider === 'google')
         if (googleConnected) {
           router.push('/app/dashboard')
           return
@@ -58,7 +59,7 @@ export default function ConnectPage() {
         
         // Process connection status
         const statuses: ConnectionStatus[] = [
-          {
+          !config.features.googleDisabled ? {
             provider: 'google',
             connected: data.accounts?.some((acc: Account) => acc.provider === 'google') || false,
             lastRefresh: data.accounts?.find((acc: Account) => acc.provider === 'google')?.expires_at 
@@ -66,7 +67,7 @@ export default function ConnectPage() {
               : undefined,
             accessToken: data.accounts?.find((acc: Account) => acc.provider === 'google')?.access_token ? 'Present' : undefined,
             refreshToken: data.accounts?.find((acc: Account) => acc.provider === 'google')?.refresh_token ? 'Present' : undefined
-          },
+          } : undefined,
           {
             provider: 'azure-ad',
             connected: data.accounts?.some((acc: Account) => acc.provider === 'azure-ad') || false,
@@ -76,7 +77,7 @@ export default function ConnectPage() {
             accessToken: data.accounts?.find((acc: Account) => acc.provider === 'azure-ad')?.access_token ? 'Present' : undefined,
             refreshToken: data.accounts?.find((acc: Account) => acc.provider === 'azure-ad')?.refresh_token ? 'Present' : undefined
           }
-        ]
+        ].filter(Boolean) as ConnectionStatus[]
         setConnectionStatus(statuses)
       }
     } catch (error) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/api'
+import { isFeatureEnabled } from '@/lib/config'
 import { getGoogleClientsForUser } from '@/lib/google/getClient'
 
 export const dynamic = 'force-dynamic'
@@ -7,6 +8,7 @@ export const runtime = 'nodejs'
 
 export const GET = withAuth(async ({ req, ctx }) => {
   try {
+    if (!isFeatureEnabled('calendar')) return NextResponse.json({ error: 'Calendar disabled' }, { status: 503 })
     const { calendar } = await getGoogleClientsForUser(ctx.session.user.id)
     const { searchParams } = new URL(req.url)
     const maxResults = Number(searchParams.get('max') ?? 5)
