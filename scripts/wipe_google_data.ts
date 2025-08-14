@@ -1,9 +1,10 @@
-import { prisma } from '@/lib/prisma'
+// ts-node compatible wipe script
+const { prisma } = require('../lib/prisma')
 
 async function main() {
 	const provider = process.argv[2] || 'google'
 	if (!['google', 'azure-ad'].includes(provider)) {
-		console.error('Usage: tsx scripts/wipe_google_data.ts [google|azure-ad]')
+		console.error('Usage: node -r ts-node/register/transpile-only scripts/wipe_google_data.ts [google|azure-ad]')
 		process.exit(1)
 	}
 
@@ -13,7 +14,7 @@ async function main() {
 	const a = await prisma.account.deleteMany({ where: { provider } })
 	console.log('Deleted accounts:', a.count)
 
-	// Delete email related data (threads/messages/logs) for all users
+	// Delete email related data (threads/messages/logs)
 	const logs = await prisma.emailLog.deleteMany({})
 	console.log('Deleted email logs:', logs.count)
 	const emsg = await prisma.emailMessage.deleteMany({})
