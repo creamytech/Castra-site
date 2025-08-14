@@ -18,11 +18,10 @@ export function middleware(req: NextRequest) {
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:",
     "style-src 'self' 'unsafe-inline'",
     // Allow Google OAuth and APIs just in case any client flows use them
-    "connect-src 'self' https://api.openai.com https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com https://*.twilio.com blob: data: wss:",
-    // Permit frames from Google accounts if needed for certain auth UX
-    "frame-src 'self' https://accounts.google.com",
-    // Allow form submissions back to our site and Google auth endpoints
-    "form-action 'self' https://accounts.google.com",
+    "connect-src 'self' https://api.openai.com https://*.twilio.com blob: data: wss:",
+    // Frame and form restrictions: drop Google endpoints
+    "frame-src 'self'",
+    "form-action 'self'",
     "worker-src 'self' blob:",
     "frame-ancestors 'none'"
   ].join('; '))

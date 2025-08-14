@@ -1,92 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { getGoogleOAuth } from "@/lib/google";
-import { prisma } from "@/lib/prisma";
-import { google } from "googleapis";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const oauth2Client = await getGoogleOAuth(session.user.id);
-    const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
-
-    let nextPageToken: string | undefined = undefined;
-    let totalSynced = 0;
-    const maxPages = 5; // pull up to ~250 messages
-
-    for (let page = 0; page < maxPages; page++) {
-      const listRes: any = await gmail.users.messages.list({
-        userId: 'me',
-        maxResults: 50,
-        q: 'in:inbox newer_than:14d',
-        pageToken: nextPageToken
-      });
-
-      const messages: Array<{ id?: string }> = listRes.data.messages || [];
-      if (messages.length === 0) break;
-
-      for (const message of messages) {
-        try {
-          // Shallow-first partial fetch
-          const messageDetail: any = await gmail.users.messages.get({ userId: 'me', id: message.id!, format: 'metadata', metadataHeaders: ['From','Subject','Date','To','List-Unsubscribe','Precedence','Return-Path'], fields: 'threadId,id,snippet,payload/headers,internalDate,etag' as any });
-          const headers = messageDetail.data.payload?.headers || [];
-          const from = headers.find((h: any) => h.name === 'From')?.value || '';
-          const subject = headers.find((h: any) => h.name === 'Subject')?.value || '';
-          const snippet = messageDetail.data.snippet || '';
-          const internalDate = new Date(parseInt(messageDetail.data.internalDate || '0'));
-          const labels = messageDetail.data.labelIds || [];
-          let bodyText = '';
-          let bodyHtml = '';
-          const likelyLead = /(tour|showing|offer|interested|schedule|budget|price|appointment)/i.test(`${subject} ${snippet}`);
-          const vendorish = /(unsubscribe|list-unsubscribe|no-reply|news|promo|marketing)/i.test(JSON.stringify(headers));
-          if (likelyLead && !vendorish) {
-            const full = await gmail.users.messages.get({ userId: 'me', id: message.id!, format: 'full', fields: 'payload/parts,payload/body' as any });
-            const parts: any[] = [];
-            const walk = (p: any) => { if (!p) return; parts.push(p); (p.parts || []).forEach((pp: any) => walk(pp)) };
-            walk((full.data as any).payload);
-            for (const p of parts) {
-              const b64 = p.body?.data; if (!b64) continue;
-              const buff = Buffer.from(b64.replace(/-/g, '+').replace(/_/g, '/'), 'base64');
-              const text = buff.toString('utf-8');
-              if (p.mimeType?.includes('text/plain')) bodyText += text;
-              if (p.mimeType?.includes('text/html')) bodyHtml += text;
-            }
-          }
-          const payload = JSON.parse(JSON.stringify(messageDetail.data));
-
-          await prisma.message.upsert({
-            where: { gmailId: message.id! },
-            update: { from, subject, snippet, internalDate, labels, payload },
-            create: {
-              gmailId: message.id!,
-              threadId: messageDetail.data.threadId || '',
-              userId: session.user.id,
-              from, subject, snippet, internalDate, labels, payload
-            }
-          });
-          totalSynced++;
-        } catch (e) {
-          console.error(`Error syncing message ${message.id}:`, e);
-        }
-      }
-
-      nextPageToken = listRes.data.nextPageToken || undefined;
-      if (!nextPageToken) break;
-    }
-
-    return NextResponse.json({ success: true, syncedCount: totalSynced });
-
-  } catch (error: any) {
-    console.error("[gmail-sync]", error);
-    return NextResponse.json({ error: error.message || "Failed to sync Gmail messages" }, { status: 500 });
-  }
+  // Permanently removed
+  return NextResponse.json({ error: 'Gmail sync removed' }, { status: 410 })
 }
 
 function buildFolderWhere(userId: string, folder: string) {

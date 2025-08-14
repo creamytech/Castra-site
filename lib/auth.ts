@@ -33,8 +33,8 @@ if (config.okta.clientId && config.okta.clientSecret && config.okta.issuer) {
   );
 }
 
-// Add Google provider if configured
-if (config.google.clientId && config.google.clientSecret) {
+// Add Google provider if configured and not disabled
+if (!config.features.googleDisabled && config.google.clientId && config.google.clientSecret) {
   console.log("Adding Google provider");
   providers.push(
     GoogleProvider({
@@ -47,7 +47,8 @@ if (config.google.clientId && config.google.clientSecret) {
 } else {
   console.log("Google provider not configured:", {
     clientId: !!config.google.clientId,
-    clientSecret: !!config.google.clientSecret
+    clientSecret: !!config.google.clientSecret,
+    disabled: !!config.features.googleDisabled,
   });
 }
 
