@@ -27,8 +27,8 @@ model Org {
   members   OrgMember[]
   auditLogs AuditLog[]
   // Backrefs
-  emailThreads     EmailThread[]
-  emailMessages    EmailMessage[]
+  // emailThreads removed
+  // emailMessages removed
   contacts         Contact[]
   leads            Lead[]
   deals            Deal[]
@@ -38,9 +38,9 @@ model Org {
   userProfiles     UserProfile[]
   templates        Template[]
   toneEmbeddings   ToneEmbedding[]
-  smartReplies     SmartReply[]
+  // smartReplies removed
   notifications    Notification[]
-  eventSuggestions EventSuggestion[]
+  // eventSuggestions removed
   activities       Activity[]
 }
 
@@ -128,15 +128,15 @@ model User {
   chatSessions  ChatSession[]
   chatMessages  ChatMessage[]
   memories      Memory[]
-  emailThreadCaches EmailThreadCache[]
-  emailLogs     EmailLog[]
-  smartReplies  SmartReply[]
+  // emailThreadCaches removed
+  // emailLogs removed
+  // smartReplies removed
   notifications Notification[]
   eventSuggestions EventSuggestion[]
   drafts        Draft[]
   
   // Gmail Relations
-  messages      Message[]
+  // messages removed
   
   // Agent Runtime
   autonomyPolicies AutonomyPolicy[]
@@ -152,7 +152,7 @@ model User {
 }
 
 // Gmail Message Model
-model Message {
+// model Message {
   id           String   @id @default(cuid())
   gmailId      String   @unique
   threadId     String
@@ -171,7 +171,7 @@ model Message {
   
   @@index([userId, internalDate])
   @@index([threadId])
-}
+// }
 
 // Chat Models
 model ChatSession {
@@ -209,83 +209,14 @@ model Memory {
   @@unique([userId, key])
 }
 
-model EmailThreadCache {
-  id        String   @id
-  userId    String
-  snippet   String?
-  payload   Bytes?   // raw gzip'd JSON if needed
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@index([userId, updatedAt])
-}
+// EmailThreadCache removed
 
-model EmailLog {
-  id        String   @id @default(cuid())
-  userId    String
-  messageId String   // Gmail message ID
-  threadId  String   // Gmail thread ID
-  action    String   // "SENT", "DRAFTED", "FAILED"
-  timestamp DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@index([userId, timestamp])
-  @@index([messageId])
-}
+// EmailLog removed
 
 // Real-estate Inbox models
-model EmailThread {
-  id           String        @id                 // provider threadId
-  userId       String
-  orgId        String?
-  subject      String?
-  lastSyncedAt DateTime      @default(now())
-  dealId       String?
-  status       String?
-  score        Int?
-  reasons      Json?
-  extracted    Json?
-  messages     EmailMessage[]
+// EmailThread removed
 
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  deal         Deal?         @relation(fields: [dealId], references: [id])
-  org          Org?          @relation(fields: [orgId], references: [id])
-
-  @@index([userId, lastSyncedAt])
-  @@index([dealId])
-  @@index([orgId, lastSyncedAt])
-}
-
-model EmailMessage {
-  id           String   @id                    // provider messageId
-  threadId     String
-  userId       String
-  orgId        String?
-  from         String
-  to           String[]
-  cc           String[]
-  date         DateTime
-  snippet      String?
-  bodyHtml     String?
-  bodyText     String?
-  internalRefs Json?
-  intent       String?
-  entities     Json?
-  dealId       String?
-  contactId    String?
-  createdAt    DateTime @default(now())
-
-  thread       EmailThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  deal         Deal?       @relation(fields: [dealId], references: [id])
-  contact      Contact?    @relation(fields: [contactId], references: [id])
-  org          Org?        @relation(fields: [orgId], references: [id])
-
-  @@index([userId, date])
-  @@index([threadId, date])
-  @@index([dealId])
-  @@index([orgId, date])
-}
+// EmailMessage removed
 
 // CRM Models
 model Contact {
@@ -490,8 +421,8 @@ model Deal {
   leadPreference LeadPreference?
   interactions Interaction[]
   tasks        Task[]
-  emailThreads EmailThread[]
-  emailMessages EmailMessage[]
+  // emailThreads removed
+  // emailMessages removed
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -645,27 +576,7 @@ model ToneEmbedding {
   @@index([orgId])
 }
 
-model SmartReply {
-  id           String   @id @default(cuid())
-  userId       String
-  orgId        String?
-  messageId    String
-  gmailDraftId String?
-  subject      String
-  to           String
-  body         String
-  status       String   @default("suggested") // suggested | drafted | sent | dismissed
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  org     Org?    @relation(fields: [orgId], references: [id])
-
-  @@index([userId, status, createdAt])
-  @@index([messageId])
-  @@index([orgId, createdAt])
-}
+// SmartReply removed
 
 model Notification {
   id        String   @id @default(cuid())
@@ -686,28 +597,4 @@ model Notification {
   @@index([orgId, createdAt])
 }
 
-model EventSuggestion {
-  id           String   @id @default(cuid())
-  userId       String
-  orgId        String?
-  messageId    String
-  summary      String
-  description  String?
-  startISO     String
-  endISO       String
-  timeZone     String   @default("America/New_York")
-  attendees    String[] // list of attendee emails
-  location     String?
-  status       String   @default("suggested") // suggested | created | dismissed
-  createdEventId String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  org     Org?    @relation(fields: [orgId], references: [id])
-
-  @@index([userId, status, createdAt])
-  @@index([messageId])
-  @@index([orgId, status, createdAt])
-}
+// EventSuggestion removed
